@@ -28,17 +28,18 @@
 | M20 | 遊び | play | THEORY_MAP 日本語用語表；FR L36 | 「play」は display 等を含む部分一致を避け単語境界で | 採用 | |
 | M21 | 趣味 | shumi | THEORY_MAP 日本語用語表；FR L35 | | 採用 | |
 | M22 | 知好楽の「楽」 | delight | FR L34 | | 採用 | |
-| M23 | 委任 | delegation | 要確認（T4 本文・T4.en） | | 要確認 | |
-| M24 | 正統性 | legitimacy | 要確認（T4 本文・T4.en） | | 要確認 | |
-| M25 | 立場 | standing | 要確認（T4.en・THEORY_MAP） | | 要確認 | |
-| M26 | 能力 | competence / capability | 要確認（T4.en）。二語に分かれる可能性 | | 要確認 | |
-| M27 | 逆方向経路／逆方向の経路 | reverse pathway | 要確認（T4 本文の表記と T4.en） | | 要確認 | |
-| M28 | 承認 | recognition | 要確認（T4.en・THEORY_MAP） | 「承認」は endorsement の訳でもありうる | 要確認 | |
-| M29 | 是認 | endorsement | 要確認（T4.en） | | 要確認 | |
-| M30 | 相互性 | reciprocity / reciprocal | 要確認（T4 本文・T4.en） | | 要確認 | |
-| M31 | 主体性 | agency | 要確認（T4 本文・T4.en） | | 要確認 | |
+| M23 | 委任 | delegation | 出所なし（「委任」は同梱の md・txt に0件） | | 要確認 | |
+| M24 | 正統性 | legitimacy | T4↔T4.en の manifest 対応で共起 4/4 unit（T4.md:49↔T4.en.md:166・T4.md:51↔175・T4.md:55↔189・T4.md:85↔340） | | 要確認 | |
+| M25 | 立場 | standing | T4↔T4.en の manifest 対応で共起 10/12 unit（T4.md:29↔T4.en.md:70・T4.md:45↔150・T4.md:75↔289・T4.md:77↔296 ほか） | | 要確認 | |
+| M26 | 能力 | competence / capability | 出所なし（「能力」を含む3 unit で competence・capability は 0/3。英訳は ability・capacities で 3/3：T4.md:75↔T4.en.md:289・T4.md:150↔581・T4.md:162↔635） | | 要確認 | |
+| M27 | 逆方向経路／逆方向の経路 | reverse pathway | 出所なし（「逆方向経路」「逆方向の経路」は原文に0件。原文の表記は「逆方向」で、同じ unit の英訳に reverse・pathway：T4.md:19↔T4.en.md:30・T4.md:132↔508） | | 要確認 | |
+| M28 | 承認 | recognition | 機械的には manifest 共起 1/5 unit（T4.md:192↔T4.en.md:760）と tn-07（T4.en.md:303）。ただし tn-07 は「承認」を対象に応じて endorsement／adoption・approval と訳し分け、自動的には recognition としないと述べる。「承認」を含む5 unit は endorse 系・approval で 5/5 | 「承認」は endorsement の訳でもありうる | 要確認 | |
+| M29 | 是認 | endorsement | 出所なし（「是認」は同梱の md・txt に0件。英訳の endorse 系は原文の「承認」に対応：M28 の欄） | | 要確認 | |
+| M30 | 相互性 | reciprocity / reciprocal | T4↔T4.en の manifest 対応で共起 8/8 unit（T4.md:19↔T4.en.md:30・T4.md:45↔150・T4.md:79↔311・T4.md:85↔340 ほか） | | 要確認 | |
+| M31 | 主体性 | agency | SOURCE_INDEX.md:27 の話題ラベル「T3の主体性・選抜ではない分析 / agency, not diagnosis」 | | 要確認 | |
 | M32 | 事態 | state of affairs | THEORY_MAP「Japanese public wording」（短形・長形） | 凍結文の対訳 | 採用 | |
 
 補記
+- M23〜M31 の出所欄は、施工段階2（2026-09-18）に `scripts/find_term_sources.py`（TERMS-SRC-1.0.0）で機械的に検索して埋めた。判定は候補表の語形による（A：T4 本文の対訳表記、B：manifest の unit ごとの ja↔en 共起、C：訳注、D：ガイドの同じ行）。「出所なし」の行と M28 の注記は、語形の見直しか削除を著者が判断する。表は terms.py にまだ載せていない。
 - M23〜M31 は T4.en の manifest（sourceUnits の ja↔en 対応）で機械的に確かめられる。訳注（TN01〜TN16）由来の対応は出所欄に「TN」と明記する。
 - 同一の日本語に複数の英語（M26・M28）が対応する場合は分けて登録し、`match_via` で区別する。

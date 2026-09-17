@@ -1,0 +1,76 @@
+{
+  "purpose": "T09 内容語・否定・数値・比較記号・語の連結の改変。どれも照合範囲（論文原文と T4 英訳）に生でも正規化後でも存在しないことを、作成時とテスト時に確かめる。公開原文には足さない。",
+  "originals": [
+    "papers/T2.md:196",
+    "papers/T2.md:103",
+    "papers/T1.md:181",
+    "papers/T5.md:13",
+    "papers/T4.md:132"
+  ],
+  "mutations": [
+    {
+      "id": "digit",
+      "input": "(75.9% versus 11.9% under human-only"
+    },
+    {
+      "id": "decimal-fullwidth-period",
+      "input": "(75．6% versus 11.9% under human-only"
+    },
+    {
+      "id": "decimal-to-comma",
+      "input": "(75,6% versus 11.9% under human-only"
+    },
+    {
+      "id": "minus-sign-u2212",
+      "input": "correlated negatively (r = −0.26)"
+    },
+    {
+      "id": "minus-fullwidth",
+      "input": "correlated negatively (r = －0.26)"
+    },
+    {
+      "id": "sign-removed",
+      "input": "correlated negatively (r = 0.26)"
+    },
+    {
+      "id": "content-word-en",
+      "input": "correlated positively (r = -0.26)"
+    },
+    {
+      "id": "comparison-fullwidth",
+      "input": "when charger boost ≦ vehicle max current"
+    },
+    {
+      "id": "comparison-ascii",
+      "input": "when charger boost <= vehicle max current"
+    },
+    {
+      "id": "comparison-reversed",
+      "input": "when charger boost ≥ vehicle max current"
+    },
+    {
+      "id": "negation-added",
+      "input": "AI cannot deliver the state of affairs; it cannot deliver the fact of participation."
+    },
+    {
+      "id": "negation-removed",
+      "input": "AI can deliver the state of affairs; it can deliver the fact of participation."
+    },
+    {
+      "id": "content-word-en-2",
+      "input": "AI can deliver the state of affairs; it cannot deliver the fact of competition."
+    },
+    {
+      "id": "word-concatenation",
+      "input": "the state ofaffairs; it cannot deliver"
+    },
+    {
+      "id": "negation-ja",
+      "input": "従業員が遭遇から結晶化させた向きを，正式な検討の回路に入れ，権限を持つ特定の主体が，採択・保留・停止のいずれについても理由を返さない。"
+    },
+    {
+      "id": "content-word-ja",
+      "input": "従業員が遭遇から結晶化させた向きを，正式な検討の回路に入れ，権限を持つ特定の主体が，採択・保留・中止のいずれについても理由を返す。"
+    }
+  ]
+}

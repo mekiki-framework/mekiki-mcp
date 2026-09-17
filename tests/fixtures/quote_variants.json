@@ -1,0 +1,123 @@
+{
+  "purpose": "T08 許容される表記差（NORM-1.0.0）。原文の行をそのまま写した部分と、規則で吸収される変形からなる試験専用データ。公開原文には足さない。",
+  "scope": "papers/T1〜T5.md",
+  "variants": [
+    {
+      "id": "ja-comma",
+      "input": "従業員が遭遇から結晶化させた向きを、正式な検討の回路に入れ、権限を持つ特定の主体が、採択・保留・停止のいずれについても理由を返す。",
+      "expect_rules": [
+        "PUNCT-COMMA"
+      ],
+      "expect_locations": [
+        {
+          "path": "papers/T4.md",
+          "line": 132
+        }
+      ]
+    },
+    {
+      "id": "ja-space",
+      "input": "従業員が 遭遇から\u3000結晶化させた向きを",
+      "expect_rules": [
+        "WS-CJK"
+      ],
+      "expect_locations": [
+        {
+          "path": "papers/T4.md",
+          "line": 132
+        }
+      ]
+    },
+    {
+      "id": "ja-newline",
+      "input": "従業員が遭遇から\n結晶化させた向きを",
+      "expect_rules": [
+        "WS-CJK"
+      ],
+      "expect_locations": [
+        {
+          "path": "papers/T4.md",
+          "line": 132
+        }
+      ]
+    },
+    {
+      "id": "en-curly",
+      "input": "But the fact that A pursued p under R, with the constraints accepted as reasons, does not thereby obtain; and no further performance by the other agent can make it obtain, because A’s having played is not a causal consequence of p that a sufficiently capable agent could also bring about.",
+      "expect_rules": [
+        "QUOTE-CURLY"
+      ],
+      "expect_locations": [
+        {
+          "path": "papers/T5.md",
+          "line": 79
+        }
+      ]
+    },
+    {
+      "id": "en-spacing",
+      "input": "  But  the  fact  that A pursued p under R,\nwith the constraints accepted as reasons, does not thereby obtain; and no further performance by the other agent can make it obtain, because A's having played is not a causal consequence of p that a sufficiently capable agent could also bring about. ",
+      "expect_rules": [
+        "WS-COLLAPSE"
+      ],
+      "expect_locations": [
+        {
+          "path": "papers/T5.md",
+          "line": 79
+        }
+      ]
+    },
+    {
+      "id": "en-zero-width",
+      "input": "But the fact that A \u200bpursued p under R, with the constraints accepted as reasons, does not thereby obtain; and no further performance by the other agent can make it obtain, because A's having played is not a causal consequence of p that a sufficiently capable agent could also bring about.",
+      "expect_rules": [
+        "WS-ZW"
+      ],
+      "expect_locations": [
+        {
+          "path": "papers/T5.md",
+          "line": 79
+        }
+      ]
+    },
+    {
+      "id": "fullwidth-ascii",
+      "input": "ＡＩ can deliver the state of affairs",
+      "expect_rules": [
+        "WIDTH-ASCII"
+      ],
+      "expect_locations": [
+        {
+          "path": "papers/T5.md",
+          "line": 13
+        }
+      ]
+    },
+    {
+      "id": "halfwidth-kana",
+      "input": "自分ごと化，ｱﾄﾞﾋｱﾗﾝｽ，応答可能性",
+      "expect_rules": [
+        "WIDTH-KANA"
+      ],
+      "expect_locations": [
+        {
+          "path": "papers/T4.md",
+          "line": 21
+        }
+      ]
+    },
+    {
+      "id": "nfd",
+      "input": "自分ごと化，アドヒアランス，応答可能性",
+      "expect_rules": [
+        "NFC-IN"
+      ],
+      "expect_locations": [
+        {
+          "path": "papers/T4.md",
+          "line": 21
+        }
+      ]
+    }
+  ]
+}

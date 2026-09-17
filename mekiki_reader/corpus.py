@@ -236,6 +236,15 @@ def git_blob_sha1(data: bytes) -> str:
     return hashlib.sha1(b"blob %d\0" % len(data) + data).hexdigest()
 
 
+# LINES-1.0.0：空行＝次の文字だけからなる行（空文字を含む）。str.strip() は Unicode の版に依存するので使わない。
+BLANK_CHARS = frozenset(map(chr, (0x09, 0x0D, 0x20, 0xA0, 0x200B, 0x202F, 0x205F, 0x2060, 0x3000, 0xFEFF,
+                                  *range(0x2000, 0x200B))))
+
+
+def is_blank(s: str) -> bool:
+    return all(c in BLANK_CHARS for c in s)
+
+
 def split_lines(text: str) -> tuple[str, ...]:
     """LINES-1.0.0：LF で分け、末尾の空要素を1個だけ除く。"""
     parts = text.split("\n")
@@ -539,7 +548,7 @@ def build_section_index(source_manifest: Mapping[str, Any], texts: Mapping[str, 
             for s, parent in zip(raw_sections, parents):
                 children = tuple(c["id"] for c, cp in zip(raw_sections, parents) if cp == s["id"])
                 body = [n for n in range(s["line_start"], s["line_end"] + 1)
-                        if 1 <= n <= len(lines) and lines[n - 1].strip()]
+                        if 1 <= n <= len(lines) and not is_blank(lines[n - 1])]
                 sections.append(Section(
                     paper_id=pid, id=s["id"], title=s["title"], level=s["level"],
                     line_start=s["line_start"], line_end=s["line_end"],
@@ -677,7 +686,7 @@ def validate_translation_index(
         if not a.source_end_line < b.source_line:
             raise BundleError("index_invalid", rel, f"source units not ordered/disjoint at {b.source_line}")
     covered = {n for u in units for n in range(u.source_line, u.source_end_line + 1)}
-    nonblank = {n for n, line in enumerate(t4.lines, 1) if line.strip()}
+    nonblank = {n for n, line in enumerate(t4.lines, 1) if not is_blank(line)}
     if not nonblank <= covered:
         raise BundleError("index_invalid", rel, f"source line {min(nonblank - covered)} not covered")
     positioned = [u for u in units if u.t_line_start is not None]

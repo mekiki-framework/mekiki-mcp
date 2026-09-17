@@ -155,7 +155,7 @@
 | T07 | 凍結定式二本 | どちらも match=exact・status=ok で、行と節が期待どおり | Q23＝A：T5.md 13行 "AI can deliver the state of affairs; it cannot deliver the fact of participation."（t5-abstract）と223行 "AI can assist play. It cannot take one's place in it."（t5-5-4） |
 | T08 | 許容される表記差（T4 引用の「，」→「、」、空白や改行の挿入、曲線引用符、全角英数） | match=normalized。matched_text が原文どおり。normalization_applied に規則IDと NORM の版がある。変形した入力は tests/fixtures/ に置く | Q41〜Q48 |
 | T09 | 内容語の置換、否定の付加や削除、数字・小数点・負号・比較記号の変更、語の連結 | quote_not_found・match=none。変形後の文字列が照合範囲の全体に生でも正規化後でも存在しないことを、テストの中で先に確かめる | Q24 |
-| T10 | `""`・空白だけ・`"　"`・`"​"`・最小長未満、範囲内に2回以上現れる短文、上限を超えて現れる短文 | 前者は invalid_input。複数一致は全件を返して曖昧さを表示する。完全一致と正規化一致が混在する場合は Q48 の規則どおり。上限を超えて現れる短文は invalid_input で、limitations に `total=n`（Q84）。句読点だけが違う箇所は candidates（Q48） | Q38・Q48・Q84 |
+| T10 | `""`・空白だけ・`"\u3000"`・`"\u200b"`・最小長未満、範囲内に2回以上現れる短文、上限を超えて現れる短文 | 前者は invalid_input。複数一致は全件を返して曖昧さを表示する。完全一致と正規化一致が混在する場合は Q48 の規則どおり。上限を超えて現れる短文は invalid_input で、limitations に `total=n`（Q84）。句読点だけが違う箇所は candidates（Q48） | Q38・Q48・Q84 |
 | T11 | 試験用パターン × 肯定・否定・引用・疑問、パターン0件 | 4種とも同じ規則で要確認箇所として返し、needs_context_review=true。判定の欄がない。契約文がある。0件は Q36 どおり | Q36・Q37 |
 | T12 | T4 の en、訳注を含む節、T1 の en と ja | 英訳は translation・en・translations/T4.en.md・original_locator 付きで、欄は Q88 どおり。訳注は translation_note で、paper_md にならない。訳注の結果が著者の原文の DOI を学術的な引用先として示さない（Q88）。原著者注（author-note-N）は translation。T1 の en と ja は invalid_input（Q21 案A の場合） | Q21・Q25〜Q28・Q88 |
 | R01 | 7ツールそれぞれの固定入力 | 同じプロセスで2回呼んだ結果と、別プロセスで PYTHONHASHSEED を変えて呼んだ結果の to_json 出力が、バイト単位で一致する（過負荷のない条件で） | Q65 |

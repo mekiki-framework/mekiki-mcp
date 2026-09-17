@@ -4,7 +4,7 @@
 |---|---|
 | 規則ID・版 | NORM-1.0.0 |
 | 状態 | 確定（回答票 Q41〜Q49、2026-09-18） |
-| 実装 | 施工段階2（`mekiki_reader/normalize.py`）。表の正準 JSON の SHA-256 は実装時に本書と DECISIONS.md に記す（Q49） |
+| 実装 | 施工段階2で実装（`mekiki_reader/normalize.py`）。表の正準 JSON の SHA-256：`a9b1cf1768a6f3c656d137d8040567322c79cc7532c95ca2e94ca4d77cebecc7`（`NORM_TABLE_SHA256`。import 時に再計算して照合する。Q49） |
 | 対象 | `verify_quote` の照合（SPEC §5.5：空白・全角半角・句読点のみ。小数点・負号・比較記号は対象外） |
 | 出典 | DECISIONS.md 付録B-1（段階0）から分離 |
 
@@ -13,8 +13,10 @@
 1. 生テキストの完全一致を探す（match=exact）。
 2. 見つからなければ、同じ規則を入力と原文の両方にかけて一致を探す（match=normalized）。
 3. 完全一致があり、句読点だけが違う箇所が別にある場合、後者は candidates に出す（Q48）。
-4. 結果数が上限を超えた場合は invalid_input とし、limitations に `total=n` を書く（部分結果は返さない。上限と最小長の値は施工段階2で実測して提案する。Q84）。
+4. 結果数が上限（20件）を超えた場合は invalid_input とし、limitations に `TOTAL: total=n` を書く（部分結果は返さない）。最小長は正規化後、仮名・漢字を含む入力で5字、それ以外で10字（実測は docs/rules/LIMITS.md。Q84）。
 5. 外枠の normalization_applied は全結果に適用した規則IDの和集合（整列済み）。結果ごとの変換は payload.diffs に置く（Q48）。
+6. 照合の単位は行。原文側は行ごとに正規化し、行をまたぐ一致は認めない。
+7. 空白類の並びの中にゼロ幅文字があるときは、その並びに WS-COLLAPSE と WS-ZW の両方を記録する（規則の記録は一文字に複数あり、`+` でつなぐ）。
 
 ## 規則表
 

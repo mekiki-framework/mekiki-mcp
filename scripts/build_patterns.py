@@ -32,7 +32,7 @@ CANDIDATES = REPO_ROOT / "docs/candidates/patterns_candidates_v0.md"
 TM_PATH = "THEORY_MAP.md"
 FR_PATH = "FOR_AI_READERS.md"
 APPROVED_ON = "2026-09-18"
-PATTERNS_VERSION = "PATTERNS-0.1.0"
+PATTERNS_VERSION = "PATTERNS-0.1.1"
 
 
 class Unresolved(Exception):
@@ -239,7 +239,7 @@ def forms_of(row) -> list[str]:
 def write_patterns(resolved) -> None:
     p = REPO_ROOT / "mekiki_reader/patterns.py"
     t = p.read_text(encoding="utf-8")
-    body = ["# 著者承認済みのパターン（PATTERNS-0.1.0・承認 2026-09-18・docs/rules/PATTERNS.md）。",
+    body = [f"# 著者承認済みのパターン（{PATTERNS_VERSION}・承認 {APPROVED_ON}・docs/rules/PATTERNS.md）。",
             "# 候補は docs/candidates/patterns_candidates_v0.md、関連原文の解決は scripts/build_patterns.py。",
             "PATTERNS: tuple[Pattern, ...] = ("]
     for r in resolved:
@@ -270,6 +270,15 @@ def write_patterns(resolved) -> None:
     p.write_text(t, encoding="utf-8")
 
 
+def table_hash() -> str:
+    """書き出した patterns.py を読み直して表の SHA-256 を得る（版を上げたら値も変わる）。"""
+    import importlib
+
+    from mekiki_reader import patterns as _patterns
+
+    return importlib.reload(_patterns).table_sha256()
+
+
 def write_doc(resolved, failed, held) -> None:
     lines = [
         "# PATTERNS — check_compressions の語形",
@@ -277,6 +286,7 @@ def write_doc(resolved, failed, held) -> None:
         "| 項目 | 値 |",
         "|---|---|",
         f"| 規則ID・版 | 一覧 {PATTERNS_VERSION}（{len(resolved)}件）・照合 PATTERNS-MATCH-1.0.0 |",
+        f"| 表の SHA-256 | `{table_hash()}`（`patterns.table_sha256()` が import 時に照合。Q49） |",
         f"| 状態 | 確定（著者承認 {APPROVED_ON}。起草＝検査室・SPEC §10） |",
         "| 実装 | `mekiki_reader/patterns.py`・`mekiki_reader/tools.py`（`_check_compressions`） |",
         "| 候補・解決 | `docs/candidates/patterns_candidates_v0.md`・`scripts/build_patterns.py`（PATTERNS-SRC-1.0.0） |",

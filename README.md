@@ -82,7 +82,9 @@ Mekiki Framework の論文 T1〜T5 を、**固定した版から・出典つき�
 | `get_reading_guide(part="all")` | `FOR_AI_READERS.md` の該当部分と、読み方の雛形（`templates`） | `ok` / `invalid_input` | `part` は11個の固定列挙 |
 
 `status` は六値（`ok` / `unknown_id` / `quote_not_found` / `no_lexical_match` / `invalid_input` / `ledger_not_available`）で、混ぜない。
-**通信層の制限（同時実行4・本文64KiB・要求ヘッダと本文長の検査）は `status` に混ぜず、MCP のエラーか HTTP の応答コードで返す。**
+**通信層の制限は `status` に混ぜず、MCP のエラーか HTTP の応答コードで返す。**
+同時実行は4（七ツール・resources・prompts で共有）。要求本文は 64 KiB を**実際に届いたバイト数**で打ち切り、
+長さの表明（`Content-Length`）は ASCII 数字だけ・重複不可・`Transfer-Encoding` との併記不可で、表明と実測が食い違えば拒む。
 
 各結果には出典が付く：`source_id`・`source_kind`・`derivative_of`・`paper_id`・`paper_version`・`language`・`source_path`・
 `source_hash`・`section_anchor`・`locator`（行・文字位置）・`canonical_doi`・`source_url`・`snapshot_url`（＋本文の `payload`）。
@@ -112,7 +114,7 @@ Mekiki Framework の論文 T1〜T5 を、**固定した版から・出典つき�
 
 `SCHEMA-1.0.0`・`JSON-1.0.0`・`NORM-1.0.0`・`SEARCH-1.0.0`・`CAND-1.0.0`・`NEAR-1.0.0`・`GUIDE-1.0.0`・`LIMITS-1.0.0`・
 `LINES-1.0.0`・`LANG-1.0.0`・`SECTION-1.0.0`・`T4MAP-1.0.0`・`BUNDLE-1.0.0`・`TERMS-0.1.1`（30項目）・
-`PATTERNS-0.1.0`（49件）＋`PATTERNS-MATCH-1.0.0`・`PROMPTS-0.1.0`（6件）。本文は [docs/rules/](docs/rules/)。
+`PATTERNS-0.1.1`（49件）＋`PATTERNS-MATCH-1.0.0`・`PROMPTS-0.1.0`（6件）。本文は [docs/rules/](docs/rules/)。
 
 ## 5. 準備と起動
 
@@ -248,6 +250,6 @@ D01〜D04（同梱データ）・T01〜T12 と R01（七ツールと再現性）
   3. 同梱物は `data/LICENSE`（CC BY 4.0）に従う。論文本文中に別の表記（T1 の figshare 寄託データについての `CC BY-NC 4.0`）があっても、同梱物には及ばない。原文は改変しない。
   4. 日本語の問いは英語の論文に当たりにくい（語句の照合であるため）。該当ゼロは記述が無いことを意味しない。
   5. 未知の prompt 名は MCP のエラーとして返る（上流の実装の挙動。本文は §5 参照）。Spaces ではツール名に接頭辞が付く。
-  6. `/` に Gradio 標準のフロント HTML が返る。`resources/read` と `prompts/get` はサーバが自分自身に出す HTTP 要求で実行されるため、その経路（`/gradio_api/queue/join`・`/gradio_api/queue/data`）だけは通してある。
+  6. `/` に Gradio 標準のフロント HTML が返る。`resources/read` と `prompts/get` はサーバが自分自身に出す HTTP 要求で実行されるため、その経路（`/gradio_api/queue/join`・`/gradio_api/queue/data`）だけは通してある。外から同じ経路を叩くこともできるので、**同時数を8件に、待ち行列を16件に絞って受ける**（超えると HTTP 503）。実行されるのは登録済みの七ツール・resources・prompts だけで、どれも同じ実行枠（同時4）を使う。`/gradio_api/call/*` は塞いである（実測で、自己呼び出しには要らないことを確かめた）。
   7. 起動時に `HF_HUB_DISABLE_TELEMETRY=1`・`HF_HUB_DISABLE_IMPLICIT_TOKEN=1`・`HF_HUB_OFFLINE=1`・`HF_TOKEN_PATH=/dev/null` を設定している（依存ライブラリの利用状況送信を止め、利用者のトークンファイルを開かせないため）。
   8. 同梱データの照合は事故の検出までで、改竄への耐性は主張しない。

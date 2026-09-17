@@ -107,5 +107,19 @@ class Server:
         finally:
             conn.close()
 
+    def raw(self, request: bytes, timeout: float = 30.0) -> tuple[int, str]:
+        """要求をバイト列のまま送る（重複ヘッダなど http.client で作れない形のため）。"""
+        with socket.create_connection(("127.0.0.1", self.port), timeout=timeout) as sock:
+            sock.sendall(request)
+            data = b""
+            while b"\r\n\r\n" not in data and len(data) < (1 << 20):
+                chunk = sock.recv(65536)
+                if not chunk:
+                    break
+                data += chunk
+        if not data.startswith(b"HTTP/"):
+            return 0, data[:200].decode("latin-1", "replace")
+        return int(data.split(b" ", 2)[1]), data[:300].decode("latin-1", "replace")
+
     def log(self) -> str:
         return "".join(self.lines)

@@ -2,7 +2,7 @@
 
 | 項目 | 値 |
 |---|---|
-| 規則ID・版 | TERMS-0.1.1（30項目。0.1.0 から M02 の日本語形を外した） |
+| 規則ID・版 | TERMS-0.1.1（30項目。0.1.0 から M02 の日本語形を外した）。表 `790e1240…7be0` |
 | 状態 | 確定（著者承認 2026-09-18。Q52・Q53。0.1.1 も同日の著者確定） |
 | 実装 | `mekiki_reader/terms.py`（`TERMS`・`SOURCES`・`build_term_index`）・`mekiki_reader/tools.py`（`_term_prepass`・`_expansions`） |
 | 出所の検索 | `scripts/find_term_sources.py --terms`（TERMS-SRC-1.0.0。同梱データだけを読む） |
@@ -11,8 +11,9 @@
 
 - 載せるのは著者が承認した項目だけ。範囲はコーパスが自ら示す対訳と表記揺れに限る（概念レベルの対応は入れない。SPEC §11）。
 - 項目の形：id（`M` と数字）・forms_ja・forms_en・sources（コーパス内の出所）・approved_on。起動時に形を確かめ、不正なら起動しない。
+- 表の正準 JSON（`{"version", "entries"[id・forms_ja・forms_en・sources・approved_on]}`・sort_keys・ensure_ascii=False・区切りなし）の SHA-256 は `790e124094aeca1ccd3cf72823e9acbd70a897057b12d357eece26486e467be0`。`terms.table_sha256()` が import 時に照合し、違えば起動しない（Q49・Codex① P2-7）。
 - 語形は日英あわせて二つ以上。片側だけの行も置ける（0.1.1 で M02 を英語の表記揺れだけの行にしたため。日本語クエリからは当たらず、英語の表記揺れを束ねる働きだけを持つ）。
-- 索引：各語形を SEARCH-1.0.0 の畳み込みにかけ、語形 → 項目 id の表を作る（TERMS-0.1.0 では語形79個、項目どうしの重複なし）。
+- 索引：各語形を SEARCH-1.0.0 の畳み込みにかけ、語形 → 項目 id の表を作る（TERMS-0.1.1 では語形78個、項目どうしの重複なし）。
 - 検索での使い方（SEARCH-1.0.0）：
   1. 前処理：畳み込んだクエリの中から、語形（空白や記号を含むものも）を長い順・左から拾い、一つの断片として取り出す。
   2. 断片が語形と一致すれば、その項目の他の語形でも照合する。一致の経路は `match_via` に `term_map:<id>` として記録する（直接の一致は `query`）。
@@ -23,7 +24,7 @@
 
 A：T4 本文の「日本語（…英語…）」表記。B：英訳 manifest の unit ごとの ja↔en 共起（訳注を除く）。C：訳注の本文。D：ガイド（THEORY_MAP・FOR_AI_READERS・SOURCE_INDEX・llms.txt）の同じ行。E：読解試験の同じ設問の日英。F：THEORY_MAP の「Japanese public wording」節で「literal translation」と明記された行と、その英語側（題なら冒頭の T5 の英題の行、文なら同節の英語の原文の行）。どれにも当たらない項目は、各語形の出現箇所だけを記す。
 
-## 表（TERMS-0.1.0・承認 2026-09-18）
+## 表（TERMS-0.1.1・承認 2026-09-18）
 
 | ID | 日本語 | 英語（表記揺れを含む） | 出所（機械的な検索・TERMS-SRC-1.0.0） | 候補表の出所（参考） |
 |---|---|---|---|---|

@@ -6,15 +6,15 @@
 |---|---|---|---|---|
 | NORM | 1.0.0（表 `a9b1cf17…ecc7`） | 確定（実装済み） | 2 | [NORM.md](NORM.md) |
 | SEARCH | 1.0.0 | 確定（実装済み。順位は語の種類数→直接一致→総出現数→論文順→行番号。SPEC v2.1 §5.3 は方針側の誤りとして v2.2 で訂正） | 2 | [SEARCH.md](SEARCH.md) |
-| TERMS | 0.1.1（30項目・語形78） | 確定（著者承認 2026-09-18） | 2〜3 | [TERMS.md](TERMS.md) |
+| TERMS | 0.1.1（30項目・語形78・表 `790e1240…`） | 確定（著者承認 2026-09-18） | 2〜4 | [TERMS.md](TERMS.md) |
 | CAND | 1.0.0 | 提案（実装済み） | 2 | [CAND.md](CAND.md) |
 | NEAR | 1.0.0 | 提案（実装済み） | 2 | [NEAR.md](NEAR.md) |
 | GUIDE | 1.0.0 | 確定（実装済み） | 2 | [GUIDE.md](GUIDE.md) |
 | LIMITS | 1.0.0 | 提案（実装済み・値は実測） | 2 | [LIMITS.md](LIMITS.md) |
 | JSON | 1.0.0 | 提案（実装済み） | 2 | [JSON.md](JSON.md) |
 | SCHEMA | 1.0.0 | 提案（実装済み。資料種別の表は著者承認 2026-09-18・derivative_of 欄つき） | 2 | [SCHEMA.md](SCHEMA.md) |
-| PATTERNS | 0.1.0（49件）・照合 PATTERNS-MATCH-1.0.0 | 一覧は確定（著者承認 2026-09-18）・照合は提案 | 2〜3 | [PATTERNS.md](PATTERNS.md) |
-| PROMPTS | 0.1.0（日本語） | 確定（著者承認 2026-09-18）。英語版 0.2.0 は起草・承認待ち（`docs/candidates/prompts_en_v0.md`） | 2〜4 | [PROMPTS.md](PROMPTS.md) |
+| PATTERNS | 0.1.1（49件・表 `b3829952…`）・照合 PATTERNS-MATCH-1.0.0 | 一覧は確定（著者承認 2026-09-18。0.1.0＝47件は撤回） | 2〜4 | [PATTERNS.md](PATTERNS.md) |
+| PROMPTS | 0.1.0（6件：日本語3・英語3） | 確定（著者承認 2026-09-18。英語版は `_en` の別名で同版・案B） | 2〜4 | [PROMPTS.md](PROMPTS.md) |
 | TERMS-SRC | 1.0.0 | 提案（施工用の道具） | 2 | `scripts/find_term_sources.py` |
 | PATTERNS-SRC | 1.0.0 | 提案（施工用の道具。`「見出し」：行 "…"` の指定を含む） | 2〜3 | `scripts/build_patterns.py` |
 | BUNDLE | 1.0.0 | 提案（実装済み） | 1 | [BUNDLE.md](BUNDLE.md) |

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 import threading
 from pathlib import Path
@@ -56,6 +57,14 @@ OPEN_ROUTES = (("GET", "/", 200), ("GET", "/config", 200), ("GET", "/gradio_api/
 CALL_BODY = json.dumps({"jsonrpc": "2.0", "id": 1, "method": "tools/call",
                         "params": {"name": "list_papers", "arguments": {}}}).encode("utf-8")
 MCP_HEADERS = {"Content-Type": "application/json", "Accept": "application/json, text/event-stream"}
+
+
+def _write_flags(flags: str) -> bool:
+    """open の flags に書き込みの意図が入っているか（O_WRONLY・O_RDWR・O_CREAT・O_APPEND）。"""
+    if not flags or not flags.lstrip("-").isdigit():
+        return False
+    value = int(flags)
+    return bool(value & (os.O_WRONLY | os.O_RDWR | os.O_CREAT | os.O_APPEND))
 
 
 def _sse_json(text: str) -> dict:
@@ -175,6 +184,88 @@ def _busy_count(results) -> int:
     return busy
 
 
+def test_s01_host_variants(server):
+    """Host の欠落・重複・IPv6（Codex① P1-2 の敵対的試験）。"""
+    port = str(server.port).encode()
+    cases = [
+        (b"GET /config HTTP/1.1\r\nConnection: close\r\n\r\n", (400,)),                        # 欠落
+        (b"GET /config HTTP/1.1\r\nHost: 127.0.0.1\r\nHost: evil.example\r\nConnection: close\r\n\r\n",
+         (400,)),                                                                                # 重複
+        (b"GET /config HTTP/1.1\r\nHost: [::1]:" + port + b"\r\nConnection: close\r\n\r\n", (200,)),  # IPv6
+        (b"GET /config HTTP/1.1\r\nHost: [::1]\r\nConnection: close\r\n\r\n", (200,)),          # IPv6・ポートなし
+        (b"GET /config HTTP/1.1\r\nHost: 127.0.0.1.evil.example\r\nConnection: close\r\n\r\n", (400,)),
+        (b"GET /config HTTP/1.1\r\nHost: \r\nConnection: close\r\n\r\n", (400,)),               # 空
+    ]
+    for request, want in cases:
+        status, head = server.raw(request)
+        assert status in want, (request.split(b"\r\n")[1], status, head[:80])
+
+
+def test_s01_framing_is_checked(server):
+    """Content-Length と Transfer-Encoding の形（Codex① P1-2）。"""
+    body = b'{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
+    head = f"POST /gradio_api/mcp/ HTTP/1.1\r\nHost: 127.0.0.1:{server.port}\r\n".encode()
+    common = b"Content-Type: application/json\r\nAccept: application/json, text/event-stream\r\nConnection: close\r\n"
+    cases = [
+        # TE と CL の併記（要求の密輸の形）
+        (head + common + b"Transfer-Encoding: chunked\r\nContent-Length: " + str(len(body)).encode()
+         + b"\r\n\r\n" + body, 400),
+        # CL の重複
+        (head + common + b"Content-Length: " + str(len(body)).encode() + b"\r\nContent-Length: 5\r\n\r\n" + body, 400),
+        # CL が ASCII 数字でない（全角）
+        (head + common + "Content-Length: １０\r\n\r\n".encode("utf-8") + body, 400),
+        # CL に符号や空白（+45 / 0x2d）
+        (head + common + b"Content-Length: +45\r\n\r\n" + body, 400),
+    ]
+    for request, want in cases:
+        status, text = server.raw(request)
+        assert status == want, (request[:120], status, text[:80])
+    ok = head + common + b"Content-Length: " + str(len(body)).encode() + b"\r\n\r\n" + body
+    assert server.raw(ok)[0] == 200
+
+
+def test_s01_body_size_boundary(server):
+    """本文の大きさのちょうど境界（65,535／65,536／65,537 バイト）。"""
+    for size, over in ((app.MAX_BODY_BYTES - 1, False), (app.MAX_BODY_BYTES, False), (app.MAX_BODY_BYTES + 1, True)):
+        status, _ = server.request("POST", "/gradio_api/mcp/", body=b"x" * size, headers=MCP_HEADERS, timeout=60)
+        assert (status == 413) is over, (size, status)
+
+
+def test_s01_concurrency_slots_are_held(reader):
+    """Event で4枠を埋め、5件目が通信層のエラーになることを確かめる（Codex① の敵対的試験）。"""
+    app.READER = reader
+    gate = threading.Event()
+    entered = threading.Semaphore(0)
+
+    def hold() -> None:
+        def body():
+            entered.release()
+            gate.wait(20)
+            return "held"
+
+        try:
+            app._in_slot(body)
+        except RuntimeError:  # 枠が取れなかった分（この試験では起きない想定）
+            entered.release()
+
+    threads = [threading.Thread(target=hold, daemon=True) for _ in range(app.MAX_CONCURRENCY)]
+    try:
+        for thread in threads:
+            thread.start()
+        for _ in threads:
+            assert entered.acquire(timeout=20)
+        with pytest.raises(RuntimeError) as err:  # 5件目
+            app.list_papers()
+        assert app.BUSY_MESSAGE in str(err.value)
+        with pytest.raises(RuntimeError):  # resources・prompts も同じ枠を使う
+            app._in_slot(lambda: "x")
+    finally:
+        gate.set()
+        for thread in threads:
+            thread.join(timeout=20)
+    assert json.loads(app.list_papers())["status"] == "ok"  # 解放された
+
+
 def test_s01_concurrency_over_http(server):
     """上限＋4 を同時に送る。結果はどれも通常の応答か、通信層のエラー（status には混ざらない）。"""
     results = _burst(server, app.MAX_CONCURRENCY + 4)
@@ -278,18 +369,37 @@ def test_s03_no_outbound_traffic(tmp_path, reader):
 
         assert MC.session(srv.mcp_url, body) is True
         audit = srv.stop()
+    # 自己接続（loopback かつ自分の待ち受けポート）以外は一つも無い。
     assert audit["outbound"] == [], audit["outbound"]
-    hosts = sorted({record[1] for record in audit["net"]})
-    assert all(host in ("127.0.0.1", "::1", "localhost", "") or host.startswith("/") for host in hosts), hosts
-    # 起動後に開くのは、遅延 import される Python 本体と site-packages のファイルだけ。
+    targets = sorted({record[1] for record in audit["net"] if record[2] != "stopping"})
+    for target in targets:
+        host, _, port = target.rpartition(":")
+        assert not target.startswith("unix:"), target
+        assert host in ("127.0.0.1", "::1", "localhost", "0.0.0.0", ""), target
+        if host in ("127.0.0.1", "::1") and port.isdigit():
+            assert port == str(audit["port"]), target
+    # 陽性対照：フックが効いていること（外向きは止まり、自己接続は通る）。
+    assert audit["control"]["getaddrinfo"].startswith("blocked"), audit["control"]
+    assert audit["control"]["connect"].startswith("blocked"), audit["control"]
+    assert audit["control"]["self"] == "allowed", audit["control"]
+    assert {r[1] for r in audit["control_net"]} == {"mekiki-control.invalid:80", "203.0.113.1:80"}
+    # 配信中に開くのは、遅延 import される Python 本体と site-packages のファイルだけ。
     # data/ を含むリポジトリのファイルは開かず、書き込みで開いたものも無い（Q12・SPEC §2.2）。
     prefixes = (sys.base_prefix, sys.prefix, str(REPO_ROOT / ".venv"), "/dev/")
+    serving = [row for row in audit["opened"] if row[3] == "serving"]
     # 利用者のホームのファイル（HF のトークンなど）を開かない。値は読まず、開いたかどうかだけを見る。
-    assert not [p for p, _ in audit["opened"] if p.startswith(str(Path.home() / ".cache"))]
-    writes = [p for p, mode in audit["opened"] if any(c in mode for c in "wax+")]
-    outside = [p for p, _ in audit["opened"] if not p.startswith(prefixes)]
+    assert not [r for r in serving if r[0].startswith(str(Path.home() / ".cache"))]
+    writes = [r[0] for r in serving if any(c in r[1] for c in "wax+") or _write_flags(r[2])]
+    outside = [r[0] for r in serving if not r[0].startswith(prefixes)]
     assert writes == [] and outside == [], (writes[:5], outside[:5])
-    assert audit["mcp_server"] is True
+    # どの段階でも、リポジトリの中（とくに data/）を書き込みで開かない。
+    # 起動前に Gradio が一時領域へ書くこと自体はあるので、そこは対象にしない（記録には残る）。
+    every_write = [r[0] for r in audit["opened"] if any(c in r[1] for c in "wax+") or _write_flags(r[2])]
+    assert not [p for p in every_write if p.startswith(str(REPO_ROOT))], every_write[:5]
+    assert audit["mcp_server"] is True and audit["share"] is False and audit["run_history"] is False
+    assert audit["queue_max_size"] == app.QUEUE_MAX_SIZE and audit["queue_concurrency"] == app.MAX_CONCURRENCY
+    # 番兵は endpoint 一覧の最後（prompts/get の取りこぼしを受け止める位置。Q64）。
+    assert audit["endpoints"][-1].endswith("mekiki_sentinel")
 
 
 def test_s03_reader_has_no_network_imports():

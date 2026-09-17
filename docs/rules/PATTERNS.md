@@ -2,7 +2,8 @@
 
 | 項目 | 値 |
 |---|---|
-| 規則ID・版 | 一覧 PATTERNS-0.1.0（49件）・照合 PATTERNS-MATCH-1.0.0 |
+| 規則ID・版 | 一覧 PATTERNS-0.1.1（49件）・照合 PATTERNS-MATCH-1.0.0 |
+| 表の SHA-256 | `b38299528fe444babb2fb343d8877dcd284a8021f0621e91c6c4a0439c8dd70d`（`patterns.table_sha256()` が import 時に照合。Q49） |
 | 状態 | 確定（著者承認 2026-09-18。起草＝検査室・SPEC §10） |
 | 実装 | `mekiki_reader/patterns.py`・`mekiki_reader/tools.py`（`_check_compressions`） |
 | 候補・解決 | `docs/candidates/patterns_candidates_v0.md`・`scripts/build_patterns.py`（PATTERNS-SRC-1.0.0） |
@@ -19,7 +20,7 @@
 
 論文の節は source_manifest の節 id と行範囲に、主張IDは claims/t5.json の source_locator に、`FR Lnn` は FOR_AI_READERS.md の行に、THEORY_MAP の「見出し」はその節（見出しが無ければ太字の項目行・本文の行）に解決する。`：原文 "…"` が添えられた参照は、その文が一度だけ現れる行と文字位置に解決する。
 
-## 一覧（PATTERNS-0.1.0・承認 2026-09-18）
+## 一覧（PATTERNS-0.1.1・承認 2026-09-18）
 
 | ID | 型（保ちたい区別） | 登録語形 | 関連原文（解決後の locator） |
 |---|---|---|---|

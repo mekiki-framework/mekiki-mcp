@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import re
+from collections import OrderedDict
 from dataclasses import dataclass
 from typing import Any, Iterable, Mapping, Sequence
 
@@ -176,11 +177,22 @@ class Reader:
 # ---------------------------------------------------------------- 共通の小道具
 
 
+def has_lone_surrogate(value: str) -> bool:
+    """孤立サロゲートを含むか（JSON の "\\udXXX" 経由で入りうる。Codex① P2-8）。
+
+    整った Python の文字列にサロゲートは現れないので、一つでもあれば不正な入力とみなす。
+    そのまま扱うと UTF-8 に直せず、応答の直列化で落ちる。
+    """
+    return any(0xD800 <= ord(ch) <= 0xDFFF for ch in value)
+
+
 def _classify_id(value: Any) -> str:
-    """'ok'・'invalid'（型・長さ・制御文字・パスや URL の形）・'malformed'（それ以外の形式違反）。"""
+    """'ok'・'invalid'（型・長さ・制御文字・サロゲート・パスや URL の形）・'malformed'（それ以外）。"""
     if not isinstance(value, str) or not value or len(value) > ID_MAX:
         return "invalid"
     if any(ord(c) < 0x20 or ord(c) == 0x7F for c in value):
+        return "invalid"
+    if has_lone_surrogate(value):
         return "invalid"
     if "/" in value or chr(0x5C) in value or ":" in value or ".." in value or value[0] in ".~":
         return "invalid"
@@ -540,7 +552,22 @@ def _parse_query(reader: Reader, query: str, terms: TM.TermIndex, limit: int | N
     return frags, dropped
 
 
-_WORD_RE_CACHE: dict[str, re.Pattern] = {}
+WORD_RE_CACHE_MAX = 512  # 語形ごとの正規表現の保持数（容量つき LRU。Codex① P2-5）
+_WORD_RE_CACHE: "OrderedDict[str, re.Pattern]" = OrderedDict()
+
+
+def _word_pattern(form: str) -> re.Pattern:
+    """ASCII の語形に対する単語境界の正規表現を、容量つき LRU で使い回す。"""
+    pat = _WORD_RE_CACHE.get(form)
+    if pat is not None:
+        _WORD_RE_CACHE.move_to_end(form)
+        return pat
+    w = re.escape(_ASCII_WORD_CHARS)
+    pat = re.compile(f"(?<![{w}]){re.escape(form)}(?![{w}])")
+    _WORD_RE_CACHE[form] = pat
+    if len(_WORD_RE_CACHE) > WORD_RE_CACHE_MAX:
+        _WORD_RE_CACHE.popitem(last=False)
+    return pat
 
 
 def _occurrences(hay: str, form: str) -> list[int]:
@@ -548,12 +575,7 @@ def _occurrences(hay: str, form: str) -> list[int]:
     if not form:
         return []
     if N.is_ascii(form):
-        pat = _WORD_RE_CACHE.get(form)
-        if pat is None:
-            w = re.escape(_ASCII_WORD_CHARS)
-            pat = re.compile(f"(?<![{w}]){re.escape(form)}(?![{w}])")
-            _WORD_RE_CACHE[form] = pat
-        return [m.start() for m in pat.finditer(hay)]
+        return [m.start() for m in _word_pattern(form).finditer(hay)]
     out, start = [], 0
     while True:
         k = hay.find(form, start)
@@ -647,6 +669,8 @@ def _search_passages(reader: Reader, query: Any, paper_id: Any, k: Any, terms: T
     corpus = reader.corpus
     if not isinstance(query, str) or not query or len(query) > QUERY_RAW_MAX:
         return _invalid(reader, f"query は1〜{QUERY_RAW_MAX}字の文字列")
+    if has_lone_surrogate(query):
+        return _invalid(reader, "query に孤立サロゲートが含まれる")
     if not isinstance(k, int) or isinstance(k, bool) or not (K_MIN <= k <= K_MAX):
         return _invalid(reader, f"k は {K_MIN}〜{K_MAX} の整数")
     if paper_id is not None:
@@ -762,6 +786,8 @@ def _get_claim_record(reader: Reader, claim_id: Any, query: Any, terms: TM.TermI
     # query の経路（CAND-1.0.0）
     if not isinstance(query, str) or not query or len(query) > QUERY_RAW_MAX:
         return _invalid(reader, f"query は1〜{QUERY_RAW_MAX}字の文字列")
+    if has_lone_surrogate(query):
+        return _invalid(reader, "query に孤立サロゲートが含まれる")
     folded_len = len(N.fold_search(query, is_input=True).text)
     if folded_len == 0 or folded_len > QUERY_NORM_MAX:
         return _invalid(reader, f"query は正規化後1〜{QUERY_NORM_MAX}字（切り詰めない）")
@@ -839,6 +865,8 @@ def _verify_quote(reader: Reader, text: Any, paper_id: Any, language: Any, terms
 
     if not isinstance(text, str) or len(text) > TEXT_MAX:
         return _invalid(reader, f"text は{TEXT_MAX}字までの文字列")
+    if has_lone_surrogate(text):
+        return _invalid(reader, "text に孤立サロゲートが含まれる")
     if paper_id is not None:
         pcls = _classify_id(paper_id)
         if pcls == "invalid":
@@ -956,6 +984,8 @@ def _check_compressions(reader: Reader, text: Any, patterns: Sequence[PAT.Patter
     corpus = reader.corpus
     if not isinstance(text, str) or len(text) > TEXT_MAX:
         return _invalid(reader, f"text は{TEXT_MAX}字までの文字列")
+    if has_lone_surrogate(text):
+        return _invalid(reader, "text に孤立サロゲートが含まれる")
     folded = N.fold_search(text, is_input=True)
     if not folded.text:
         return _invalid(reader, "空文字・空白だけの入力は照合しない")

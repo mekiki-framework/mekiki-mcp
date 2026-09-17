@@ -7,7 +7,7 @@
 - [x] コーパス Git参照 `v3.5.0` → 解決したコミットSHA（`git ls-remote` 等の出力）
 - [x] 採用 Gradio 版・Python 版（検証結果と `requirements.txt` の数値）（gradio[mcp]==6.27.0・Python 3.13.15・ハッシュ固定 66 パッケージ）
 - [x] 正規化規則の版（`normalize.py`・対応表）（NORM-1.0.0・対応表 sha256 a9b1cf17…）
-- [x] パターン一覧の版（`patterns.py`）と著者承認日（PATTERNS-0.1.0・49件・2026-09-18）
+- [x] パターン一覧の版（`patterns.py`）と著者承認日（PATTERNS-0.1.1・49件・2026-09-18。0.1.0＝47件は撤回）
 - [x] `translations/T4.en.manifest.json` の扱い（v3.5.0 に存在するか／Reader側で作るか）と理由
 - [x] 接続URL（実際の起動表示）：`http://127.0.0.1:7860/gradio_api/mcp/`（接続先ごとの検収は施工段階4）
 - [ ] 費用と休止復帰時間の実測値（段階二）

@@ -53,7 +53,8 @@ def lims(env: dict, code: str) -> list[str]:
 
 
 def test_approved_tables_and_empty_start(reader):
-    assert PAT.PATTERNS_VERSION == "PATTERNS-0.1.0" and PAT.APPROVED_ON == "2026-09-18"
+    assert PAT.PATTERNS_VERSION == "PATTERNS-0.1.1" and PAT.APPROVED_ON == "2026-09-18"
+    assert PAT.table_sha256() == PAT.PATTERNS_TABLE_SHA256 and TM.table_sha256() == TM.TERMS_TABLE_SHA256
     assert TM.TERMS_VERSION == "TERMS-0.1.1" and TM.APPROVED_ON == "2026-09-18"
     assert len(reader.patterns) == len(PAT.PATTERNS) and len(reader.terms.entries) == len(TM.TERMS)
     empty = T.Reader(_CORPUS, terms=(), patterns=())  # 承認前も空で起動できる（CLAUDE.md 9）
@@ -490,6 +491,53 @@ def test_t10_ambiguous(reader):
     assert "AMBIGUOUS: total=2（同じ文字列が複数箇所にある）" in env["limitations"]
 
 
+def test_t10_result_limit_boundary(reader):
+    """一致数の上限（20件）のちょうど境界。20件は返し、21件は部分結果を返さない。"""
+    at_limit = rt(T.verify_quote(reader, "agent-rela"))
+    assert at_limit["status"] == "ok" and len(at_limit["results"]) == T.QUOTE_MAX_RESULTS
+    assert not lims(at_limit, "TOTAL")
+    assert sum(ln.text.count("agent-rela") for ln in reader.orig_lines) == T.QUOTE_MAX_RESULTS
+    over = rt(T.verify_quote(reader, "Externaliz"))
+    assert over["status"] == "invalid_input" and over["results"] == [] and over["candidates"] == []
+    assert lims(over, "TOTAL") == [f"TOTAL: total=21（上限 {T.QUOTE_MAX_RESULTS} 件を超えた。部分的な結果は返さない）"]
+    assert sum(ln.text.count("Externaliz") for ln in reader.orig_lines) == T.QUOTE_MAX_RESULTS + 1
+
+
+def test_t10_length_boundaries(reader):
+    """入力長の境界（2000／2001字）と、仮名・漢字を含む／含まない最小長の境界。"""
+    assert rt(T.verify_quote(reader, "a" * T.TEXT_MAX))["status"] in ("quote_not_found", "ok")
+    assert rt(T.verify_quote(reader, "a" * (T.TEXT_MAX + 1)))["status"] == "invalid_input"
+    assert rt(T.verify_quote(reader, "参加の非移"))["status"] != "invalid_input"      # 仮名・漢字5字
+    assert rt(T.verify_quote(reader, "参加の非"))["status"] == "invalid_input"        # 同4字
+    assert rt(T.verify_quote(reader, "The autho"))["status"] == "invalid_input"        # 英語9字
+    assert rt(T.verify_quote(reader, "The author"))["status"] != "invalid_input"       # 英語10字
+
+
+def test_t09_adversarial_mutations(reader):
+    """内容語・否定・数値を変えた文は一致しない（原文に無いことを確かめたうえで）。"""
+    base = "AI can assist play. It cannot take one's place in it."
+    mutations = [
+        base.replace("cannot", "can"),                      # 否定を外す
+        base.replace("assist", "replace"),                  # 内容語の差し替え
+        base.replace("one's", "someone's"),                 # 所有格の差し替え
+        "AI can assist play. It cannot take one's place in it!",   # 末尾の記号
+        "AI can assist play It cannot take one's place in it.",    # 句点を落とす
+        "584 × 21 CSV",                                             # 数値の改変（原文は 583 × 21）
+    ]
+    for text in mutations:
+        inp = N.normalize_quote(text, is_input=True).text
+        for ln in (*reader.orig_lines, *reader.en_lines):
+            assert text not in ln.text and inp not in ln.quote.text, text
+        env = rt(T.verify_quote(reader, text))
+        assert env["status"] == "quote_not_found" and env["match"] == "none" and env["results"] == [], text
+    # 対照：凍結文そのものは exact、空白を増やしただけの版は normalized で一致する
+    # （正規化で畳まれる差は「改変」ではない、という線引きの確認）。
+    assert rt(T.verify_quote(reader, base))["match"] == "exact"
+    spaced = rt(T.verify_quote(reader, base.replace("play. It", "play.  It")))
+    assert spaced["status"] == "ok" and spaced["match"] == "normalized"
+    assert rt(T.verify_quote(reader, "583 × 21 CSV"))["status"] == "ok"
+
+
 def test_t10_over_limit(reader):
     total = sum(ln.text.count("specification") for ln in reader.orig_lines)
     assert total > T.QUOTE_MAX_RESULTS
@@ -576,10 +624,10 @@ def test_t11_zero_patterns(reader):
 
 
 def test_t11_approved_patterns(reader):
-    """実表（PATTERNS-0.1.0）で該当が出て、関連原文の locator と抜粋が一致する。"""
+    """実表（PATTERNS-0.1.1）で該当が出て、関連原文の locator と抜粋が一致する。"""
     env = rt(T.check_compressions(reader, "AIは遊べないし、遊びは人類最後の砦だ。"))
     assert env["status"] == "ok" and env["results"]
-    assert f"PATTERNS: 承認済みパターン {len(PAT.PATTERNS)} 件（PATTERNS-0.1.0）" in " ".join(env["limitations"])
+    assert f"PATTERNS: 承認済みパターン {len(PAT.PATTERNS)} 件（PATTERNS-0.1.1）" in " ".join(env["limitations"])
     for r in env["results"]:
         pid = r["payload"]["pattern_id"]
         assert pid in {p.id for p in PAT.PATTERNS}
@@ -593,6 +641,31 @@ def test_t11_approved_patterns(reader):
             assert m["form"] in {f for p in PAT.PATTERNS if p.id == pid for f in p.surface_forms}
     frozen = rt(T.check_compressions(reader, FROZEN[1][0]))
     assert frozen["status"] == "ok" and frozen["results"]
+
+
+def test_t11_adversarial_forms(reader):
+    """実表に対する敵対的入力：表記の揺れ・多数回・文の形（Codex① の敵対的試験）。"""
+    form = "AIは遊べない"
+    many = rt(T.check_compressions(reader, (form + "。") * 30))
+    hit = next(r for r in many["results"] if r["payload"]["pattern_id"] == "P30")
+    assert len(hit["payload"]["matched"]) == T.POSITIONS_MAX and hit["payload"]["matched_total"] == 30
+    assert all(0 <= m["char_start"] < m["char_end"] for m in hit["payload"]["matched"])
+    # 全角・ゼロ幅・大文字小文字の差でも同じパターンに当たる（畳み込みが効いている）。
+    for variant in ("ＡＩは遊べない", "AIは" + chr(0x200B) + "遊べない", "ＡＩは遊" + chr(0xFEFF) + "べない",
+                    "AI CANNOT PLAY", "ai cannot play"):
+        env = rt(T.check_compressions(reader, variant))
+        assert env["status"] == "ok" and "P30" in {r["payload"]["pattern_id"] for r in env["results"]}, variant
+    # 文の形（肯定・否定・引用・疑問）は同じ語形として拾い、意味の正誤に格上げしない。
+    for sentence in (f"{form}。", f"{form}わけではない。", f"「{form}」と書く人がいる。", f"{form}のか？"):
+        env = rt(T.check_compressions(reader, sentence))
+        assert env["status"] == "ok"
+        hit = next(r for r in env["results"] if r["payload"]["pattern_id"] == "P30")
+        assert hit["payload"]["needs_context_review"] is True
+        assert "match" not in hit["payload"] and "verdict" not in hit["payload"]
+    assert T.CONTRACT in env["limitations"] and any(x.startswith("FORMS: ") for x in env["limitations"])
+    # 語形をまたぐ改行・語形の一部だけでは当たらない。
+    assert rt(T.check_compressions(reader, "AIは\n遊べない"))["results"] == []
+    assert rt(T.check_compressions(reader, "AIは遊べ"))["results"] == []
 
 
 def test_t11_invalid_pattern_rejected():

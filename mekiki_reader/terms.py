@@ -7,6 +7,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 import re
 from dataclasses import dataclass
 from typing import Iterable, Mapping
@@ -206,6 +208,18 @@ class TermIndex:
         return tuple(sorted(self.forms, key=lambda f: (-len(f), f)))
 
 
+def table_rows() -> list[dict]:
+    """表の正準形（版・項目・語形・出所・承認日）。SHA-256 の対象（Q49・Codex① P2-7）。"""
+    return [{"id": e.id, "forms_ja": list(e.forms_ja), "forms_en": list(e.forms_en),
+             "sources": list(e.sources), "approved_on": e.approved_on} for e in TERMS]
+
+
+def table_sha256() -> str:
+    raw = json.dumps({"version": TERMS_VERSION, "entries": table_rows()},
+                     sort_keys=True, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    return hashlib.sha256(raw).hexdigest()
+
+
 def build_term_index(entries: Iterable[TermEntry], version: str = TERMS_VERSION) -> TermIndex:
     """項目を検査して索引を作る。不正な項目は ValueError。"""
     by_id: dict[str, TermEntry] = {}
@@ -235,3 +249,9 @@ def build_term_index(entries: Iterable[TermEntry], version: str = TERMS_VERSION)
         forms={k: tuple(sorted(v)) for k, v in sorted(forms.items())},
         folded=folded,
     )
+
+
+# 表の正準 JSON の SHA-256（Q49）。表を変えたら版を上げ、この値と docs/rules/TERMS.md を更新する。
+TERMS_TABLE_SHA256 = "790e124094aeca1ccd3cf72823e9acbd70a897057b12d357eece26486e467be0"
+if table_sha256() != TERMS_TABLE_SHA256:  # pragma: no cover - 表と定数の食い違いは import 時に止める
+    raise RuntimeError(f"TERMS table hash mismatch: {table_sha256()}")

@@ -32,6 +32,7 @@ CAND_MAX = 5
 POSITIONS_MAX = 20
 DIFFS_MAX = 20
 EXCERPT_RADIUS = 100
+SOURCE_EXCERPT_MAX = 1000  # check_compressions の関連原文の抜粋
 
 LIMITS_VERSION = "LIMITS-1.0.0"
 SEARCH_VERSION = "SEARCH-1.0.0"
@@ -581,7 +582,7 @@ class Hit:
 
     def key(self, paper_order: Mapping[str, int]) -> tuple:
         # 語の種類数↓→総出現数↓→直接一致↓→論文順↑→行番号↑（SPEC §5.3）
-        return (-self.distinct, -self.total, -self.direct, paper_order[self.line.paper_id], self.line.no)
+        return (-self.distinct, -self.direct, -self.total, paper_order[self.line.paper_id], self.line.no)
 
 
 def _match_lines(reader: Reader, lines: Iterable[Line], frags: Sequence[str], terms: TM.TermIndex) -> list[Hit]:
@@ -780,7 +781,7 @@ def _get_claim_record(reader: Reader, claim_id: Any, query: Any, terms: TM.TermI
             hit = next(iter(_match_lines(reader, [line], frags, terms)), None)
             if hit is None:
                 continue
-            k = (-hit.distinct, -hit.total, -hit.direct, j_order(field))
+            k = (-hit.distinct, -hit.direct, -hit.total, j_order(field))
             if best is None or k < best[0]:
                 best = (k, field, hit)
         if best is not None:
@@ -985,7 +986,14 @@ def _check_compressions(reader: Reader, text: Any, patterns: Sequence[PAT.Patter
 def _related_result(reader: Reader, p: PAT.Pattern, rs: PAT.RelatedSource, found: list[dict]) -> dict:
     corpus = reader.corpus
     kind = S.SOURCE_KIND_BY_PATH[rs.path]
-    excerpt = "\n".join(corpus.lines[rs.path][rs.line_start - 1:rs.line_end])
+    lines = corpus.lines[rs.path]
+    if rs.char_start is not None:
+        excerpt = lines[rs.line_start - 1][rs.char_start:rs.char_end]
+    else:
+        excerpt = "\n".join(lines[rs.line_start - 1:rs.line_end])
+    truncated = len(excerpt) > SOURCE_EXCERPT_MAX
+    if truncated:
+        excerpt = excerpt[:SOURCE_EXCERPT_MAX] + "…"
     payload = {
         "pattern_id": p.id,
         "pattern_version": p.version,
@@ -993,12 +1001,14 @@ def _related_result(reader: Reader, p: PAT.Pattern, rs: PAT.RelatedSource, found
         "matched_total": len(found),
         "needs_context_review": True,
         "source_excerpt": excerpt,
+        "source_excerpt_truncated": truncated,
         "input_positions_note": "matched の位置は入力文字列（NFC 合成後）の文字位置",
     }
     if kind == "paper_md":
         paper = next(x for x in corpus.papers.values() if x.path == rs.path)
         return S.result(corpus, source_kind=kind, source_path=rs.path, fragment=f"L{rs.line_start}-L{rs.line_end}",
-                        language=paper.language, locator_=S.locator(rs.path, rs.line_start, rs.line_end),
+                        language=paper.language,
+                        locator_=S.locator(rs.path, rs.line_start, rs.line_end, rs.char_start, rs.char_end),
                         payload=payload, paper_id=paper.paper_id, section_anchor=rs.anchor,
                         source_url=_pages_url(_paper_html(paper.paper_id), rs.anchor))
     return S.result(corpus, source_kind=kind, source_path=rs.path, fragment=f"L{rs.line_start}-L{rs.line_end}",

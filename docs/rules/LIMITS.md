@@ -3,7 +3,7 @@
 | 項目 | 値 |
 |---|---|
 | 規則ID・版 | LIMITS-1.0.0 |
-| 状態 | 提案（施工判断。Q56・Q60・Q84・Q85 の確定内容にもとづき、値は施工段階2で実測） |
+| 状態 | 提案（施工判断。Q56・Q60・Q84・Q85 の確定内容にもとづき、値は施工段階2で実測。source_excerpt の上限は 2026-09-18 に追記） |
 | 実装 | `mekiki_reader/tools.py` の定数 |
 
 | 対象 | 上限 | 超えたとき |
@@ -18,6 +18,7 @@
 | 一致位置（match_positions・matched） | 1結果につき20件 | 先頭20件と総数（`*_total`） |
 | 差分（payload.diffs） | 1結果につき20件 | 先頭20件と総数（`diffs_total`） |
 | 抜粋 | 最初の一致の前後100字 | 切った側に「…」 |
+| 関連原文の抜粋（check_compressions の source_excerpt） | 1000字 | 末尾に「…」を付け `source_excerpt_truncated: true` |
 
 ## 最小長の実測（2026-09-18・data/ のコミット 6748061）
 

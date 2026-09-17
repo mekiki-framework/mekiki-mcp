@@ -1,5 +1,7 @@
 # check_compressions パターン候補一覧（PATTERNS-0.1.0 案・○×承認用）
 
+**2026-09-18 著者確定**：「採用」49行を PATTERNS-0.1.0 とした。うち47行を `mekiki_reader/patterns.py` に載せ、関連原文を解決できなかった P22・P39 は載せていない（候補は `docs/rules/PATTERNS.md`「載せなかった行」）。「保留」4行（P10・P16・P19・P47）も載せていない。確定した一覧は `docs/rules/PATTERNS.md`。本書は候補の記録として残す。
+
 起草：検査室（Claude）2026-09-18。承認：著者。施工は承認済み行だけを `patterns.py` に載せる（版・承認日を記録）。
 
 読み方：

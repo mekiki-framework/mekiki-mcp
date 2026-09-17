@@ -6,8 +6,8 @@
 ## 必須記録項目（SPEC §2.5・§3・§10）
 - [x] コーパス Git参照 `v3.5.0` → 解決したコミットSHA（`git ls-remote` 等の出力）
 - [ ] 採用 Gradio 版・Python 版（検証結果と `requirements.txt` の数値）
-- [ ] 正規化規則の版（`normalize.py`・対応表）
-- [ ] パターン一覧の版（`patterns.py`）と著者承認日
+- [x] 正規化規則の版（`normalize.py`・対応表）（NORM-1.0.0・対応表 sha256 a9b1cf17…）
+- [x] パターン一覧の版（`patterns.py`）と著者承認日（PATTERNS-0.1.0・47件・2026-09-18）
 - [x] `translations/T4.en.manifest.json` の扱い（v3.5.0 に存在するか／Reader側で作るか）と理由
 - [ ] 接続URL（実際の起動表示・接続先ごとの検収結果）
 - [ ] 費用と休止復帰時間の実測値（段階二）
@@ -160,3 +160,9 @@
 | 2026-09-18 | 2 | 用語対応表の候補 M23〜M31 の出所 | `scripts/find_term_sources.py`（TERMS-SRC-1.0.0）で機械的に検索し、候補表の出所欄を埋めた。出所あり：M24 正統性（manifest 共起 4/4 unit）・M25 立場（10/12）・M28 承認（1/5 と tn-07。ただし tn-07 は承認を自動的に recognition と訳さないと述べ、承認は endorse 系・approval で 5/5）・M30 相互性（8/8）・M31 主体性（SOURCE_INDEX.md:27 の話題ラベル）。出所なし：M23 委任（0件）・M26 能力（competence・capability は 0/3。英訳は ability・capacities で 3/3）・M27 逆方向経路（原文の表記は「逆方向」で、英訳は reverse・pathway が 2/2）・M29 是認（0件）。表は terms.py に載せていない | 著者の指示。語形の見直し・削除・採否は著者の判断 | `docs/candidates/terms_candidates_v0.md`・`.venv/bin/python scripts/find_term_sources.py` の出力 | 提案 |
 | 2026-09-18 | 2 | テストの構成 | `tests/test_tools.py`（T01〜T12・R01）、`tests/fixtures/`（quote_variants.json：T08 の変形9件、quote_mutations.json：T09 の改変16件、patterns_fixture.py、terms_fixture.py）、`tests/_support/r01_calls.py`（R01 の固定の呼び出し14件）を置いた。T08・T09 の fixture は作成時に、期待する行にだけ正規化で一致すること／照合範囲の全体に生でも正規化後でも無いことを確かめ、テストでも毎回確かめる | 施工判断 | — | 提案 |
 | 2026-09-18 | 2 | T01〜T12・R01 の結果 | `.venv/bin/python -m pytest -q` → 360 passed（段階1の D01〜D04 を含む。test_tools.py は 269 件）。R01 は PYTHONHASHSEED＝0・4242・random の別プロセスと同じプロセスで、14 呼び出しの JSON がバイト単位で一致した。T07 は T5.md 13行（t5-abstract）と 223行（t5-5-4）で exact | SPEC v2.1 §7 T01〜T12・R01 | pytest の出力 | 提案 |
+| 2026-09-18 | 2 | 用語対応表の確定（TERMS-0.1.0） | 候補から M23（委任）・M29（是認）を削除し、M26＝能力｜ability・capacities、M27＝逆方向｜reverse pathway・reverse、M28＝承認｜endorsement・endorse・approval（recognition は登録しない）に改め、残り全行を採用した。30項目・語形79個（項目どうしの重複なし）を `terms.py` に載せた。M02（仕様化費用）だけは日本語の語形がコーパスに0件で、英綴りの揺れだけが出所 | 著者の確定（回答票の指示）。tn-07 は承認を自動的に recognition と訳さないと述べている | `docs/rules/TERMS.md`（TERMS-0.1.0・承認 2026-09-18・出所欄つき）・`mekiki_reader/terms.py` | 確定 |
+| 2026-09-18 | 2 | パターン表の確定（PATTERNS-0.1.0） | 候補の「採用」49行のうち、関連原文を source_manifest・claims/t5.json・FOR_AI_READERS・THEORY_MAP に解決できた47行を `patterns.py` に載せた（語形293個・関連原文95件）。解決できない P22（T4「心理的所有の対比箇所」＝節が書かれていない。候補は papers/T4.md:228 の参考文献行のみ）と P39（THEORY_MAP「Cumulative structure」に番号つきの項目8がない。候補は「Cross-paper inference chain」8＝THEORY_MAP.md:270）は載せていない。「保留」4行（P10・P16・P19・P47）も載せていない | 著者の確定。解決できない行は載せず候補を報告する指示 | `docs/rules/PATTERNS.md`・`scripts/build_patterns.py`（PATTERNS-SRC-1.0.0）の出力 | 確定（P22・P39 は要判断） |
+| 2026-09-18 | 2 | 関連原文の文字位置と抜粋の上限 | `RelatedSource` に char_start・char_end を足し、凍結文のように文そのものを指す関連原文（P52・P53）は行の中の文字位置で返す。`source_excerpt` は1000字で切り、`source_excerpt_truncated` を立てる（LIMITS-1.0.0 に追記） | 施工判断。ガイドの節は行が長く、抜粋が際限なく伸びるため | `mekiki_reader/patterns.py`・`tools.py`（`SOURCE_EXCERPT_MAX`）・`docs/rules/LIMITS.md` | 提案 |
+| 2026-09-18 | 2 | prompts の確定（PROMPTS-0.1.0） | 三雛形の文面を PROMPTS-0.1.0（日本語）として確定した。版は 0.1.0 のまま、`PROMPTS_STATUS="approved"`・`APPROVED_ON="2026-09-18"`。英語版は施工段階4で判断する | 著者の確定（Q39） | `mekiki_reader/prompts.py`・`docs/rules/PROMPTS.md` | 確定 |
+| 2026-09-18 | 2 | 検索順位の差し戻し | 順位を（語の種類数↓→直接一致↓→総出現数↓→論文順↑→行番号↑）に戻した。SPEC v2.1 §5.3 は直接一致を総出現数の後に置いているが、著者の判断で方針側の誤りとし、SPEC v2.2 で訂正する | 著者の指示。段階0の付録B-2 の順が正しい | `docs/rules/SEARCH.md`・`CAND.md`・`mekiki_reader/tools.py`（`Hit.key`） | 確定 |
+| 2026-09-18 | 2 | 実表での T04・T11 再実行 | 実表（TERMS-0.1.0・PATTERNS-0.1.0）で試験を通した。`.venv/bin/python -m pytest -q` → 361 passed（実表で該当が出る T11 の試験 test_t11_approved_patterns を1件足したため、360件から1件増えた）。空表でも起動できることは test_approved_tables_and_empty_start で確かめる（旧 test_empty_patterns_and_terms_start を改名） | SPEC v2.1 §7 T04・T11、CLAUDE.md 絶対規則9 | pytest の出力 | 提案 |

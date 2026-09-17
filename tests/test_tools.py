@@ -52,16 +52,20 @@ def lims(env: dict, code: str) -> list[str]:
 # ---------------------------------------------------------------- 起動の前提
 
 
-def test_empty_patterns_and_terms_start(reader):
-    assert PAT.PATTERNS == () and PAT.PATTERNS_VERSION == "PATTERNS-0.0.0"
-    assert TM.TERMS == () and TM.TERMS_VERSION == "TERMS-0.0.0"
-    assert reader.patterns == () and len(reader.terms.entries) == 0
+def test_approved_tables_and_empty_start(reader):
+    assert PAT.PATTERNS_VERSION == "PATTERNS-0.1.0" and PAT.APPROVED_ON == "2026-09-18"
+    assert TM.TERMS_VERSION == "TERMS-0.1.0" and TM.APPROVED_ON == "2026-09-18"
+    assert len(reader.patterns) == len(PAT.PATTERNS) and len(reader.terms.entries) == len(TM.TERMS)
+    empty = T.Reader(_CORPUS, terms=(), patterns=())  # 承認前も空で起動できる（CLAUDE.md 9）
+    assert empty.patterns == () and len(empty.terms.entries) == 0
+    assert rt(T.check_compressions(empty, "AIは遊べない"))["results"] == []
+    assert rt(T.search_passages(empty, "尊厳"))["status"] == "no_lexical_match"
     assert N.table_sha256() == N.NORM_TABLE_SHA256
     assert [f.anchor for f in reader.frames] == ["translation-guide", "edition-integrity"]
 
 
-def test_prompts_are_drafts_with_guard(reader):
-    assert PR.PROMPTS_STATUS == "draft" and PR.APPROVED_ON is None
+def test_prompts_are_approved_with_guard(reader):
+    assert PR.PROMPTS_STATUS == "approved" and PR.APPROVED_ON == "2026-09-18"
     assert [t.name for t in PR.TEMPLATES] == ["read_with_guards", "four_modes", "answer_format"]
     for t in PR.TEMPLATES:
         assert PR.GUARD_SENTENCE in t.text
@@ -78,7 +82,7 @@ def test_reading_guide(reader):
     assert r["source_kind"] == "reading_guide" and r["canonical_doi"] is None and r["paper_id"] is None
     assert (r["locator"]["line_start"], r["locator"]["line_end"]) == (42, 61)
     assert r["payload"]["text"].startswith("## Four practical response modes")
-    assert env["templates"]["status"] == "draft" and len(env["templates"]["items"]) == 3
+    assert env["templates"]["status"] == "approved" and len(env["templates"]["items"]) == 3
     assert rt(T.get_reading_guide(reader, "all"))["results"][0]["locator"]["line_end"] == 73
     ranges = {p: reader.guide_ranges[p][:2] for p, _ in T.GUIDE_PARTS}
     assert ranges["interpretation"] == (5, 41) and ranges["core-terms"] == (7, 29)
@@ -208,22 +212,24 @@ def test_t03_en_unknown_anchor(reader):
 
 
 def _keyed(rs):
-    return [(-r["payload"]["rank_key"]["distinct_terms"], -r["payload"]["rank_key"]["occurrences"],
-             -r["payload"]["rank_key"]["direct_terms"], r["payload"]["rank_key"]["paper_order"],
+    return [(-r["payload"]["rank_key"]["distinct_terms"], -r["payload"]["rank_key"]["direct_terms"],
+             -r["payload"]["rank_key"]["occurrences"], r["payload"]["rank_key"]["paper_order"],
              r["payload"]["rank_key"]["line"]) for r in rs]
 
 
 def test_t04_hit_and_order(reader):
+    # 実表では M06（応答可能性）経由の行も混じる。位置は必ずどれかの語形を指す。
+    forms = {"answerability"} | {f.lower() for e in TM.TERMS if e.id == "M06" for f in e.forms_ja + e.forms_en}
     env = rt(T.search_passages(reader, "answerability", k=20))
     assert env["status"] == "ok" and len(env["results"]) == 20
     keys = _keyed(env["results"])
     assert keys == sorted(keys) and len(set(keys)) == len(keys)
     assert [r["payload"]["rank"] for r in env["results"]] == list(range(1, 21))
     for r in env["results"]:
-        assert r["payload"]["match_via"] == ["query"] and r["payload"]["is_excerpt"] is True
+        assert "query" in r["payload"]["match_via"] and r["payload"]["is_excerpt"] is True
         line = _CORPUS.lines[r["source_path"]][r["locator"]["line_start"] - 1]
         c0, c1 = r["locator"]["char_start"], r["locator"]["char_end"]
-        assert line[c0:c1].lower() == "answerability"
+        assert line[c0:c1].lower() in forms
         route = r["payload"]["route"]
         assert _CORPUS.papers[route["paper_id"]].section(route["anchor"]) is not None
     assert lims(env, "SCORE") and lims(env, "TOTAL")
@@ -297,8 +303,9 @@ def test_t04_term_map_via_fixture(reader):
     assert any(r["locator"]["line_start"] == 78 and "query" in r["payload"]["match_via"] for r in multi["results"])
     ja = rt(T.search_passages(tr, "仕様化費用", paper_id="T1"))
     assert ja["status"] == "ok" and all(r["payload"]["match_via"] == ["term_map:M91"] for r in ja["results"])
-    plain = rt(T.search_passages(reader, "尊厳"))
-    assert plain["status"] == "no_lexical_match"
+    plain = rt(T.search_passages(reader, "尊厳"))  # 実表（TERMS-0.1.0）では M17 で拾う
+    assert plain["status"] == "ok"
+    assert all("term_map:M17" in r["payload"]["match_via"] for r in plain["results"])
 
 
 # ---------------------------------------------------------------- T05
@@ -547,12 +554,33 @@ def test_t11_multiple_sources_and_guide(preader):
 
 
 def test_t11_zero_patterns(reader):
-    env = rt(T.check_compressions(reader, "AIは遊べない"))
+    empty = T.Reader(_CORPUS, patterns=())
+    env = rt(T.check_compressions(empty, "AIは遊べない"))
     assert env["status"] == "ok" and env["results"] == []
-    assert "PATTERNS: 承認済みパターン 0 件（PATTERNS-0.0.0）・該当 0 件" in env["limitations"]
+    assert "PATTERNS: 承認済みパターン 0 件（PATTERNS-TEST）・該当 0 件" in env["limitations"]
     assert T.CONTRACT in env["limitations"]
     for bad in ("", "  ", "x" * 2001, None):
         assert rt(T.check_compressions(reader, bad))["status"] == "invalid_input"
+
+
+def test_t11_approved_patterns(reader):
+    """実表（PATTERNS-0.1.0）で該当が出て、関連原文の locator と抜粋が一致する。"""
+    env = rt(T.check_compressions(reader, "AIは遊べないし、遊びは人類最後の砦だ。"))
+    assert env["status"] == "ok" and env["results"]
+    assert f"PATTERNS: 承認済みパターン {len(PAT.PATTERNS)} 件（PATTERNS-0.1.0）" in " ".join(env["limitations"])
+    for r in env["results"]:
+        pid = r["payload"]["pattern_id"]
+        assert pid in {p.id for p in PAT.PATTERNS}
+        loc, line = r["locator"], _CORPUS.lines[r["source_path"]][r["locator"]["line_start"] - 1]
+        if loc["char_start"] is not None:  # 凍結文のように文そのものを返す行
+            assert r["payload"]["source_excerpt"] == line[loc["char_start"]:loc["char_end"]]
+        excerpt, cut = r["payload"]["source_excerpt"], r["payload"]["source_excerpt_truncated"]
+        assert cut is (len(excerpt) > T.SOURCE_EXCERPT_MAX) and (excerpt.endswith("…") if cut else True)
+        assert len(excerpt) <= T.SOURCE_EXCERPT_MAX + 1
+        for m in r["payload"]["matched"]:
+            assert m["form"] in {f for p in PAT.PATTERNS if p.id == pid for f in p.surface_forms}
+    frozen = rt(T.check_compressions(reader, FROZEN[1][0]))
+    assert frozen["status"] == "ok" and frozen["results"]
 
 
 def test_t11_invalid_pattern_rejected():

@@ -1,7 +1,7 @@
 """読み方の雛形（PROMPTS・SPEC §6・docs/rules/PROMPTS.md）。
 
 MCP の prompts と get_reading_guide(templates) の両方が同じ定数を返す。
-文面は施工側の起草で、著者の承認前（status="draft"）。承認されたら版を 1.0.0 に上げ、承認日を記す。
+文面は施工側の起草を著者が 2026-09-18 に承認したもの（PROMPTS-0.1.0・日本語）。英語版は施工段階4で判断する。
 """
 
 from __future__ import annotations
@@ -9,8 +9,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 PROMPTS_VERSION = "PROMPTS-0.1.0"
-PROMPTS_STATUS = "draft"  # 著者承認待ち
-APPROVED_ON: str | None = None
+PROMPTS_STATUS = "approved"  # 著者承認済み
+APPROVED_ON: str | None = "2026-09-18"
 
 GUARD_SENTENCE = (
     "この雛形は、利用者が明示的に選んだときだけ使う。"

@@ -103,7 +103,7 @@ Mekiki Framework の論文 T1〜T5 を、**固定した版から・出典つき�
 処理時間は関数の中で打ち切らない。上の上限で計算量を有界にし、最悪ケースを実測して記録する
 （2026-09-18・CPython 3.13.15・arm64・5回の最大）：起動 0.47 秒、`verify_quote`（2000字・英語）44 ms、
 `search_passages`（8断片・k=20）36 ms、`get_claim_record`（query 8断片）13 ms、`get_section`（未登録 ID の近傍候補）12 ms、ほかは 2 ms 以下。
-通信を含めた実測は `search_passages` 80 ms・`verify_quote` 21 ms・`list_papers` 5 ms（[docs/rules/LIMITS.md](docs/rules/LIMITS.md)）。
+通信を含めた実測は `search_passages` 80 ms・`verify_quote` 21 ms・`list_papers` 5 ms（どちらも [docs/rules/LIMITS.md](docs/rules/LIMITS.md) に記録）。
 
 ### 規則の版
 
@@ -190,7 +190,7 @@ UI の Custom Connectors はリモートの URL を Anthropic 側から取りに
 
 ### 接続時に知っておくこと
 
-- **未知の prompt 名**は雛形を返さず、MCP のエラー（`McpError: 'data'`）として返る。要求された名前は上流の実装からサーバ側の関数に渡らないため、エラー文に名前を入れられない。登録してある名前は `read_with_guards`・`four_modes`・`answer_format` の三つだけ。
+- **未知の prompt 名**は雛形を返さず、MCP のエラー（`McpError: 'data'`）として返る。引数を付けて呼んだときは、上流 Gradio の `Parameter … is not a valid key-word argument` という英文が返る。要求された名前は上流の実装からサーバ側の関数に渡らないため、エラー文に名前を入れられない。登録してある名前は `read_with_guards`・`four_modes`・`answer_format` の三つだけ。
 - Hugging Face Spaces に置いた場合、ツール名に Space 名の接頭辞が付く（`<Space名>_list_papers`）。
 - `http://127.0.0.1:7860/` をブラウザで開くと Gradio 標準のフロント HTML が返る（UI は無く、静的資産は遮断してあるので画面は組み上がらない）。
 - 旧 SSE の経路 `/gradio_api/mcp/sse` は予備。通常は Streamable HTTP を使う。
@@ -235,7 +235,7 @@ D01〜D04（同梱データ）・T01〜T12 と R01（七ツールと再現性）
 - **外向きの資料取得**：起動後に取得する資料は同梱データだけ。
 - **既知の制約**：
   1. T4 の英訳は ChatGPT で作成された派生の言語版で、著者レビューの認証はない。英訳由来の結果には作成経緯（`preparation`・`authority`）を必ず添える。
-  2. 英訳の manifest の `source.corpusVersion`（英訳が底本にした T4 の収録版）は `3.2.1` で、同梱の 3.5.0 とは違う。記録どおりに返し、版どうしの比較はしない。
+  2. 英訳の manifest の `source.corpusVersion`（英訳が底本にした T4 の収録版）は `3.2.1` で、manifest 自身の `corpusVersion`（3.5.0）とは別。記録どおり `payload.source_corpus_version` に載せ、版どうしの比較はしない。
   3. 同梱物は `data/LICENSE`（CC BY 4.0）に従う。論文本文中に別の表記（T1 の figshare 寄託データについての `CC BY-NC 4.0`）があっても、同梱物には及ばない。原文は改変しない。
   4. 日本語の問いは英語の論文に当たりにくい（語句の照合であるため）。該当ゼロは記述が無いことを意味しない。
   5. 未知の prompt 名は MCP のエラーとして返る（上流の実装の挙動。本文は §5 参照）。Spaces ではツール名に接頭辞が付く。

@@ -224,7 +224,7 @@ def check_compressions(text: str) -> str:
     """Finds wordings that the author has listed as compressions of the papers' distinctions.
 
     Each hit returns the related source text. A hit is a place to check against the paper; it is not a
-    judgement that the text is wrong, and zero hits is not a proof that a reading is correct.
+    judgment that the text is wrong, and zero hits is not a proof that a reading is correct.
 
     Args:
         text: The text to check, up to 2000 characters.

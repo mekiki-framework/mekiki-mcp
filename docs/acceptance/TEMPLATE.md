@@ -33,7 +33,7 @@
 | `resources/list` | 12件・テンプレート0件 | | |
 | `resources/read` | 本文の SHA-256 が bundle と一致 | | 照合の仕方は下の「本文の照合」 |
 | `prompts/list` | 3件 | | |
-| `prompts/get`（既知） | 文面が `prompts.py` と一致 | | |
+| `prompts/get`（既知） | 文面が `mekiki_reader/prompts.py` と一致 | | |
 | `prompts/get`（未知の名前） | 雛形を返さずエラー | | |
 
 ### 本文の照合のやり方

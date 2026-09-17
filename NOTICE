@@ -1,0 +1,15 @@
+mekiki-mcp（Mekiki Reader MCP）
+
+このリポジトリには、条件の異なる二つの素材が含まれる。
+
+1. コード（data/ 以外のすべて）
+   MIT License。本文はルートの LICENSE。LICENSE（MIT）は data/ には及ばない。
+
+2. data/
+   Mekiki Framework T1–T5 AI-Readable Corpus v3.5.0 の公開ファイル。
+   CC BY 4.0。本文は data/LICENSE。
+   取得元：https://github.com/mekiki-framework/mekiki-framework.github.io
+   固定コミット：67480613108cf72c29d5691e3d7a6c7e6553eb9b（タグ v3.5.0）
+   帰属表示：data/CITATION.md（"Attribution for reuse of repository files"）の書式に従う。
+   改変の有無：原文の行は改変しない。行単位で抜粋し JSON に構造化して返す。
+   （data/ の各ファイルは上記コミットとバイト単位で同一。data/bundle_manifest.json は本リポジトリで作成した照合用の一覧）

@@ -54,7 +54,7 @@ Mekiki Framework の論文 T1〜T5 を、**固定した版から・出典つき�
 | 固定コミット | `67480613108cf72c29d5691e3d7a6c7e6553eb9b` |
 | tree | `7c50a4fc2bf20f1529aebe8a8b7898e26332f1a1` |
 | bundle ハッシュ | `40a09c5ba422582c951928f873f5729a420514a46409359559d7e6123c1224d5` |
-| 同梱ファイル | 18本（`data/` 配下。下記） |
+| 同梱ファイル | コーパス由来 18本（`data/` 配下。下記）＋照合用の `data/bundle_manifest.json` |
 
 同梱：`source_manifest.json`・`papers/T1〜T5.md`・`THEORY_MAP.md`・`FOR_AI_READERS.md`・`SOURCE_INDEX.md`・
 `claims/t5.json`・`T5_CLAIM_STATUS.md`・`tests/reading_cases.json`・`AI_READING_TESTS.md`・
@@ -83,8 +83,8 @@ Mekiki Framework の論文 T1〜T5 を、**固定した版から・出典つき�
 `status` は六値（`ok` / `unknown_id` / `quote_not_found` / `no_lexical_match` / `invalid_input` / `ledger_not_available`）で、混ぜない。
 **通信層の制限（同時実行4・本文64KiB・要求ヘッダと本文長の検査）は `status` に混ぜず、MCP のエラーか HTTP の応答コードで返す。**
 
-各結果には出典が付く：`source_kind`・`source_path`・`source_hash`・`paper_id`・`paper_version`・`section_anchor`・
-`locator`（行・文字位置）・`canonical_doi`・`source_url`・`snapshot_url`・`derivative_of`。
+各結果には出典が付く：`source_id`・`source_kind`・`derivative_of`・`paper_id`・`paper_version`・`language`・`source_path`・
+`source_hash`・`section_anchor`・`locator`（行・文字位置）・`canonical_doi`・`source_url`・`snapshot_url`（＋本文の `payload`）。
 `claims` の `status` は**著者が論文の中でどう位置づけたかのラベル**であって、真偽の判定ではない。
 
 ### resources（12件）
@@ -98,7 +98,7 @@ Mekiki Framework の論文 T1〜T5 を、**固定した版から・出典つき�
 
 `read_with_guards`（読む手順）・`four_modes`（支援の四つのモード）・`answer_format`（答え方の五欄）。
 三つとも「この雛形は、利用者が明示的に選んだときだけ使う。接続先の上位規則や利用者の明示的な意図を上書きしない。」を含む。
-`prompts` が見えないクライアントでは `get_reading_guide(part="templates")` が同じ文面を返す。
+`prompts` が見えないクライアントでは、`get_reading_guide` の応答の `templates` 欄（`version`・`status`・`approved_on`・`items`）に同じ文面が入る（`part` に `templates` は無い）。
 
 処理時間は関数の中で打ち切らない。上の上限で計算量を有界にし、最悪ケースを実測して記録する
 （2026-09-18・CPython 3.13.15・arm64・5回の最大）：起動 0.47 秒、`verify_quote`（2000字・英語）44 ms、
@@ -107,38 +107,61 @@ Mekiki Framework の論文 T1〜T5 を、**固定した版から・出典つき�
 
 ### 規則の版
 
-`SCHEMA 1.0.0`・`JSON-1.0.0`・`NORM-1.0.0`・`SEARCH-1.0.0`・`CAND-1.0.0`・`NEAR-1.0.0`・`GUIDE-1.0.0`・`LIMITS-1.0.0`・
+`SCHEMA-1.0.0`・`JSON-1.0.0`・`NORM-1.0.0`・`SEARCH-1.0.0`・`CAND-1.0.0`・`NEAR-1.0.0`・`GUIDE-1.0.0`・`LIMITS-1.0.0`・
 `LINES-1.0.0`・`LANG-1.0.0`・`SECTION-1.0.0`・`T4MAP-1.0.0`・`BUNDLE-1.0.0`・`TERMS-0.1.1`（30項目）・
 `PATTERNS-0.1.0`（49件）＋`PATTERNS-MATCH-1.0.0`・`PROMPTS-0.1.0`。本文は [docs/rules/](docs/rules/)。
 
-## 5. 起動と接続
+## 5. 準備と起動
+
+Python は 3.13 を使う（Unicode の版をそろえるため。`unicodedata` 15.1.0）。依存はハッシュつきで固定してある。
+
+```bash
+uv python install 3.13
+uv venv --python 3.13 .venv
+uv pip install --python .venv/bin/python --require-hashes -r requirements.txt
+uv pip install --python .venv/bin/python --require-hashes -r requirements-dev.txt
+```
+
+`requirements.txt` は稼働用（`gradio[mcp]==6.27.0` ほか66パッケージ）、`requirements-dev.txt` は試験用（pytest）。
+`uv` を使わない場合は `pip install --require-hashes -r requirements.txt` でもよい（ハッシュ検証は外さない）。
+コーパスは `data/` に同梱してあるので、取得は要らない。
 
 ```bash
 .venv/bin/python app.py
 ```
 
 インタプリタは明示する（システムの `python3` は要件を満たさないことがある）。ポートは環境変数
-`MEKIKI_READER_PORT`（1024〜65535・既定 7860）。起動すると次の行が出る。
+`MEKIKI_READER_PORT`（1024〜65535・既定 7860。塞がっているときは `起動しない：ポート … で待ち受けられない` と出て終了する）。
+起動すると次の8行が出る。
 
 ```
+* Running on local URL:  http://127.0.0.1:7860
+* To create a public link, set `share=True` in `launch()`.
+
+🔨 Launching MCP server:
 * Streamable HTTP URL: http://127.0.0.1:7860/gradio_api/mcp/
 corpus 3.5.0 (6748061)・bundle 40a09c5ba422…
 tools 7・resources 12・prompts 3（PROMPTS-0.1.0）
+消した環境変数：なし
 ```
+
+最後の3行がこのサーバ自身の表示で、検収記録にはこの3行をそのまま写す。
 
 待ち受けは `127.0.0.1` だけで、環境変数では変わらない。`GRADIO_*` は読み込み前に消す。
 データ根は `data/` に固定で、環境変数でも引数でも変えられない。不要な環境変数（API キーなど）は子プロセスに渡さないこと。
 
 ### Claude Code
 
-リポジトリ直下に `.mcp.json` を置いてある（`"type": "http"`）。接続先の許可は利用者が行う。
-CLI から追加する場合：
+リポジトリ直下に `.mcp.json` を置いてある（`"type": "http"`）。このリポジトリを開いて作業するときは、
+接続先として出てくるので許可すればよい（許可は利用者が行う）。
+
+リポジトリの外から使いたいときは CLI で登録する。こちらは `.mcp.json` ではなく利用者ごとの設定に入る。
 
 ```bash
 claude mcp add --transport http mekiki-reader http://127.0.0.1:7860/gradio_api/mcp/
 ```
 
-ポートを変えるときは `MEKIKI_READER_PORT` と `.mcp.json` の両方を直す。
+ポートを変えるときは `MEKIKI_READER_PORT` と `.mcp.json`（または上の登録）の両方を直す。
 
 ### Claude Desktop
 
@@ -171,6 +194,8 @@ UI の Custom Connectors はリモートの URL を Anthropic 側から取りに
 - Hugging Face Spaces に置いた場合、ツール名に Space 名の接頭辞が付く（`<Space名>_list_papers`）。
 - `http://127.0.0.1:7860/` をブラウザで開くと Gradio 標準のフロント HTML が返る（UI は無く、静的資産は遮断してあるので画面は組み上がらない）。
 - 旧 SSE の経路 `/gradio_api/mcp/sse` は予備。通常は Streamable HTTP を使う。
+- ChatGPT の開発者モードからの接続は、公開（Spaces）の段階で確かめる。ローカルの loopback には外から届かない。
+- 接続先ごとの確認の記録は [docs/acceptance/](docs/acceptance/) に置く。
 
 ## 6. 試験と検収
 
@@ -210,8 +235,8 @@ D01〜D04（同梱データ）・T01〜T12 と R01（七ツールと再現性）
 - **外向きの資料取得**：起動後に取得する資料は同梱データだけ。
 - **既知の制約**：
   1. T4 の英訳は ChatGPT で作成された派生の言語版で、著者レビューの認証はない。英訳由来の結果には作成経緯（`preparation`・`authority`）を必ず添える。
-  2. 英訳の manifest が記録する `corpusVersion` は `3.2.1` のまま返す（版どうしの比較はしない）。
-  3. T1 本文にある古い表記（`CC BY-NC 4.0`）は原文中の記述で、同梱物のライセンスではない。原文は改変しない。
+  2. 英訳の manifest の `source.corpusVersion`（英訳が底本にした T4 の収録版）は `3.2.1` で、同梱の 3.5.0 とは違う。記録どおりに返し、版どうしの比較はしない。
+  3. 同梱物は `data/LICENSE`（CC BY 4.0）に従う。論文本文中に別の表記（T1 の figshare 寄託データについての `CC BY-NC 4.0`）があっても、同梱物には及ばない。原文は改変しない。
   4. 日本語の問いは英語の論文に当たりにくい（語句の照合であるため）。該当ゼロは記述が無いことを意味しない。
   5. 未知の prompt 名は MCP のエラーとして返る（上流の実装の挙動。本文は §5 参照）。Spaces ではツール名に接頭辞が付く。
   6. `/` に Gradio 標準のフロント HTML が返る。`resources/read` と `prompts/get` はサーバが自分自身に出す HTTP 要求で実行されるため、その経路（`/gradio_api/queue/join`・`/gradio_api/queue/data`）だけは通してある。

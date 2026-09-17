@@ -339,30 +339,35 @@ def main() -> int:
     try:
         port = read_port(os.environ.get(PORT_ENV))
     except ValueError as exc:
-        print(f"起動しない：{exc}", file=sys.stderr)
+        print(f"起動しない：{exc}", file=sys.stderr, flush=True)
         return 2
     try:
         corpus = C.load_corpus()
     except C.BundleError as exc:
-        print(f"起動しない：同梱データの検査に失敗した（{exc.kind} {exc.path}）", file=sys.stderr)
+        print(f"起動しない：同梱データの検査に失敗した（{exc.kind} {exc.path}）", file=sys.stderr, flush=True)
         return 3
     READER = T.Reader(corpus)
     demo = build_blocks()
     problems = verify_blocks(demo)
     if problems:
-        print("起動しない：Gradio の設定が想定と違う：" + "・".join(problems), file=sys.stderr)
+        print("起動しない：Gradio の設定が想定と違う：" + "・".join(problems), file=sys.stderr, flush=True)
         return 4
-    launch(demo, port)
+    try:
+        launch(demo, port)
+    except OSError as exc:  # ポートが塞がっているなど
+        print(f"起動しない：ポート {port} で待ち受けられない（{type(exc).__name__}）。"
+              f"{PORT_ENV} で別のポートを指定する", file=sys.stderr, flush=True)
+        return 6
     problems = verify_blocks(demo)
     if not getattr(demo, "mcp_server", False):
         problems.append("mcp_server=False")
     if problems:
         demo.close()
-        print("停止する：起動後の確認に失敗した：" + "・".join(problems), file=sys.stderr)
+        print("停止する：起動後の確認に失敗した：" + "・".join(problems), file=sys.stderr, flush=True)
         return 5
-    print(f"corpus {C.CORPUS_VERSION} ({C.CORPUS_COMMIT[:7]})・bundle {C.EXPECTED_BUNDLE_SHA256[:12]}…")
-    print(f"tools 7・resources {len(RESOURCES)}・prompts {len(PR.TEMPLATES)}（{PR.PROMPTS_VERSION}）")
-    print(f"消した環境変数：{'・'.join(REMOVED_GRADIO_ENV) or 'なし'}")
+    print(f"corpus {C.CORPUS_VERSION} ({C.CORPUS_COMMIT[:7]})・bundle {C.EXPECTED_BUNDLE_SHA256[:12]}…", flush=True)
+    print(f"tools 7・resources {len(RESOURCES)}・prompts {len(PR.TEMPLATES)}（{PR.PROMPTS_VERSION}）", flush=True)
+    print(f"消した環境変数：{'・'.join(REMOVED_GRADIO_ENV) or 'なし'}", flush=True)
     try:
         demo.block_thread()
     except KeyboardInterrupt:

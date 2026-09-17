@@ -1,0 +1,407 @@
+{
+  "format": "mekiki-reading-probes",
+  "schema_version": 1,
+  "purpose": "Source-bound interpretation checks, not empirical results or a validated benchmark.",
+  "model_runs_performed": 0,
+  "cases": [
+    {
+      "id": "R01",
+      "question_ja": "参加の非移転性定理は、人間にAIでは代替できない能力と尊厳があると証明していますか？",
+      "question_en": "Does the non-transferability theorem prove that humans have capacities and dignity that AI cannot replace?",
+      "claim_ids": [
+        "T5-A1",
+        "T5-A3",
+        "T5-N1"
+      ],
+      "required_distinctions": [
+        "行為者相対的な参加事実と能力優位を分ける。",
+        "定理だけでは尊厳を証明しない。"
+      ],
+      "failure_signs": [
+        "人間の特別な能力を定理の結論にする。",
+        "規範的な追加を分析的な帰結として扱う。"
+      ],
+      "additional_sources": []
+    },
+    {
+      "id": "R02",
+      "question_ja": "agent-relativeは、私という一人称の語でしか事実を表せないというNagelの主張ですか？",
+      "question_en": "Does agent-relative mean Nagel claims the fact can only be expressed with the first-person pronoun I?",
+      "claim_ids": [
+        "T5-T1"
+      ],
+      "required_distinctions": [
+        "Nagelの理由の区別と、T5の事実への派生的用法を分ける。",
+        "Aを三人称で特定できるが、Bへの交代は別の参加事実になる。"
+      ],
+      "failure_signs": [
+        "事実論をNagel本人へ帰属する。",
+        "一人称表現そのものの不可欠性と取り違える。"
+      ],
+      "additional_sources": []
+    },
+    {
+      "id": "R03",
+      "question_ja": "Kantは遊びや市場価格のない活動に尊厳があると直接述べているのですか？",
+      "question_en": "Does Kant directly assign dignity to play or to activities lacking a market price?",
+      "claim_ids": [
+        "T5-N1"
+      ],
+      "required_distinctions": [
+        "Kantの原典解釈とT5の構成的拡張を分ける。",
+        "市場の不在や遊びであることだけを十分条件にしない。"
+      ],
+      "failure_signs": [
+        "T5の拡張をKantの主張として答える。"
+      ],
+      "additional_sources": []
+    },
+    {
+      "id": "R04",
+      "question_ja": "moral luck脚注は、成績や成果で評価することを禁止し、moral luckを解決しますか？",
+      "question_en": "Does the moral-luck footnote prohibit assessment by results and solve moral luck?",
+      "claim_ids": [
+        "T5-N2",
+        "T5-N3"
+      ],
+      "required_distinctions": [
+        "結果の遂行評価と承認の床の変動を区別する。",
+        "制度的類比であり、desertの理論ではない。",
+        "AA 4:394とAA 4:434–435の役割を区別する。"
+      ],
+      "failure_signs": [
+        "成果の採点全般を禁止する。",
+        "resultant luckの命名をNagelへ断定的に帰属する。"
+      ],
+      "additional_sources": []
+    },
+    {
+      "id": "R05",
+      "question_ja": "将棋の事例は、尊厳装置が普及や業界の成長を生んだ因果効果を証明しますか？",
+      "question_en": "Does the shogi case establish that dignity apparatuses caused commercial growth?",
+      "claim_ids": [
+        "T5-I1",
+        "T5-S1",
+        "T5-H1"
+      ],
+      "required_distinctions": [
+        "解釈的テーゼ、社会学的仮説、共存を示す歴史事例を区別する。",
+        "必要性・十分性・因果効果の証明ではない。"
+      ],
+      "failure_signs": [
+        "歴史事例を対照実験として扱う。",
+        "文化全体として囲碁は退出したと答える。"
+      ],
+      "additional_sources": []
+    },
+    {
+      "id": "R06",
+      "question_ja": "参加していれば必ず他者に答える立場もありますか？",
+      "question_en": "Does participation necessarily entail answerability to a questioner?",
+      "claim_ids": [
+        "T5-A3",
+        "T5-N2"
+      ],
+      "required_distinctions": [
+        "playing seatとanswering seatは独立で、実践が両者を接続することがある。"
+      ],
+      "failure_signs": [
+        "すべての遊びに問う相手を要求する。"
+      ],
+      "additional_sources": []
+    },
+    {
+      "id": "R07",
+      "question_ja": "外から与えられたルールや目標では、本当の参加は成立しませんか？",
+      "question_en": "Does receiving rules or goals externally rule out genuine participation?",
+      "claim_ids": [
+        "T5-A2"
+      ],
+      "required_distinctions": [
+        "来歴と、その後に本人が理由として引き受けることを区別する。",
+        "命令だけではuptakeを構成しない。"
+      ],
+      "failure_signs": [
+        "外的ルールをすべて非参加と扱う。"
+      ],
+      "additional_sources": []
+    },
+    {
+      "id": "R08",
+      "question_ja": "T5の定理があるなら、医療や安全の仕事でも参加を守るために障害を残すべきですか？",
+      "question_en": "Does the theorem require preserving obstacles in medicine or safety-critical work for the sake of participation?",
+      "claim_ids": [
+        "T5-A4"
+      ],
+      "required_distinctions": [
+        "formal theorem、first-person corollary、実用範囲の限定を分ける。",
+        "§4.6の適用境界を参照する。",
+        "遊びは仕事の反対側の領域ではなく，参加が見えやすい標本として選ばれていると区別する。"
+      ],
+      "failure_signs": [
+        "あらゆる活動を遊びへ還元する。",
+        "安全上除くべき障害の維持を処方する。"
+      ],
+      "additional_sources": [
+        {
+          "paper": "T5",
+          "section": "1",
+          "quote": "Play is chosen here not as the paper's scope but as its purest specimen: the activity in which the participant-relative, non-substitutable dimension of participation is least obscured by additional ends (Section 4.4 says why its recognition matters)."
+        }
+      ]
+    },
+    {
+      "id": "R09",
+      "question_ja": "standingは社会的な人気や順位、faceは一側面という意味ですか？",
+      "question_en": "Does standing mean public rank, and face mean an aspect?",
+      "claim_ids": [
+        "T5-N2"
+      ],
+      "required_distinctions": [
+        "§4.4の技術語と、public stature等の通常語を区別する。",
+        "appraisal respectも普通のesteemと無条件に同一視しない。"
+      ],
+      "failure_signs": [
+        "dignity、standing、face、appraisalを一つの得点軸に置く。"
+      ],
+      "additional_sources": []
+    },
+    {
+      "id": "R10",
+      "question_ja": "T3では教員は理由を返さなくてよく、T4で初めて相互性が導入されますか？",
+      "question_en": "Does T3 let educators avoid answering, with reciprocity introduced only in T4?",
+      "claim_ids": [],
+      "required_distinctions": [
+        "T3 §5.4は教員にも質問・基準・判断への応答を要求する。",
+        "非対称な役割と一方的で無説明な権力を区別する。"
+      ],
+      "failure_signs": [
+        "T3は一方的な査問を許すとする。"
+      ],
+      "additional_sources": [
+        {
+          "paper": "T3",
+          "section": "5.4",
+          "quote": "The educator who asks must also be answerable — for the questions posed, the criteria applied, and the decisions taken on the learner's work."
+        }
+      ]
+    },
+    {
+      "id": "R11",
+      "question_ja": "T4の逆方向経路は、従業員の提案を必ず採択する制度ですか？",
+      "question_en": "Does T4's reverse pathway require adopting every member proposal?",
+      "claim_ids": [],
+      "required_distinctions": [
+        "採択・保留・停止のどの場合も理由を返す経路である。",
+        "向きを採択することと、それを扱う自らの判断を引き受けることを分ける。"
+      ],
+      "failure_signs": [
+        "提案収集だけで逆経路が成立するとする。",
+        "理由ある不採択を相互性の失敗と扱う。"
+      ],
+      "additional_sources": [
+        {
+          "paper": "T4",
+          "section": "4.3",
+          "quote": "従業員が遭遇から結晶化させた向きを，正式な検討の回路に入れ，権限を持つ特定の主体が，採択・保留・停止のいずれについても理由を返す。"
+        }
+      ]
+    },
+    {
+      "id": "R12",
+      "question_ja": "統合文書のTomita (2026a)は、どの論文でもT1を指しますか？",
+      "question_en": "Does Tomita (2026a) refer to T1 everywhere in the consolidated document?",
+      "claim_ids": [],
+      "required_distinctions": [
+        "著者年接尾辞は各論文の参考文献表の中で解決する。",
+        "T5の2026aはT3、2026bはT4を指す。"
+      ],
+      "failure_signs": [
+        "T1〜T5の掲載順からa/bを推定する。"
+      ],
+      "additional_sources": [
+        {
+          "paper": "T5",
+          "section": "references",
+          "quote": "Tomita, K. (2026a). Decomposing agency, isolating answerability: Cultivating what cannot be delegated in AI-assisted learning."
+        }
+      ]
+    },
+    {
+      "id": "R13",
+      "question_ja": "T1のdomain-ablation（ドメイン専門知を除いた比較）では、何が維持され、何が失われたと報告されていますか。二つの観測対象を区別して答えてください。",
+      "question_en": "In T1's domain-ablation comparison, what was preserved and what was lost? Distinguish the two observed aspects of the output.",
+      "claim_ids": [],
+      "required_distinctions": [
+        "維持された側は出力の流暢さ・技術的機能性であり、失われた側はドメインに対する適切性である。単に「品質が下がった」とせず、二つを分ける。",
+        "原稿の直接的な観察は、動作し整ったUIを持つ一方で、データ解釈・条件分岐・情報選別などの専門判断を欠く出力である。",
+        "当該比較は反実仮想的な例示であり、数値化された流暢さが完全不変だったとの測定結果や、一般的ベンチマーク結果へ拡張しない。"
+      ],
+      "failure_signs": [
+        "「創造性」「質」「人間性」が失われた、という一般論だけで観測対象を特定しない。",
+        "プログラムの基本的な機能性まで失われたとする、またはドメイン適切性が維持されたとする。",
+        "原稿にない流暢さの点数、不変率、一般的な因果効果を作る。"
+      ],
+      "additional_sources": [
+        {
+          "paper": "T1",
+          "section": "4.2",
+          "quote": "Both outputs featured competent user interfaces with filtering and sorting capabilities, confirming full externalisation cost capability."
+        },
+        {
+          "paper": "T1",
+          "section": "4.2",
+          "quote": "The convergent failure pattern across two independent models operating on identical data is consistent with the framework's prediction: when specification cost is absent, externalisation cost reduction alone produces artefacts that are technically competent but domain-inappropriate."
+        },
+        {
+          "paper": "T1",
+          "section": "4.2",
+          "quote": "The experiment is designed not as a benchmark but as a counterfactual illustration: it asks what happens when externalisation capability is present but specification is absent."
+        }
+      ],
+      "provenance": {
+        "kind": "author-reported-misreading",
+        "reported_record": "D625",
+        "reported_model_family": "Gemini",
+        "original_log_included": false,
+        "prompt_status": "reconstructed_from_user_description",
+        "independently_reproduced": false
+      }
+    },
+    {
+      "id": "R14",
+      "question_ja": "Mekiki FrameworkでSpec.costは何を指しますか。Spec.および実務者のdomain expertiseとの違いも示してください。",
+      "question_en": "What does Spec.cost mean in the Mekiki Framework? Distinguish it from Spec. and from a practitioner's domain expertise.",
+      "claim_ids": [],
+      "required_distinctions": [
+        "Spec.costは課題が関連するドメイン専門知を要求する程度であり、その専門知がない場合に障壁になる。",
+        "domain expertiseは実務者が持つ資源、Spec.はそれを当該課題に投じて生じる具体的な専門判断の基盤である。",
+        "Spec.costを仕様書・プロンプトを書く時間や費用、要求整理の工数、既に存在する判断の量と同一視しない。"
+      ],
+      "failure_signs": [
+        "「仕様を作成する費用」「要求を言語化する労力」を定義として答える。",
+        "Spec.costと、個人が持つ専門性の量または既に出来上がったSpec.を同一視する。",
+        "単に「難しい仕事」「判断が必要」とだけ答え、何を課題が要求するのかを示さない。"
+      ],
+      "additional_sources": [
+        {
+          "paper": "T1",
+          "section": "2.1",
+          "quote": "Specification cost should be distinguished from domain expertise itself: domain expertise is a resource that the practitioner possesses; specification cost is the degree to which a task demands domain expertise."
+        },
+        {
+          "paper": "T2",
+          "section": "2.1",
+          "quote": "And *specification* — the term used on Figure 1 of the original article as \"substrate\" — is what results when domain expertise is invested in a particular task: the concrete judgments about what should be built, what should be excluded, and by what criteria quality should be assessed."
+        }
+      ],
+      "provenance": {
+        "kind": "author-reported-misreading",
+        "reported_record": "D625",
+        "reported_model_family": "Gemini",
+        "original_log_included": false,
+        "prompt_status": "reconstructed_from_user_description",
+        "independently_reproduced": false
+      }
+    },
+    {
+      "id": "R15",
+      "question_ja": "T3で他者に任せられないものは二種類あります。それぞれを原稿の用語と意味で示し、両者が同じ層のものかも説明してください。",
+      "question_en": "T3 distinguishes two kinds of what cannot be handed over. Identify them using the manuscript's terms and meanings, and explain whether they belong to the same layer.",
+      "claim_ids": [],
+      "required_distinctions": [
+        "第一は方向の所有、すなわち自分の方向を自らの判断理由として承認すること（ownership of direction / endorsement）であり、候補を最初に考案したことではない。",
+        "第二はanswerability、すなわち特定の他者に自分の判断の理由を答える関係的な立場であり、上手に説明する能力ではない。",
+        "directionは能力成分の側、answerabilityは構成要素ではなく関係の側にあるという区別を保つ。",
+        "候補方向は他者やAIと共同で形成できる。非代替的なのは本人による承認であり、AIが方向形成を一切支援できないという命題ではない。"
+      ],
+      "failure_signs": [
+        "「主体性と責任」「判断力と創造性」などの一般語だけで二つの内容を特定しない。",
+        "二つを能力成分とする、またはanswerabilityだけを唯一の非委譲対象とする。",
+        "方向の所有をアイデアの出所に還元する、またはanswerabilityを説明能力と同一視する。"
+      ],
+      "additional_sources": [
+        {
+          "paper": "T3",
+          "section": "7",
+          "quote": "What cannot be handed over is of two kinds, and keeping them distinct is this article's central discipline: direction, a component whose endorsement cannot be substituted and may be supported by encounter; and answerability, not a component at all but the standing in which a learner answers to someone for a judgment."
+        },
+        {
+          "paper": "T3",
+          "section": "2.2",
+          "quote": "It exists in two states: a *candidate* direction — an orientation entertained but not yet owned — and an *endorsed* direction, the evaluative commitment that makes some problems theirs rather than merely assigned; endorsement may be co-authored in dialogue rather than reached alone."
+        }
+      ],
+      "provenance": {
+        "kind": "author-reported-misreading",
+        "reported_record": "D625",
+        "reported_model_family": "Gemini",
+        "original_log_included": false,
+        "prompt_status": "reconstructed_from_user_description",
+        "independently_reproduced": false
+      }
+    },
+    {
+      "id": "R16",
+      "question_ja": "T5の知好楽の「楽」は快い気分を意味し，その快さが尊厳を証明するのですか。T5が採る読みとKantの区別を分けて答えてください。",
+      "question_en": "In T5, does delight in the Analects triad mean a pleasant mood, and does that pleasure prove dignity? Separate T5's reading from its use of Kant.",
+      "claim_ids": [
+        "T5-N1"
+      ],
+      "required_distinctions": [
+        "T5は「楽」をlucid absorption（明晰な没入）として読む。",
+        "快い気分だけへの還元を避けるが，気分ではないこと自体を尊厳の十分条件にもしない。",
+        "Kantのprice／dignityの原典とT5の構成的な拡張を区別する。"
+      ],
+      "failure_signs": [
+        "楽しい気分があれば尊厳が証明されるとする。",
+        "Kantが遊びを尊厳へ直接分類したとする。",
+        "原論文にない朱熹注をT5の論証の典拠として追加する。"
+      ],
+      "additional_sources": [
+        {
+          "paper": "T5",
+          "section": "4.3",
+          "quote": "delight, in the triad, is lucid absorption — being inside the activity with open eyes."
+        },
+        {
+          "paper": "T5",
+          "section": "4.4",
+          "quote": "Kant distinguishes two kinds of price — a market price for what serves a need, and a fancy price for what pleases without serving one, his example being delight in the purposeless play of the mental powers — while dignity, in his immediate claim, is reserved for morality, and for humanity insofar as it is capable of morality."
+        }
+      ]
+    },
+    {
+      "id": "R17",
+      "question_ja": "T5が渋沢の「趣味」から用いるのは何ですか。「趣味＝余暇の嗜好」，または「趣味全体＝undertakingやKant的尊厳」と訳してよいでしょうか。",
+      "question_en": "Which aspect of Shibusawa's shumi does T5 use? May the term be reduced to leisure preference, or wholly equated with undertaking or Kantian dignity?",
+      "claim_ids": [
+        "T5-N1"
+      ],
+      "required_distinctions": [
+        "託された仕事に自らの理想と欲望を加える側面を，本稿が選択的に用いている。",
+        "多義的な趣味の全体をhobby／tasteの一語へ還元しない。",
+        "理想を担う側面の類比と，趣味全体の単一のKant的分類とを区別する。"
+      ],
+      "failure_signs": [
+        "趣味を現代の余暇活動だけとする。",
+        "渋沢が嗜好や楽しみの含意を排除したとする。",
+        "趣味全体を尊厳へ一対一に対応づける。"
+      ],
+      "additional_sources": [
+        {
+          "paper": "T5",
+          "section": "4.3",
+          "quote": "in a chapter that defines shumi as bringing one's own ideals and desires into the work entrusted to one"
+        },
+        {
+          "paper": "T5",
+          "section": "4.4",
+          "quote": "For the present argument, I use the ideal-bearing aspect of Shibusawa's shumi (Section 4.3) as an analogue of undertaking, rather than treating the term as mere taste. This is a selection within Shibusawa's usage, not a claim that shumi as a whole maps onto a single Kantian category."
+        }
+      ]
+    }
+  ],
+  "provenance_note": "R13–R15 operationalise the three confusions in an author-reported Gemini reading check (D625). Original prompts, responses, and scores were not supplied with this patch. These are reconstructed source-bound probes, not a verbatim reproduction or an independently verified model run.",
+  "editorial_additions_3_5_0": "R16–R17 are source-grounded checks motivated by author-supplied Japanese reading concerns; R08 adds a scope rubric and source excerpt. They are not records of additional Gemini runs. Original D625 provenance for R13–R15 is unchanged."
+}

@@ -1,0 +1,2 @@
+# 開発用の直接依存（施工段階1・Q76）。固定は requirements-dev.txt（uv pip compile --generate-hashes）
+pytest

@@ -1,0 +1,1907 @@
+{
+  "format": "mekiki-translation-manifest",
+  "schemaVersion": 1,
+  "translationId": "T4.en",
+  "translationVersion": "1.0.0",
+  "date": "2026-09-06",
+  "corpusVersion": "3.5.0",
+  "originalLanguage": "ja",
+  "inLanguage": "en",
+  "source": {
+    "corpusVersion": "3.2.1",
+    "path": "papers/T4.md",
+    "sha256": "9d2e09840323244b58c1fb02586bca79ea78dbe6f8b3deb8f30bc996d17832d5",
+    "doi": "https://doi.org/10.31235/osf.io/495wg_v1",
+    "preprintVersion": "1"
+  },
+  "translation": {
+    "markdown": "translations/T4.en.md",
+    "sha256": "bdf8690f23f1a79b1b7307fe99629540d07f9a5a97ba210b2c637cb9511ae5d9",
+    "html": "papers/T4.en.html",
+    "htmlSha256": "18b50a84e61037dba6389e34f3ba0c01db35d150ca1001d26e576ef05df90b76"
+  },
+  "preparation": "English access translation and translator notes prepared with ChatGPT; no separate author-review certification is asserted.",
+  "authority": "Japanese original governs interpretation. This is a derivative access translation, not a new paper or preprint version.",
+  "validationScope": "Source hash, block alignment, citations, reference strings, original English abstract, local links, and generated text equivalence. Not a guarantee of translation accuracy or author approval.",
+  "translatorNotes": 16,
+  "originalAuthorNotes": 5,
+  "referenceRecords": 28,
+  "sourceUnits": [
+    {
+      "sourceLine": 1,
+      "sourceEndLine": 1,
+      "sourceKind": "heading",
+      "sourceSha256": "4a82cf3d12dda4a08bbfb05ae31229af063648cdbee99b5f32e6d45a78d91d93",
+      "sourceReferences": [],
+      "treatment": "wrapper",
+      "description": "Translated title above"
+    },
+    {
+      "sourceLine": 3,
+      "sourceEndLine": 3,
+      "sourceKind": "paragraph",
+      "sourceSha256": "71cee69e5999fbb6e4afa696bdf0b69bd89710f62febb3e2cc89c05f2b4be93d",
+      "sourceReferences": [],
+      "treatment": "wrapper",
+      "description": "Existing English title used verbatim above"
+    },
+    {
+      "sourceLine": 5,
+      "sourceEndLine": 6,
+      "sourceKind": "paragraph",
+      "sourceSha256": "e0c3a9b64a04450af39143b8f423f931eabf998ffd7c858f1813b3429b1c8938",
+      "sourceReferences": [],
+      "treatment": "wrapper",
+      "description": "Source preprint version and DOI displayed above"
+    },
+    {
+      "sourceLine": 8,
+      "sourceEndLine": 9,
+      "sourceKind": "paragraph",
+      "sourceSha256": "0e1874632e33d34e57d7e9fea48f6558da38d98527ce932fcb33873a2131aac9",
+      "sourceReferences": [],
+      "treatment": "wrapper",
+      "description": "Author and affiliation displayed above"
+    },
+    {
+      "sourceLine": 11,
+      "sourceEndLine": 11,
+      "sourceKind": "paragraph",
+      "sourceSha256": "ce0d461597bda7e1d85a07f97896cb16cbe47c6a45c2776a67b66cc33a5195d4",
+      "sourceReferences": [],
+      "treatment": "wrapper",
+      "description": "Original Japanese-only access notice superseded by the translation notice; Japanese source is unchanged"
+    },
+    {
+      "sourceLine": 13,
+      "sourceEndLine": 13,
+      "sourceKind": "rule",
+      "sourceSha256": "cb3f91d54eee30e53e35b2b99905f70f169ed549fd78909d3dac2defc9ed8d3b",
+      "sourceReferences": [],
+      "treatment": "separator"
+    },
+    {
+      "sourceLine": 15,
+      "sourceEndLine": 15,
+      "sourceKind": "paragraph",
+      "sourceSha256": "554111bc8f9a46de200acb5968dbe0a177321943ab5a196bdf6e2e9a3e18fb73",
+      "sourceReferences": [],
+      "treatment": "wrapper",
+      "description": "Japanese author-affiliation line rendered above"
+    },
+    {
+      "sourceLine": 17,
+      "sourceEndLine": 17,
+      "sourceKind": "paragraph",
+      "sourceSha256": "3e29f558f6bdc13b1b71140008f22988eb5a614b6056d3791c41aed8da613f19",
+      "sourceReferences": [],
+      "treatment": "translated",
+      "targetId": "t4en-u017",
+      "section": null,
+      "translationLineStart": 23,
+      "translationLineEnd": 29,
+      "translationSegmentSha256": "8ad1f172061a6f7155286170f16918bebbf645d7872f39a93425cbf8a49acd84"
+    },
+    {
+      "sourceLine": 19,
+      "sourceEndLine": 19,
+      "sourceKind": "paragraph",
+      "sourceSha256": "cddc75c8510eb96a6171b60c5efd6ead4b05b63ab80868589f9d4d09337df91e",
+      "sourceReferences": [],
+      "treatment": "translated",
+      "targetId": "t4en-u019",
+      "section": null,
+      "translationLineStart": 30,
+      "translationLineEnd": 44,
+      "translationSegmentSha256": "88ce90866c0b91cc1d3d94141b69d7a85c288002593fd04cbede54fc88b34744"
+    },
+    {
+      "sourceLine": 21,
+      "sourceEndLine": 21,
+      "sourceKind": "paragraph",
+      "sourceSha256": "93da4b1ea2fa8f70f66db16f5025141dbe8f7ff8c8fbfab1da0ec83210f08645",
+      "sourceReferences": [],
+      "treatment": "translated",
+      "targetId": "t4en-u021",
+      "section": null,
+      "translationLineStart": 45,
+      "translationLineEnd": 51,
+      "translationSegmentSha256": "8e2836ed92967e757347031bda0671e4d09afa52930f4142b6f2735d81c89be1"
+    },
+    {
+      "sourceLine": 23,
+      "sourceEndLine": 23,
+      "sourceKind": "rule",
+      "sourceSha256": "cb3f91d54eee30e53e35b2b99905f70f169ed549fd78909d3dac2defc9ed8d3b",
+      "sourceReferences": [],
+      "treatment": "separator"
+    },
+    {
+      "sourceLine": 25,
+      "sourceEndLine": 25,
+      "sourceKind": "heading",
+      "sourceSha256": "5c759187c508543b69e03db81ee9e58a10b89561996b49525fab4515b0072a3c",
+      "sourceReferences": [],
+      "treatment": "translated",
+      "targetId": "t4en-u025",
+      "section": "1",
+      "translationLineStart": 52,
+      "translationLineEnd": 60,
+      "translationSegmentSha256": "430c7a3eaa32481d8d535408f50a4644f3b998fc2129cc8041d0e37919e2306b"
+    },
+    {
+      "sourceLine": 27,
+      "sourceEndLine": 27,
+      "sourceKind": "heading",
+      "sourceSha256": "6ac0be6fe56fd0e48e823422c356b9eb30543758c37bd52cdf4daf0776923ec0",
+      "sourceReferences": [],
+      "treatment": "translated",
+      "targetId": "t4en-u027",
+      "section": "1.1",
+      "translationLineStart": 61,
+      "translationLineEnd": 69,
+      "translationSegmentSha256": "6f5813a78f3c726fb6054d98bc2c37713c40a03bad470598e67490f1963d35cf"
+    },
+    {
+      "sourceLine": 29,
+      "sourceEndLine": 29,
+      "sourceKind": "paragraph",
+      "sourceSha256": "d1213a9276d0e12ba1b8fe8c73c0a25725ddecf8bcdbd42721a44daac1f6c60e",
+      "sourceReferences": [
+        "b1",
+        "b2",
+        "b3",
+        "b4",
+        "b5",
+        "b25",
+        "b26",
+        "b27"
+      ],
+      "treatment": "translated",
+      "targetId": "t4en-u029",
+      "section": "1.1",
+      "translationLineStart": 70,
+      "translationLineEnd": 76,
+      "translationSegmentSha256": "7ac52df55fbe12dad8c87c0557e21cea4193648adb8a86f4b4fd22d55dc2e050"
+    },
+    {
+      "sourceLine": 31,
+      "sourceEndLine": 31,
+      "sourceKind": "heading",
+      "sourceSha256": "b3b055a19eb19a2cf9d5a87d5e9cefb3e1c9b7a0dc2315a2265501913062d894",
+      "sourceReferences": [],
+      "treatment": "translated",
+      "targetId": "t4en-u031",
+      "section": "1.2",
+      "translationLineStart": 77,
+      "translationLineEnd": 85,
+      "translationSegmentSha256": "fa22cad136216139281144c395eb4d60356ce5f4c5773e15afb7759edf6ff08a"
+    },
+    {
+      "sourceLine": 33,
+      "sourceEndLine": 33,
+      "sourceKind": "paragraph",
+      "sourceSha256": "083d51d8edae7bd18d02db1096703ddcb9634a3b10afd4e7cad4648455bf5f9d",
+      "sourceReferences": [
+        "b6"
+      ],
+      "treatment": "translated",
+      "targetId": "t4en-u033",
+      "section": "1.2",
+      "translationLineStart": 86,
+      "translationLineEnd": 92,
+      "translationSegmentSha256": "da929670a3f1b87be75d06941c9a96c00797defe4637874644c8b1b196be307f"
+    },
+    {
+      "sourceLine": 35,
+      "sourceEndLine": 35,
+      "sourceKind": "heading",
+      "sourceSha256": "2460dc442fd5ef51ad3c919f78b046218a2de7535bfb2d1b6a71f8089348ca2b",
+      "sourceReferences": [],
+      "treatment": "translated",
+      "targetId": "t4en-u035",
+      "section": "1.3",
+      "translationLineStart": 93,
+      "translationLineEnd": 101,
+      "translationSegmentSha256": "f02971ed02abd34dd0286b21cbeedbdb07c9ac4c51e8a1eaa454489685217063"
+    },
+    {
+      "sourceLine": 37,
+      "sourceEndLine": 37,
+      "sourceKind": "paragraph",
+      "sourceSha256": "43a6c38c771514e172cab63b27e7a5ba32fc4b47aa6ade28f34f870e14234e8f",
+      "sourceReferences": [
+        "b8",
+        "b9"
+      ],
+      "treatment": "translated",
+      "targetId": "t4en-u037",
+      "section": "1.3",
+      "translationLineStart": 102,
+      "translationLineEnd": 116,
+      "translationSegmentSha256": "cc3f1aadafddb9220020ef8c1bf5536fed5e14e023b6f9880052ff3740219b6a"
+    },
+    {
+      "sourceLine": 39,
+      "sourceEndLine": 39,
+      "sourceKind": "heading",
+      "sourceSha256": "2c5ab681479e82e5d3966bd134945af8ad3b455ce18bc5d15bc86e7fa2c02273",
+      "sourceReferences": [],
+      "treatment": "translated",
+      "targetId": "t4en-u039",
+      "section": "1.4",
+      "translationLineStart": 117,
+      "translationLineEnd": 125,
+      "translationSegmentSha256": "214e355939d8716551a5bd1557b154d744862bdf8ec597730fd971819c856768"
+    },
+    {
+      "sourceLine": 41,
+      "sourceEndLine": 41,
+      "sourceKind": "paragraph",
+      "sourceSha256": "f26591596f4c339f28fb1716f72f44b5cd9ab2c73fd452affa0173053510f33b",
+      "sourceReferences": [
+        "b10"
+      ],
+      "treatment": "translated",
+      "targetId": "t4en-u041",
+      "section": "1.4",
+      "translationLineStart": 126,
+      "translationLineEnd": 140,
+      "translationSegmentSha256": "ab4741bd9bb1412917a17221e892a984466f082c66240e71ff375c92b664b1a7"
+    },
+    {
+      "sourceLine": 43,
+      "sourceEndLine": 43,
+      "sourceKind": "heading",
+      "sourceSha256": "5a275529422dd5b1998252f4fafac38ed08849e026b58cfdad9963c46e752586",
+      "sourceReferences": [],
+      "treatment": "translated",
+      "targetId": "t4en-u043",
+      "section": "1.5",
+      "translationLineStart": 141,
+      "translationLineEnd": 149,
+      "translationSegmentSha256": "991144ef637a6418df601340f69017e3d3a8267aee1b7231d130bd510892f9b2"
+    },
+    {
+      "sourceLine": 45,
+      "sourceEndLine": 45,
+      "sourceKind": "paragraph",
+      "sourceSha256": "abad424b4db9169f0b046fcc04f7dd7b4f7c43320006c0cff3f2081378109584",
+      "sourceReferences": [],
+      "treatment": "translated",
+      "targetId": "t4en-u045",
+      "section": "1.5",
+      "translationLineStart": 150,
+      "translationLineEnd": 156,
+      "translationSegmentSha256": "1e0c48a0d1c2474545c33d9602f122986b45a29e244b0262eb721ceb3d94f13b"
+    },
+    {
+      "sourceLine": 47,
+      "sourceEndLine": 47,
+      "sourceKind": "heading",
+      "sourceSha256": "d18d69f1b2bbd4d1c33dd8405239052d9f15cc98c6058bec5b545e7269b5c743",
+      "sourceReferences": [],
+      "treatment": "translated",
+      "targetId": "t4en-u047",
+      "section": "2",
+      "translationLineStart": 157,
+      "translationLineEnd": 165,
+      "translationSegmentSha256": "ef4b4aab09a51da919f00e57a23084c0f14e2859f6bb8ef200a2636d0ded5b53"
+    },
+    {
+      "sourceLine": 49,
+      "sourceEndLine": 49,
+      "sourceKind": "heading",
+      "sourceSha256": "1172c4555db895a9c5ff49cbee5f4e4f20f50fd4d9e4b0d4b89bbbe71cc28818",
+      "sourceReferences": [],
+      "treatment": "translated",
+      "targetId": "t4en-u049",
+      "section": "2.1",
+      "translationLineStart": 166,
+      "translationLineEnd": 174,
+      "translationSegmentSha256": "9197181e533831be962b5fe673ad7446322214beadc116435ee25c0c36172f7d"
+    },
+    {
+      "sourceLine": 51,
+      "sourceEndLine": 51,
+      "sourceKind": "paragraph",
+      "sourceSha256": "cd4e78cba24e939acbd23444fb4f58454d110e1e86f7c702752a4e8f09259248",
+      "sourceReferences": [
+        "b6"
+      ],
+      "treatment": "translated",
+      "targetId": "t4en-u051",
+      "section": "2.1",
+      "translationLineStart": 175,
+      "translationLineEnd": 181,
+      "translationSegmentSha256": "3fa3894c86d8da9886ef539a1b1ab66bd1680fe07f3154993e24c86d6f6f4adc"
+    },
+    {
+      "sourceLine": 53,
+      "sourceEndLine": 53,
+      "sourceKind": "paragraph",
+      "sourceSha256": "ecb0ca2756780451c30690b798b1eca898bde817a4d3fe62f4ce091f3025cea2",
+      "sourceReferences": [],
+      "treatment": "translated",
+      "targetId": "t4en-u053",
+      "section": "2.1",
+      "translationLineStart": 182,
+      "translationLineEnd": 188,
+      "translationSegmentSha256": "13f3422957d4d1192be4f3041e9f6e0258b3842f8660220329e6ac1ece5a70e1"
+    },
+    {
+      "sourceLine": 55,
+      "sourceEndLine": 55,
+      "sourceKind": "paragraph",
+      "sourceSha256": "9db07d3f9a4b7143267bf2e1aa309f7fafec2df15e6687003aab53da65f0fcc6",
+      "sourceReferences": [
+        "b11",
+        "b7"
+      ],
+      "treatment": "translated",
+      "targetId": "t4en-u055",
+      "section": "2.1",
+      "translationLineStart": 189,
+      "translationLineEnd": 203,
+      "translationSegmentSha256": "9f931f3b1e16c5c01b5774e3c5616a997874a833c72155d7b4c6b3cdd527b56a"
+    },
+    {
+      "sourceLine": 57,
+      "sourceEndLine": 57,
+      "sourceKind": "heading",
+      "sourceSha256": "27c696338cc6851e409c81ecac40955fbfe28f3586bac3e87a1bf2cab40a9e80",
+      "sourceReferences": [],
+      "treatment": "translated",
+      "targetId": "t4en-u057",
+      "section": "2.2",
+      "translationLineStart": 204,
+      "translationLineEnd": 212,
+      "translationSegmentSha256": "cc4309df0cbc9c122ea36bbb7081fd59b23a60f4658c31a4fc52b332d3ea3029"
+    },
+    {
+      "sourceLine": 59,
+      "sourceEndLine": 59,
+      "sourceKind": "paragraph",
+      "sourceSha256": "a4988486bf71202db93a1e9c005b4e516b29d0825edce621b1b569d1e929bdeb",
+      "sourceReferences": [
+        "b12",
+        "b13"
+      ],
+      "treatment": "translated",
+      "targetId": "t4en-u059",
+      "section": "2.2",
+      "translationLineStart": 213,
+      "translationLineEnd": 219,
+      "translationSegmentSha256": "f6ae0994384bf3d53037c13e05a98227ef7e5deaafeb9112ac71183f7643f4f1"
+    },
+    {
+      "sourceLine": 61,
+      "sourceEndLine": 61,
+      "sourceKind": "paragraph",
+      "sourceSha256": "eabe11e18d65ca3580f98aee32f285111171cda227d898d8dba1170dad36080b",
+      "sourceReferences": [
+        "b12",
+        "b13"
+      ],
+      "treatment": "translated",
+      "targetId": "t4en-u061",
+      "section": "2.2",
+      "translationLineStart": 220,
+      "translationLineEnd": 234,
+      "translationSegmentSha256": "2de44e128d06a1382d57ed886936801e919a523b5fa1cb72fb44981aca66afbe"
+    },
+    {
+      "sourceLine": 63,
+      "sourceEndLine": 63,
+      "sourceKind": "paragraph",
+      "sourceSha256": "5e12adc44e92caba1f9b7ab42cacd833fd7cc2fa6d377dd4a48746dab059ac49",
+      "sourceReferences": [],
+      "treatment": "translated",
+      "targetId": "t4en-u063",
+      "section": "2.2",
+      "translationLineStart": 235,
+      "translationLineEnd": 241,
+      "translationSegmentSha256": "d650021d069c7518a382109a2beda5c6d542b27ae72040db250fffeff7f3246d"
+    },
+    {
+      "sourceLine": 65,
+      "sourceEndLine": 65,
+      "sourceKind": "heading",
+      "sourceSha256": "3cd1de8ee85d05ef2deabfff777775f055ab08df34e13ca3090b7878632f8402",
+      "sourceReferences": [],
+      "treatment": "translated",
+      "targetId": "t4en-u065",
+      "section": "2.3",
+      "translationLineStart": 242,
+      "translationLineEnd": 250,
+      "translationSegmentSha256": "3c39d053e179bc9dd4f3df3aaac324bd2ac0e456cefdc4a8e02db13396a96e4f"
+    },
+    {
+      "sourceLine": 67,
+      "sourceEndLine": 67,
+      "sourceKind": "paragraph",
+      "sourceSha256": "79717cc06c063a6a85bed2dc08cd696a9d2f0c9e98b12b5dcb00b72bae635d91",
+      "sourceReferences": [],
+      "treatment": "translated",
+      "targetId": "t4en-u067",
+      "section": "2.3",
+      "translationLineStart": 251,
+      "translationLineEnd": 257,
+      "translationSegmentSha256": "575ce57e94f32cbed28e6fc34185e61390c07850d3ca6a2ef6f7cedcd855434f"
+    },
+    {
+      "sourceLine": 69,
+      "sourceEndLine": 69,
+      "sourceKind": "paragraph",
+      "sourceSha256": "3fae97f23cdf2b7c06e49c765272508d244844d95e5e377c075128359c5a30c5",
+      "sourceReferences": [],
+      "treatment": "translated",
+      "targetId": "t4en-u069",
+      "section": "2.3",
+      "translationLineStart": 258,
+      "translationLineEnd": 272,
+      "translationSegmentSha256": "90a87f1f3e2c2cdb9a6290cf1b490a1b75a8d8ec6507321386f7feac25c5dc8c"
+    },
+    {
+      "sourceLine": 71,
+      "sourceEndLine": 71,
+      "sourceKind": "paragraph",
+      "sourceSha256": "164316ba075c1072251073b7f5a7b4cc41887c19c76d8b4a06f2ce7fe2d1cf7d",
+      "sourceReferences": [],
+      "treatment": "translated",
+      "targetId": "t4en-u071",
+      "section": "2.3",
+      "translationLineStart": 273,
+      "translationLineEnd": 279,
+      "translationSegmentSha256": "3ea70c36b086eb0b14aead21da89b5b67fc4421934e92d1c8e1c81ca51db7ce2"
+    },
+    {
+      "sourceLine": 73,
+      "sourceEndLine": 73,
+      "sourceKind": "heading",
+      "sourceSha256": "82a8d74a9f2d3fcea071eb3a454e84e3ddfea3a51a6969f4122b2253f3b3e7ad",
+      "sourceReferences": [],
+      "treatment": "translated",
+      "targetId": "t4en-u073",
+      "section": "2.4",
+      "translationLineStart": 280,
+      "translationLineEnd": 288,
+      "translationSegmentSha256": "4c640705d73f4e3f3bd649513a49207ff07d402164d80b236d20355575d94eee"
+    },
+    {
+      "sourceLine": 75,
+      "sourceEndLine": 75,
+      "sourceKind": "paragraph",
+      "sourceSha256": "20745a37aa0914efc8633cba27fb4e8822e1d91272668703ac8c4a63a74cb5ef",
+      "sourceReferences": [],
+      "treatment": "translated",
+      "targetId": "t4en-u075",
+      "section": "2.4",
+      "translationLineStart": 289,
+      "translationLineEnd": 295,
+      "translationSegmentSha256": "07ee3a8385fe8bc27c2e74c61218b88ff8e0ca8ce0c951328f6558d2866929ac"
+    },
+    {
+      "sourceLine": 77,
+      "sourceEndLine": 77,
+      "sourceKind": "paragraph",
+      "sourceSha256": "e5ea970e59c12feda9acd32772736e8b7efad2d2f215f3fe16dd45906c2ed41f",
+      "sourceReferences": [
+        "n1"
+      ],
+      "treatment": "translated",
+      "targetId": "t4en-u077",
+      "section": "2.4",
+      "translationLineStart": 296,
+      "translationLineEnd": 310,
+      "translationSegmentSha256": "b9adb87354712668f50631412e2876ad2bbf2cc6bef9c9be2f29f2e4931498c7"
+    },
+    {
+      "sourceLine": 79,
+      "sourceEndLine": 79,
+      "sourceKind": "paragraph",
+      "sourceSha256": "21002e4f046207ba355a8c3528c626233ab0fbde4664a826ead345ed395bd3ed",
+      "sourceReferences": [
+        "b14",
+        "b15"
+      ],
+      "treatment": "translated",
+      "targetId": "t4en-u079",
+      "section": "2.4",
+      "translationLineStart": 311,
+      "translationLineEnd": 325,
+      "translationSegmentSha256": "62eeb52839ff9000a1a99c7a31c04b2ba49181610823475be7a029235dbcdeea"
+    },
+    {
+      "sourceLine": 81,
+      "sourceEndLine": 81,
+      "sourceKind": "paragraph",
+      "sourceSha256": "6c6f15c4ecd25e40c5e244cca2ef474db7a54f6eaddc736c655bcd55ef9c3c61",
+      "sourceReferences": [],
+      "treatment": "translated",
+      "targetId": "t4en-u081",
+      "section": "2.4",
+      "translationLineStart": 326,
+      "translationLineEnd": 332,
+      "translationSegmentSha256": "f1b8f1814391e982651301ba84dccb8edf29af6c3d6dde39cb23bc626c2d0e73"
+    },
+    {
+      "sourceLine": 83,
+      "sourceEndLine": 83,
+      "sourceKind": "paragraph",
+      "sourceSha256": "bf7f8a9b474cb68145135b68df6061fee42940af851b696f7d013abadf7a0f34",
+      "sourceReferences": [],
+      "treatment": "translated",
+      "targetId": "t4en-u083",
+      "section": "2.4",
+      "translationLineStart": 333,
+      "translationLineEnd": 339,
+      "translationSegmentSha256": "1efd05b8cd14f4e7575e65063acd03fefb05edde97bb194f13e787b609314b15"
+    },
+    {
+      "sourceLine": 85,
+      "sourceEndLine": 94,
+      "sourceKind": "table",
+      "sourceSha256": "ef8c8c320d9ab161cbeeed14b3e6672bb8112e3a6a2936a799ad3c2d15bca1fc",
+      "sourceReferences": [],
+      "treatment": "translated",
+      "targetId": "t4en-u085",
+      "section": "2.4",
+      "translationLineStart": 340,
+      "translationLineEnd": 355,
+      "translationSegmentSha256": "418c4c18384a28b3b46435a05ac6317f1f919b54092245091bd31f2ccadff932"
+    },
+    {
+      "sourceLine": 96,
+      "sourceEndLine": 96,
+      "sourceKind": "paragraph",
+      "sourceSha256": "de26331181aa1d496d995b197193babb4704b5ed9155f46210135463a31677ec",
+      "sourceReferences": [],
+      "treatment": "translated",
+      "targetId": "t4en-u096",
+      "section": "2.4",
+      "translationLineStart": 356,
+      "translationLineEnd": 362,
+      "translationSegmentSha256": "c149ee3e3b9db22a8155da4d2e4ae6a1072abd256cd2f2c460ccdab9b8892253"
+    },
+    {
+      "sourceLine": 98,
+      "sourceEndLine": 98,
+      "sourceKind": "heading",
+      "sourceSha256": "a7c2bb56608d1abb1fdad6d88ff7a31e32730d2f9bc77efc94d919a716598433",
+      "sourceReferences": [],
+      "treatment": "translated",
+      "targetId": "t4en-u098",
+      "section": "3",
+      "translationLineStart": 363,
+      "translationLineEnd": 371,
+      "translationSegmentSha256": "292c5b1d0ef00dc1947f92934af5d2744924a02ac91046901cea2b50cc57dd1f"
+    },
+    {
+      "sourceLine": 100,
+      "sourceEndLine": 100,
+      "sourceKind": "paragraph",
+      "sourceSha256": "ceb64a1326eeefea537438f5293e9d579da453b4545d4fcd8df6df001adaf519",
+      "sourceReferences": [],
+      "treatment": "translated",
+      "targetId": "t4en-u100",
+      "section": "3",
+      "translationLineStart": 372,
+      "translationLineEnd": 378,
+      "translationSegmentSha256": "11b273e56cd69759234360473f278c65b030e90ab90a2a06df4acd4d1b07f662"
+    },
+    {
+      "sourceLine": 102,
+      "sourceEndLine": 102,
+      "sourceKind": "paragraph",
+      "sourceSha256": "1a011e7e8527fa1e36a40272fa032c5c5fb57d0437ac7cbbc089c105fcaabb84",
+      "sourceReferences": [],
+      "treatment": "translated",
+      "targetId": "t4en-u102",
+      "section": "3",
+      "translationLineStart": 379,
+      "translationLineEnd": 385,
+      "translationSegmentSha256": "1e9b21211a2db916da7593c064abd267c2796b7f2ae2f0151a79901423edd81f"
+    },
+    {
+      "sourceLine": 104,
+      "sourceEndLine": 104,
+      "sourceKind": "paragraph",
+      "sourceSha256": "7bc9093da404549aed71c2639c7485f92859cbb93f4558af6140b639cc2b74cb",
+      "sourceReferences": [],
+      "treatment": "translated",
+      "targetId": "t4en-u104",
+      "section": "3",
+      "translationLineStart": 386,
+      "translationLineEnd": 392,
+      "translationSegmentSha256": "288232ff65544397d74d7d601bce65ce63894780ef799875bccd792383e32d30"
+    },
+    {
+      "sourceLine": 106,
+      "sourceEndLine": 106,
+      "sourceKind": "paragraph",
+      "sourceSha256": "68e00547e109f32e54b04845711dab287cf7c56d63bde56c350aa336e3b98aac",
+      "sourceReferences": [],
+      "treatment": "translated",
+      "targetId": "t4en-u106",
+      "section": "3",
+      "translationLineStart": 393,
+      "translationLineEnd": 399,
+      "translationSegmentSha256": "9c4ecb38e0f4114fc11fa9acd482225d98c1fd07bcb994e600002c60288a5efb"
+    },
+    {
+      "sourceLine": 108,
+      "sourceEndLine": 108,
+      "sourceKind": "paragraph",
+      "sourceSha256": "cf53a22241e600002e932c56a0c9e40e4ab41a8d7b59489fefe0028537546783",
+      "sourceReferences": [
+        "n2"
+      ],
+      "treatment": "translated",
+      "targetId": "t4en-u108",
+      "section": "3",
+      "translationLineStart": 400,
+      "translationLineEnd": 414,
+      "translationSegmentSha256": "be3d889e895004aace967464557557febebc3d1bcd04b4c8beb06241f1af7e52"
+    },
+    {
+      "sourceLine": 110,
+      "sourceEndLine": 110,
+      "sourceKind": "heading",
+      "sourceSha256": "7aba585d4ba93da57c34f5159c0db48a6daf2abbf8fd6dda2c11bdc12896994d",
+      "sourceReferences": [],
+      "treatment": "translated",
+      "targetId": "t4en-u110",
+      "section": "4",
+      "translationLineStart": 415,
+      "translationLineEnd": 423,
+      "translationSegmentSha256": "374d0175c55daec2c8ea08636fbb3ce5c782b8a0ad4aab3c50da2050a3e341c4"
+    },
+    {
+      "sourceLine": 112,
+      "sourceEndLine": 112,
+      "sourceKind": "heading",
+      "sourceSha256": "7dde8622016a4fa183242bb9a8ff9c635851f160a4f2d37b5fd222aef775b492",
+      "sourceReferences": [],
+      "treatment": "translated",
+      "targetId": "t4en-u112",
+      "section": "4.1",
+      "translationLineStart": 424,
+      "translationLineEnd": 432,
+      "translationSegmentSha256": "cff2587d2eb98bad3d9fe349573301ab249d0641fe1585c87e58fbfe9355dc34"
+    },
+    {
+      "sourceLine": 114,
+      "sourceEndLine": 114,
+      "sourceKind": "paragraph",
+      "sourceSha256": "e839fc3bd5b83aae60b085b559c2ff2367e047e98021044290b3c982d4d12e8a",
+      "sourceReferences": [],
+      "treatment": "translated",
+      "targetId": "t4en-u114",
+      "section": "4.1",
+      "translationLineStart": 433,
+      "translationLineEnd": 439,
+      "translationSegmentSha256": "1155dff3e97aba7d9966855a17db90236a10963c55bc5365d9efb8f4df7f7e44"
+    },
+    {
+      "sourceLine": 116,
+      "sourceEndLine": 116,
+      "sourceKind": "paragraph",
+      "sourceSha256": "bd3a41b5634d84bb12cc7eca8b0f602e42417b6ee908736a47f6363c12a7028c",
+      "sourceReferences": [],
+      "treatment": "translated",
+      "targetId": "t4en-u116",
+      "section": "4.1",
+      "translationLineStart": 440,
+      "translationLineEnd": 446,
+      "translationSegmentSha256": "68ebed45fdb04c1c7f2517900485238d17a95a5578634625d5dd9e387285dd2d"
+    },
+    {
+      "sourceLine": 118,
+      "sourceEndLine": 118,
+      "sourceKind": "heading",
+      "sourceSha256": "9829643ca7a88b70ffd10693eb711b0d366afffb895de83796e30d689c20d46f",
+      "sourceReferences": [],
+      "treatment": "translated",
+      "targetId": "t4en-u118",
+      "section": "4.2",
+      "translationLineStart": 447,
+      "translationLineEnd": 455,
+      "translationSegmentSha256": "714a705b57413ab10ae7aa3558623afa493d2143c6f0707709ec7e0eae9cbe2a"
+    },
+    {
+      "sourceLine": 120,
+      "sourceEndLine": 120,
+      "sourceKind": "paragraph",
+      "sourceSha256": "929a5a986306f78781dccdff8946e3d89b5f287c2acba217184ea6c2a4402dfc",
+      "sourceReferences": [],
+      "treatment": "translated",
+      "targetId": "t4en-u120",
+      "section": "4.2",
+      "translationLineStart": 456,
+      "translationLineEnd": 462,
+      "translationSegmentSha256": "2e2e30410b223e47d8c814d8960802d30f54fe8125f87085d4bab37fea77f9b1"
+    },
+    {
+      "sourceLine": 122,
+      "sourceEndLine": 122,
+      "sourceKind": "paragraph",
+      "sourceSha256": "ae9643d55b119d20f2f68ee1c5cd2f8575682763e84960513d1d585b9b66bc7f",
+      "sourceReferences": [],
+      "treatment": "translated",
+      "targetId": "t4en-u122",
+      "section": "4.2",
+      "translationLineStart": 463,
+      "translationLineEnd": 469,
+      "translationSegmentSha256": "dcf5d980e099ffd92d3591ebfa7f9ed47780603bcb829c746ae4c666b75271cb"
+    },
+    {
+      "sourceLine": 124,
+      "sourceEndLine": 124,
+      "sourceKind": "paragraph",
+      "sourceSha256": "27d54db99c28c5c03c74a46bdc74488313239581b9bb22c92bf2d4b9732bb7dc",
+      "sourceReferences": [
+        "b10",
+        "b16",
+        "b17",
+        "b12",
+        "b28"
+      ],
+      "treatment": "translated",
+      "targetId": "t4en-u124",
+      "section": "4.2",
+      "translationLineStart": 470,
+      "translationLineEnd": 476,
+      "translationSegmentSha256": "ddb6d5a022893a007535083730ed0cdfcd96ee639fb5b8ca6b951b9506271c59"
+    },
+    {
+      "sourceLine": 126,
+      "sourceEndLine": 126,
+      "sourceKind": "paragraph",
+      "sourceSha256": "d4749725a4552060e31dfe6a7838d074cc81e8f004df76796c40a06568d573fd",
+      "sourceReferences": [
+        "b25"
+      ],
+      "treatment": "translated",
+      "targetId": "t4en-u126",
+      "section": "4.2",
+      "translationLineStart": 477,
+      "translationLineEnd": 491,
+      "translationSegmentSha256": "62a5bb32351d1610eef16d207c708452e46623de337ffb60be61298cd7db753e"
+    },
+    {
+      "sourceLine": 128,
+      "sourceEndLine": 128,
+      "sourceKind": "heading",
+      "sourceSha256": "3265af67c270d019e578b9f2479d2184e9aff1d59867bdd1870495654226c500",
+      "sourceReferences": [],
+      "treatment": "translated",
+      "targetId": "t4en-u128",
+      "section": "4.3",
+      "translationLineStart": 492,
+      "translationLineEnd": 500,
+      "translationSegmentSha256": "df7ca4428f4d9ff619b09a7392f7c27f5140a8f0419e85ac6abc8f72959f8b43"
+    },
+    {
+      "sourceLine": 130,
+      "sourceEndLine": 130,
+      "sourceKind": "paragraph",
+      "sourceSha256": "382aa7ecb0fe221e0b44d2576779d97d24ffa470cc2123ccc9ab88123dec4c88",
+      "sourceReferences": [],
+      "treatment": "translated",
+      "targetId": "t4en-u130",
+      "section": "4.3",
+      "translationLineStart": 501,
+      "translationLineEnd": 507,
+      "translationSegmentSha256": "42c77249762a84b4c73eef5afd714810624f75791104bcdbf0e0137e3118a2bc"
+    },
+    {
+      "sourceLine": 132,
+      "sourceEndLine": 132,
+      "sourceKind": "paragraph",
+      "sourceSha256": "e43486615b692f1eaa9678f5fd91923e7d8b742c8804b06a94bb081aee96cac9",
+      "sourceReferences": [],
+      "treatment": "translated",
+      "targetId": "t4en-u132",
+      "section": "4.3",
+      "translationLineStart": 508,
+      "translationLineEnd": 514,
+      "translationSegmentSha256": "fdaa08a7e3b16278de329131cea08305fc941c705ffac4c241e26049ea69d29d"
+    },
+    {
+      "sourceLine": 134,
+      "sourceEndLine": 134,
+      "sourceKind": "paragraph",
+      "sourceSha256": "4a3afc982f5e785688ab9014b4c98b16c1937faaec766ee3950997e5e0a1386c",
+      "sourceReferences": [
+        "b26",
+        "b27"
+      ],
+      "treatment": "translated",
+      "targetId": "t4en-u134",
+      "section": "4.3",
+      "translationLineStart": 515,
+      "translationLineEnd": 521,
+      "translationSegmentSha256": "93afb2ff2b4670c33f1f1c41661c35ad274ab3d40d564eb0b3442f712acdf16e"
+    },
+    {
+      "sourceLine": 136,
+      "sourceEndLine": 136,
+      "sourceKind": "paragraph",
+      "sourceSha256": "497d670b14d8088e041c18f12d578e554380194143d6bbc6ef753e266e172505",
+      "sourceReferences": [
+        "b10"
+      ],
+      "treatment": "translated",
+      "targetId": "t4en-u136",
+      "section": "4.3",
+      "translationLineStart": 522,
+      "translationLineEnd": 528,
+      "translationSegmentSha256": "74984a2733ed422fac4c18029d5a36b7201e546fadf9373e1d005c6caab5d963"
+    },
+    {
+      "sourceLine": 138,
+      "sourceEndLine": 138,
+      "sourceKind": "paragraph",
+      "sourceSha256": "329e235105fc3b5e62ca45808dd08037bd0a27c1fdda2aec1e228d60474778c7",
+      "sourceReferences": [],
+      "treatment": "translated",
+      "targetId": "t4en-u138",
+      "section": "4.3",
+      "translationLineStart": 529,
+      "translationLineEnd": 543,
+      "translationSegmentSha256": "0d7cda2569b6295df733192f2faddc03f5268d7a7174d79bfe32fb4436d52502"
+    },
+    {
+      "sourceLine": 140,
+      "sourceEndLine": 140,
+      "sourceKind": "paragraph",
+      "sourceSha256": "e3bc671419ec8e7362003c99a7e614123c773c1b5b3c97625446f4f217bbf5c5",
+      "sourceReferences": [
+        "b10"
+      ],
+      "treatment": "translated",
+      "targetId": "t4en-u140",
+      "section": "4.3",
+      "translationLineStart": 544,
+      "translationLineEnd": 550,
+      "translationSegmentSha256": "3e58a408ce8699aa8c589504fcecb29affb1be58c47429a22816847c81880caa"
+    },
+    {
+      "sourceLine": 142,
+      "sourceEndLine": 142,
+      "sourceKind": "paragraph",
+      "sourceSha256": "5411dcb826fbf158b077f3aa36921ad4f81cffee94013ef91ea86576a00cbbc0",
+      "sourceReferences": [],
+      "treatment": "translated",
+      "targetId": "t4en-u142",
+      "section": "4.3",
+      "translationLineStart": 551,
+      "translationLineEnd": 557,
+      "translationSegmentSha256": "2168df17f1eaa4b2cb9714d3b9cfc4abab21e785364148e35f83dde47eb15c61"
+    },
+    {
+      "sourceLine": 144,
+      "sourceEndLine": 144,
+      "sourceKind": "paragraph",
+      "sourceSha256": "d6e1ca6c016715858093e45f08ad0be9d9aad9896f504de27193e2c01a77ca8b",
+      "sourceReferences": [
+        "b18",
+        "b19",
+        "b20",
+        "b13"
+      ],
+      "treatment": "translated",
+      "targetId": "t4en-u144",
+      "section": "4.3",
+      "translationLineStart": 558,
+      "translationLineEnd": 564,
+      "translationSegmentSha256": "dfe68d27f632420972680d83042a60a5afbabdb1cd545b449f19c5e0bf1cb75b"
+    },
+    {
+      "sourceLine": 146,
+      "sourceEndLine": 146,
+      "sourceKind": "heading",
+      "sourceSha256": "f55a072e4b0e4be73c790bcd1d3519f04792c30c33779cfa988f7500dc708cd9",
+      "sourceReferences": [],
+      "treatment": "translated",
+      "targetId": "t4en-u146",
+      "section": "4.4",
+      "translationLineStart": 565,
+      "translationLineEnd": 573,
+      "translationSegmentSha256": "8a2c55ffbd55c615169f63eb3bd202acd6d0bdee642f4e5e4884669c343876b9"
+    },
+    {
+      "sourceLine": 148,
+      "sourceEndLine": 148,
+      "sourceKind": "paragraph",
+      "sourceSha256": "a5f5d8c3550d782aad356ce91895ef4eee669ba372464129df8d459a398ebca5",
+      "sourceReferences": [
+        "b21"
+      ],
+      "treatment": "translated",
+      "targetId": "t4en-u148",
+      "section": "4.4",
+      "translationLineStart": 574,
+      "translationLineEnd": 580,
+      "translationSegmentSha256": "209e899deeaccf857a4583c5bc179535b9d62289b5063322133d21c4d621d977"
+    },
+    {
+      "sourceLine": 150,
+      "sourceEndLine": 150,
+      "sourceKind": "paragraph",
+      "sourceSha256": "0105293562b94cb6a5a5a906831d7bdf41fd6c181851f2106600507bf18d7c61",
+      "sourceReferences": [
+        "n3"
+      ],
+      "treatment": "translated",
+      "targetId": "t4en-u150",
+      "section": "4.4",
+      "translationLineStart": 581,
+      "translationLineEnd": 595,
+      "translationSegmentSha256": "59e0da24ca1ce6212dd88f5faa59205b9bebb90328cb4ca5519dec000065f4f5"
+    },
+    {
+      "sourceLine": 152,
+      "sourceEndLine": 152,
+      "sourceKind": "heading",
+      "sourceSha256": "1c6210485d785e8f122d973d9387e9ff26a7617fd2f395701518b4611a6acb30",
+      "sourceReferences": [],
+      "treatment": "translated",
+      "targetId": "t4en-u152",
+      "section": "5",
+      "translationLineStart": 596,
+      "translationLineEnd": 604,
+      "translationSegmentSha256": "0efda2da63e5ddbca86f04baeb966782a1df600d94f4d03174d2cb2c8741f520"
+    },
+    {
+      "sourceLine": 154,
+      "sourceEndLine": 154,
+      "sourceKind": "paragraph",
+      "sourceSha256": "96f64c67c5746d717d8b67512ed3238c28b1b13807a1ec68b9aaa393bcc75f44",
+      "sourceReferences": [],
+      "treatment": "translated",
+      "targetId": "t4en-u154",
+      "section": "5",
+      "translationLineStart": 605,
+      "translationLineEnd": 611,
+      "translationSegmentSha256": "6a9934fe806ccbceca9ee7509e7e15375a6277431860421e9ea98fbc616b712e"
+    },
+    {
+      "sourceLine": 156,
+      "sourceEndLine": 156,
+      "sourceKind": "heading",
+      "sourceSha256": "9de03834e608f08e43cb27087ad12e121b1878b71a739f7a0aed5f5a541fdd14",
+      "sourceReferences": [],
+      "treatment": "translated",
+      "targetId": "t4en-u156",
+      "section": "5.1",
+      "translationLineStart": 612,
+      "translationLineEnd": 620,
+      "translationSegmentSha256": "b364a20697c73c591722833bfaf2bf382417b0aa26aa67ed0e3abee017e7b607"
+    },
+    {
+      "sourceLine": 158,
+      "sourceEndLine": 158,
+      "sourceKind": "paragraph",
+      "sourceSha256": "61cdfdfce9bfdc532ff5dcf5c40339b757916772dfe63af8a08666f91bffe10b",
+      "sourceReferences": [
+        "b13"
+      ],
+      "treatment": "translated",
+      "targetId": "t4en-u158",
+      "section": "5.1",
+      "translationLineStart": 621,
+      "translationLineEnd": 627,
+      "translationSegmentSha256": "6438e08bb4611ed9433a34fb59d28395abacceff62c12843bfcfc9fefdd9ea0f"
+    },
+    {
+      "sourceLine": 160,
+      "sourceEndLine": 160,
+      "sourceKind": "paragraph",
+      "sourceSha256": "e83b755208957c95596c23de55edc90afc4d047f23dccbdd756dd8e8f88eee0d",
+      "sourceReferences": [
+        "b24"
+      ],
+      "treatment": "translated",
+      "targetId": "t4en-u160",
+      "section": "5.1",
+      "translationLineStart": 628,
+      "translationLineEnd": 634,
+      "translationSegmentSha256": "56948e94e9e158b9910e8ec7a8b853196cb1d2a6b8d9fe0e3880f9b1e20f0d9a"
+    },
+    {
+      "sourceLine": 162,
+      "sourceEndLine": 162,
+      "sourceKind": "paragraph",
+      "sourceSha256": "4785e69a62af3d3ebe54d97a018ecef95abbd22fe8d3a8b8ddfb29a284bc5b93",
+      "sourceReferences": [],
+      "treatment": "translated",
+      "targetId": "t4en-u162",
+      "section": "5.1",
+      "translationLineStart": 635,
+      "translationLineEnd": 641,
+      "translationSegmentSha256": "a64e5dffee5ded3e72f6ea4b2fc1fe5f3bf92c7dfb578c75edfb766e8a2de4ca"
+    },
+    {
+      "sourceLine": 164,
+      "sourceEndLine": 164,
+      "sourceKind": "paragraph",
+      "sourceSha256": "dea80f56f89c37146feb3b98eef0276f32d5035dbc5c2381ac276bb0b3ab8fb7",
+      "sourceReferences": [
+        "b15"
+      ],
+      "treatment": "translated",
+      "targetId": "t4en-u164",
+      "section": "5.1",
+      "translationLineStart": 642,
+      "translationLineEnd": 656,
+      "translationSegmentSha256": "06c545057ebce44c7cbd584f4eb8b82769227e90c2989e3dbe83508b43f98edb"
+    },
+    {
+      "sourceLine": 166,
+      "sourceEndLine": 166,
+      "sourceKind": "heading",
+      "sourceSha256": "096775031a037fc97e8ad6f44773b3b00f935fac0b24958933f60b1284958028",
+      "sourceReferences": [],
+      "treatment": "translated",
+      "targetId": "t4en-u166",
+      "section": "5.2",
+      "translationLineStart": 657,
+      "translationLineEnd": 665,
+      "translationSegmentSha256": "8cd2ad39f29d19de739eceb7ee94346b69473075eebc43b4132b8cfd7ed8557a"
+    },
+    {
+      "sourceLine": 168,
+      "sourceEndLine": 168,
+      "sourceKind": "paragraph",
+      "sourceSha256": "4fd9764e21f9c9760efdd26126f9ef316925f6a04bda5652c52be210f6246c8a",
+      "sourceReferences": [],
+      "treatment": "translated",
+      "targetId": "t4en-u168",
+      "section": "5.2",
+      "translationLineStart": 666,
+      "translationLineEnd": 672,
+      "translationSegmentSha256": "1618717ea7d142334b8b983a75ed9665c85c4981bfbc06583d0e3cba2c3c606c"
+    },
+    {
+      "sourceLine": 170,
+      "sourceEndLine": 170,
+      "sourceKind": "paragraph",
+      "sourceSha256": "3817785908547dee19e246d5253487f552985b2b628df3a1125a0fced955c5d3",
+      "sourceReferences": [
+        "b10"
+      ],
+      "treatment": "translated",
+      "targetId": "t4en-u170",
+      "section": "5.2",
+      "translationLineStart": 673,
+      "translationLineEnd": 679,
+      "translationSegmentSha256": "ea40ddf5a42fcfcc48c03bf055d6d10a7c3f9232bfca43a98b393d772f7b0bee"
+    },
+    {
+      "sourceLine": 172,
+      "sourceEndLine": 172,
+      "sourceKind": "paragraph",
+      "sourceSha256": "adf9eebcfd41f1bab4a8744e728c3aaed5361df6d199a7750b384c8aa1394f89",
+      "sourceReferences": [
+        "b15",
+        "b10"
+      ],
+      "treatment": "translated",
+      "targetId": "t4en-u172",
+      "section": "5.2",
+      "translationLineStart": 680,
+      "translationLineEnd": 686,
+      "translationSegmentSha256": "29690e6d7239750d40847f9b0419341e75a911d1d42aeec296522fcffe2bc7ab"
+    },
+    {
+      "sourceLine": 174,
+      "sourceEndLine": 174,
+      "sourceKind": "paragraph",
+      "sourceSha256": "598eefcd170d66ae230f078bf0f685c979cd3ba7cd0bf0d711a075d80e2fb27c",
+      "sourceReferences": [],
+      "treatment": "translated",
+      "targetId": "t4en-u174",
+      "section": "5.2",
+      "translationLineStart": 687,
+      "translationLineEnd": 693,
+      "translationSegmentSha256": "6849308a580b92ed598fcfc3da29c008ffca8deaf4446e0e07425c780c87ff50"
+    },
+    {
+      "sourceLine": 176,
+      "sourceEndLine": 176,
+      "sourceKind": "paragraph",
+      "sourceSha256": "483fe2d9666b2e88d3265eae81e3371007d57c045bc842027bed72c6ebf095dd",
+      "sourceReferences": [
+        "b10"
+      ],
+      "treatment": "translated",
+      "targetId": "t4en-u176",
+      "section": "5.2",
+      "translationLineStart": 694,
+      "translationLineEnd": 700,
+      "translationSegmentSha256": "3e0eb2e68ea63fb171da99ec998f9c1dffd7249d8cf8aa40c1c7d648afdeeb89"
+    },
+    {
+      "sourceLine": 178,
+      "sourceEndLine": 178,
+      "sourceKind": "paragraph",
+      "sourceSha256": "649e261c1eeb41a9f3ed5bdeddc5ca1c08a2cdf807dc027ea8cdb5fad8c7d220",
+      "sourceReferences": [],
+      "treatment": "translated",
+      "targetId": "t4en-u178",
+      "section": "5.2",
+      "translationLineStart": 701,
+      "translationLineEnd": 707,
+      "translationSegmentSha256": "5173c0ade7256c3d0732926cf3fe99d7722d3120de560f51b86e96abc0bf0ba5"
+    },
+    {
+      "sourceLine": 180,
+      "sourceEndLine": 180,
+      "sourceKind": "paragraph",
+      "sourceSha256": "4930787bdc70e26386b4806c59b986807208a62d78185e7ad4b031e00816c190",
+      "sourceReferences": [],
+      "treatment": "translated",
+      "targetId": "t4en-u180",
+      "section": "5.2",
+      "translationLineStart": 708,
+      "translationLineEnd": 722,
+      "translationSegmentSha256": "19ae8aa2161dcce799348d131101e7b5ac93954a3f59eb105493611aaa92deae"
+    },
+    {
+      "sourceLine": 182,
+      "sourceEndLine": 182,
+      "sourceKind": "heading",
+      "sourceSha256": "439099e2e06ea249f4d893e6a7e7eed7da2b8908d5e98f3ec82bf60f9fed284e",
+      "sourceReferences": [],
+      "treatment": "translated",
+      "targetId": "t4en-u182",
+      "section": "5.3",
+      "translationLineStart": 723,
+      "translationLineEnd": 731,
+      "translationSegmentSha256": "14c3623404672219f349ea53be4f2a6122ab2e46e5bc403242188f4a4478b33f"
+    },
+    {
+      "sourceLine": 184,
+      "sourceEndLine": 184,
+      "sourceKind": "paragraph",
+      "sourceSha256": "ffe309718076cef88d04921985708c9301dab521e4a213eae5f73035b53ce3c0",
+      "sourceReferences": [],
+      "treatment": "translated",
+      "targetId": "t4en-u184",
+      "section": "5.3",
+      "translationLineStart": 732,
+      "translationLineEnd": 738,
+      "translationSegmentSha256": "6d5eb553694ac77dba7878bff2a9b64eb02080aae289fcba26c0ac98c535ebad"
+    },
+    {
+      "sourceLine": 186,
+      "sourceEndLine": 186,
+      "sourceKind": "paragraph",
+      "sourceSha256": "824aabb38c5e93877ceef016bdbd9f29629a35548cde84923476e87239653ed6",
+      "sourceReferences": [],
+      "treatment": "translated",
+      "targetId": "t4en-u186",
+      "section": "5.3",
+      "translationLineStart": 739,
+      "translationLineEnd": 745,
+      "translationSegmentSha256": "738a93d25c488628702751171ef4997457f2d518a46ad4369eb072970b99af38"
+    },
+    {
+      "sourceLine": 188,
+      "sourceEndLine": 188,
+      "sourceKind": "paragraph",
+      "sourceSha256": "33791a5273789a709e94f82e18f2c64840e666d6cb751146c251249a97c9669d",
+      "sourceReferences": [],
+      "treatment": "translated",
+      "targetId": "t4en-u188",
+      "section": "5.3",
+      "translationLineStart": 746,
+      "translationLineEnd": 752,
+      "translationSegmentSha256": "7449fe054739863565adc397386a956f99d6c92f1802c1e355e0dd6b400daee4"
+    },
+    {
+      "sourceLine": 190,
+      "sourceEndLine": 190,
+      "sourceKind": "paragraph",
+      "sourceSha256": "eb81623605647aefaf4a73061d45c31bcc6984259fc27ecf2a8b82ec6dd97744",
+      "sourceReferences": [],
+      "treatment": "translated",
+      "targetId": "t4en-u190",
+      "section": "5.3",
+      "translationLineStart": 753,
+      "translationLineEnd": 759,
+      "translationSegmentSha256": "1557d5be6f367c1716c57bdb04a6069efa30908859e393440d4015e472c68c02"
+    },
+    {
+      "sourceLine": 192,
+      "sourceEndLine": 199,
+      "sourceKind": "table",
+      "sourceSha256": "74c726ee69b430964046fff7e4f7c10e23bc819773bdf94f479bea2a68f75363",
+      "sourceReferences": [],
+      "treatment": "translated",
+      "targetId": "t4en-u192",
+      "section": "5.3",
+      "translationLineStart": 760,
+      "translationLineEnd": 773,
+      "translationSegmentSha256": "c0ef0bd68f56c8b97a3ec1f5d152cf3d359b9e03ed5e4308c12b2d36f8ea85f8"
+    },
+    {
+      "sourceLine": 201,
+      "sourceEndLine": 201,
+      "sourceKind": "paragraph",
+      "sourceSha256": "2fa78a4c9ff05dad61f6942379a2fbbb84ac7517c628f34c3fcb96c2ae8430f8",
+      "sourceReferences": [],
+      "treatment": "translated",
+      "targetId": "t4en-u201",
+      "section": "5.3",
+      "translationLineStart": 774,
+      "translationLineEnd": 788,
+      "translationSegmentSha256": "e6082287baf304db20481b47b2e9f3fb48c759580bfcedd59e372dc918b7075b"
+    },
+    {
+      "sourceLine": 203,
+      "sourceEndLine": 203,
+      "sourceKind": "heading",
+      "sourceSha256": "011721d9a6581dcb7e210a0cd0606c3af27f47a604d807ee33a6a5944010df7b",
+      "sourceReferences": [],
+      "treatment": "translated",
+      "targetId": "t4en-u203",
+      "section": "6",
+      "translationLineStart": 789,
+      "translationLineEnd": 797,
+      "translationSegmentSha256": "bd10e6afa8113609d7baf5d114ef6fbe9715a646faef71518035af866a633a9d"
+    },
+    {
+      "sourceLine": 205,
+      "sourceEndLine": 205,
+      "sourceKind": "paragraph",
+      "sourceSha256": "eed16e54ec98de3c8b318ba551e564a6753aaf568aa8f96fcd34a21f19997f41",
+      "sourceReferences": [],
+      "treatment": "translated",
+      "targetId": "t4en-u205",
+      "section": "6",
+      "translationLineStart": 798,
+      "translationLineEnd": 804,
+      "translationSegmentSha256": "d3754c54a0035fe8495117fc6410a95b27957618fde04eabe8b6b96d6adfa593"
+    },
+    {
+      "sourceLine": 207,
+      "sourceEndLine": 207,
+      "sourceKind": "paragraph",
+      "sourceSha256": "9ad9b77bb61594f153ff87431a06d35b755fbe154a6c58696a6af9900749a7a1",
+      "sourceReferences": [],
+      "treatment": "translated",
+      "targetId": "t4en-u207",
+      "section": "6",
+      "translationLineStart": 805,
+      "translationLineEnd": 811,
+      "translationSegmentSha256": "e5cad196de5a0256cc5bd620100d9d310e4f669df4b329231a8104d9363ec346"
+    },
+    {
+      "sourceLine": 209,
+      "sourceEndLine": 209,
+      "sourceKind": "paragraph",
+      "sourceSha256": "943036faa99ead5c68e9cc2929d18a48f2314c06e573882ed56e1397c5d7fc53",
+      "sourceReferences": [],
+      "treatment": "translated",
+      "targetId": "t4en-u209",
+      "section": "6",
+      "translationLineStart": 812,
+      "translationLineEnd": 818,
+      "translationSegmentSha256": "be6f30d4bc97094d53025fb52de666f6a672cf3895dab9818fafbae2e17cff8b"
+    },
+    {
+      "sourceLine": 211,
+      "sourceEndLine": 211,
+      "sourceKind": "paragraph",
+      "sourceSha256": "798e998637f60a2972e05b92af0abc16d490aad5d43e0676fa4a5acb2923f1da",
+      "sourceReferences": [
+        "n4",
+        "n5"
+      ],
+      "treatment": "translated",
+      "targetId": "t4en-u211",
+      "section": "6",
+      "translationLineStart": 819,
+      "translationLineEnd": 833,
+      "translationSegmentSha256": "ea274e47f6bb0afa0994c8042f377343e9a2ae8e16fb070b7bfac250a3369c50"
+    },
+    {
+      "sourceLine": 213,
+      "sourceEndLine": 213,
+      "sourceKind": "rule",
+      "sourceSha256": "cb3f91d54eee30e53e35b2b99905f70f169ed549fd78909d3dac2defc9ed8d3b",
+      "sourceReferences": [],
+      "treatment": "separator"
+    },
+    {
+      "sourceLine": 215,
+      "sourceEndLine": 215,
+      "sourceKind": "heading",
+      "sourceSha256": "20ddce3e5c3ca12ff3e961b7ecbf85cca08e29f6598ea6e0b7631787799dbf9e",
+      "sourceReferences": [],
+      "treatment": "translated",
+      "targetId": "t4en-u215",
+      "section": "6",
+      "translationLineStart": 834,
+      "translationLineEnd": 840,
+      "translationSegmentSha256": "cf657bc8ba8478f494325c8f90d84d4175073ce4f0d0f2f3b83d3cda509e2ea0"
+    },
+    {
+      "sourceLine": 217,
+      "sourceEndLine": 217,
+      "sourceKind": "note",
+      "sourceSha256": "001d6a1e88f0a74f2938d373859857af11c3e306939e1e4392a55b9b26f6c797",
+      "sourceReferences": [
+        "n1",
+        "b13",
+        "b14"
+      ],
+      "treatment": "translated-author-note",
+      "targetId": "author-note-1",
+      "section": "6",
+      "translationLineStart": 841,
+      "translationLineEnd": 847,
+      "translationSegmentSha256": "a6e41d2613247aa6a8908259172075dcec437edf67bf2218deff50c09047d411"
+    },
+    {
+      "sourceLine": 218,
+      "sourceEndLine": 218,
+      "sourceKind": "note",
+      "sourceSha256": "1dfdae761dc7393a8422742d0152f50ee14074b6ae0bab93517435fc6dedfb2c",
+      "sourceReferences": [
+        "n2"
+      ],
+      "treatment": "translated-author-note",
+      "targetId": "author-note-2",
+      "section": "6",
+      "translationLineStart": 848,
+      "translationLineEnd": 854,
+      "translationSegmentSha256": "a595f08e1e372302cca35e515b639fa408e80762d707e6487329308975ab5767"
+    },
+    {
+      "sourceLine": 219,
+      "sourceEndLine": 219,
+      "sourceKind": "note",
+      "sourceSha256": "b77bea9e918ad50b47ea69b5447b262fb879b8ca8aac6e25f2ce2456218e829e",
+      "sourceReferences": [
+        "n3",
+        "b22",
+        "b23"
+      ],
+      "treatment": "translated-author-note",
+      "targetId": "author-note-3",
+      "section": "6",
+      "translationLineStart": 855,
+      "translationLineEnd": 861,
+      "translationSegmentSha256": "51205d477928aef4972fb0644ca372b9a2d5f9ab5fa243e3583d1ccca316ad58"
+    },
+    {
+      "sourceLine": 220,
+      "sourceEndLine": 220,
+      "sourceKind": "note",
+      "sourceSha256": "548fc49e47fdfce428cbb5a19833f7ac599619251407e6ebf8e8e85ba356d7c5",
+      "sourceReferences": [
+        "n4"
+      ],
+      "treatment": "translated-author-note",
+      "targetId": "author-note-4",
+      "section": "6",
+      "translationLineStart": 862,
+      "translationLineEnd": 868,
+      "translationSegmentSha256": "e0e545f66b8c61e4d5d7eb79cd5f264723b609b0b2702296bd00f753ce48af59"
+    },
+    {
+      "sourceLine": 221,
+      "sourceEndLine": 221,
+      "sourceKind": "note",
+      "sourceSha256": "e3187afaa42cbb81dcce5943cfb01d08cc7b2acdeac9a5ce034ddb3970e7104c",
+      "sourceReferences": [
+        "n5"
+      ],
+      "treatment": "translated-author-note",
+      "targetId": "author-note-5",
+      "section": "6",
+      "translationLineStart": 869,
+      "translationLineEnd": 875,
+      "translationSegmentSha256": "9e92ca9785fb50ec4bfbcc7aacbb9a73ebff3c5abd37f39abf49133b1a5ee415"
+    },
+    {
+      "sourceLine": 223,
+      "sourceEndLine": 223,
+      "sourceKind": "heading",
+      "sourceSha256": "7d5d5b94be87abefe6ae558bd60ddd47af33e272e3c31f600d84ba2daa59320f",
+      "sourceReferences": [],
+      "treatment": "translated",
+      "targetId": "t4en-u223",
+      "section": "6",
+      "translationLineStart": 876,
+      "translationLineEnd": 885,
+      "translationSegmentSha256": "0525c868d08d9499c3e637cffdbca8be81c58f5e0ab2a25bc469daaa99f8c033"
+    },
+    {
+      "sourceLine": 225,
+      "sourceEndLine": 225,
+      "sourceKind": "reference",
+      "sourceSha256": "3f03d471d54276066eaf18785a63b742a1eed968f21f2c5ccf97c998cf7bb015",
+      "sourceReferences": [
+        "b1"
+      ],
+      "treatment": "bibliography-verbatim",
+      "targetId": "ref-1",
+      "section": "6",
+      "translationLineStart": 886,
+      "translationLineEnd": 892,
+      "translationSegmentSha256": "36d17f5ab6bf0315a694c4544d03774d88b62c4ed2a32719a504c7f182a947ed"
+    },
+    {
+      "sourceLine": 226,
+      "sourceEndLine": 226,
+      "sourceKind": "reference",
+      "sourceSha256": "54c8718594b5a0c3d6612039393068eff4d30364b0a7ff4a8fd93601a322741d",
+      "sourceReferences": [
+        "b2"
+      ],
+      "treatment": "bibliography-verbatim",
+      "targetId": "ref-2",
+      "section": "6",
+      "translationLineStart": 893,
+      "translationLineEnd": 899,
+      "translationSegmentSha256": "74d1a26a5daaf1e5194115358fe94925fdf6f6fb198514e34c14af5398a13611"
+    },
+    {
+      "sourceLine": 227,
+      "sourceEndLine": 227,
+      "sourceKind": "reference",
+      "sourceSha256": "9a1dd991dde19520a1b2679cb3132dc68aebed9ab2e0912b5ccbff9c1bcd05bc",
+      "sourceReferences": [
+        "b3"
+      ],
+      "treatment": "bibliography-verbatim",
+      "targetId": "ref-3",
+      "section": "6",
+      "translationLineStart": 900,
+      "translationLineEnd": 906,
+      "translationSegmentSha256": "56cc0e9fc01b0c834f631480bf1486b70cd3720a2158c2d3d11d819f729bab3a"
+    },
+    {
+      "sourceLine": 228,
+      "sourceEndLine": 228,
+      "sourceKind": "reference",
+      "sourceSha256": "1a92714ac59e392fdcadfaf9af0d8bab8c567e03e1f5acfa10a831c48637d963",
+      "sourceReferences": [
+        "b4"
+      ],
+      "treatment": "bibliography-verbatim",
+      "targetId": "ref-4",
+      "section": "6",
+      "translationLineStart": 907,
+      "translationLineEnd": 913,
+      "translationSegmentSha256": "07c09ca5230dd2aee48ab4127dc1e8f9768e00577f718d173b27a8413816403f"
+    },
+    {
+      "sourceLine": 229,
+      "sourceEndLine": 229,
+      "sourceKind": "reference",
+      "sourceSha256": "9ee41e6e73ddbdb8f0c9690e1c37248e176af296b941d9255e89d72dd3785786",
+      "sourceReferences": [
+        "b5"
+      ],
+      "treatment": "bibliography-verbatim",
+      "targetId": "ref-5",
+      "section": "6",
+      "translationLineStart": 914,
+      "translationLineEnd": 920,
+      "translationSegmentSha256": "c39d7444e52cccf9bc8fcd9c28c6e3ec1b31499b4e168f126ae4a9be07114b85"
+    },
+    {
+      "sourceLine": 230,
+      "sourceEndLine": 230,
+      "sourceKind": "reference",
+      "sourceSha256": "ae62463f8a52ee6b44b053530c98af230a5e6a3c25fcc02225cb247be81027f9",
+      "sourceReferences": [
+        "b6"
+      ],
+      "treatment": "bibliography-verbatim",
+      "targetId": "ref-6",
+      "section": "6",
+      "translationLineStart": 921,
+      "translationLineEnd": 927,
+      "translationSegmentSha256": "fdbf1eb917a68ff0e6683824a61b9b81e82a6ce05bd1c4dc1495e2bd17267137"
+    },
+    {
+      "sourceLine": 231,
+      "sourceEndLine": 231,
+      "sourceKind": "reference",
+      "sourceSha256": "98ec7718d97ed2b6b15c1157fb787644e95d0912be68580022602fa4892dab37",
+      "sourceReferences": [
+        "b7"
+      ],
+      "treatment": "bibliography-verbatim",
+      "targetId": "ref-7",
+      "section": "6",
+      "translationLineStart": 928,
+      "translationLineEnd": 934,
+      "translationSegmentSha256": "133331bdf0c941da66114ee3b77ddfb1db141b43602b0c8dd60c318251f33a6b"
+    },
+    {
+      "sourceLine": 232,
+      "sourceEndLine": 232,
+      "sourceKind": "reference",
+      "sourceSha256": "44938d2a6685df4dee32b32cd3061bc166556536acb26eea4c17d9e25b311ec5",
+      "sourceReferences": [
+        "b8"
+      ],
+      "treatment": "bibliography-verbatim",
+      "targetId": "ref-8",
+      "section": "6",
+      "translationLineStart": 935,
+      "translationLineEnd": 941,
+      "translationSegmentSha256": "d17089967f418cf177a7e834784b52548556432d3d46f908916b5ad2d20ec41c"
+    },
+    {
+      "sourceLine": 233,
+      "sourceEndLine": 233,
+      "sourceKind": "reference",
+      "sourceSha256": "e9eb8d9667e6fa9ffa5b8af1b6dbf092264c5b4723826e5d846e4b18708e4b40",
+      "sourceReferences": [
+        "b9"
+      ],
+      "treatment": "bibliography-verbatim",
+      "targetId": "ref-9",
+      "section": "6",
+      "translationLineStart": 942,
+      "translationLineEnd": 948,
+      "translationSegmentSha256": "84c1668943e6c3c712ff18245967848c59890c00a99d4d344830a5b627c65b5e"
+    },
+    {
+      "sourceLine": 234,
+      "sourceEndLine": 234,
+      "sourceKind": "reference",
+      "sourceSha256": "f2da2d66984876fdc51570c7fd165810fa9162478837e18eaa4f35d54ee0b2cb",
+      "sourceReferences": [
+        "b10"
+      ],
+      "treatment": "bibliography-verbatim",
+      "targetId": "ref-10",
+      "section": "6",
+      "translationLineStart": 949,
+      "translationLineEnd": 955,
+      "translationSegmentSha256": "cda448065a7111f445c0180cc1eb5895a5c796936d55de2087f64885d50dbfe0"
+    },
+    {
+      "sourceLine": 235,
+      "sourceEndLine": 235,
+      "sourceKind": "reference",
+      "sourceSha256": "8751a07bb1f7d50530ecbc8a904400bf691a2b5f7fe60f96f4d3d038b760e608",
+      "sourceReferences": [
+        "b11"
+      ],
+      "treatment": "bibliography-verbatim",
+      "targetId": "ref-11",
+      "section": "6",
+      "translationLineStart": 956,
+      "translationLineEnd": 962,
+      "translationSegmentSha256": "a26ae13d790db2ae6b1d5d05cb0fcc4e33d261c9d54f31653320ad80c84f6df9"
+    },
+    {
+      "sourceLine": 236,
+      "sourceEndLine": 236,
+      "sourceKind": "reference",
+      "sourceSha256": "91292ebde35a2c86677bc481773100abb3c05cd8279f1be2c1a50a12506c6f66",
+      "sourceReferences": [
+        "b12"
+      ],
+      "treatment": "bibliography-verbatim",
+      "targetId": "ref-12",
+      "section": "6",
+      "translationLineStart": 963,
+      "translationLineEnd": 969,
+      "translationSegmentSha256": "5f12da59e3021954be4b7b738751cbbd7eba6da3ded8625d6d781bec1c1fb82e"
+    },
+    {
+      "sourceLine": 237,
+      "sourceEndLine": 237,
+      "sourceKind": "reference",
+      "sourceSha256": "91483ca7b1bd38ef915f5534f076cb157b3ba311c7a820c14f2aa6516fca60f1",
+      "sourceReferences": [
+        "b13"
+      ],
+      "treatment": "bibliography-verbatim",
+      "targetId": "ref-13",
+      "section": "6",
+      "translationLineStart": 970,
+      "translationLineEnd": 976,
+      "translationSegmentSha256": "6ca60106fe6a6d908b5f8153651a9923ac9966a7acb9d0d9ee8af03b6f76766a"
+    },
+    {
+      "sourceLine": 238,
+      "sourceEndLine": 238,
+      "sourceKind": "reference",
+      "sourceSha256": "64e8c890fb2f6be3c7ec9630966c321d416d99a91de60506b23d94dfba37bca3",
+      "sourceReferences": [
+        "b14"
+      ],
+      "treatment": "bibliography-verbatim",
+      "targetId": "ref-14",
+      "section": "6",
+      "translationLineStart": 977,
+      "translationLineEnd": 983,
+      "translationSegmentSha256": "901922053a7082d4f11720abfa2038d200e038cd88ec16758610f6865eccda09"
+    },
+    {
+      "sourceLine": 239,
+      "sourceEndLine": 239,
+      "sourceKind": "reference",
+      "sourceSha256": "26d8c3d4b3234232aa58a82e4bcb89ff4e4a7873615892cef6ac0c4fd103783c",
+      "sourceReferences": [
+        "b15"
+      ],
+      "treatment": "bibliography-verbatim",
+      "targetId": "ref-15",
+      "section": "6",
+      "translationLineStart": 984,
+      "translationLineEnd": 990,
+      "translationSegmentSha256": "f97e5a9d5be1abb77bca244c33554fe3b51604c58de5ee56105054e77c0256f6"
+    },
+    {
+      "sourceLine": 240,
+      "sourceEndLine": 240,
+      "sourceKind": "reference",
+      "sourceSha256": "9ae83210b8e7b8ef0e1150abeef074125c53f8968d104c61e3b7189b02e321c5",
+      "sourceReferences": [
+        "b16"
+      ],
+      "treatment": "bibliography-verbatim",
+      "targetId": "ref-16",
+      "section": "6",
+      "translationLineStart": 991,
+      "translationLineEnd": 997,
+      "translationSegmentSha256": "6ed9a6980742f3d3e5e4adecce00f04cb8902dea80b77a7bf719d8457abd1c95"
+    },
+    {
+      "sourceLine": 241,
+      "sourceEndLine": 241,
+      "sourceKind": "reference",
+      "sourceSha256": "3bbb2ce448b615a30747e7f3121320747cee2ecfc0fd550559e8eba57f2b0948",
+      "sourceReferences": [
+        "b17"
+      ],
+      "treatment": "bibliography-verbatim",
+      "targetId": "ref-17",
+      "section": "6",
+      "translationLineStart": 998,
+      "translationLineEnd": 1004,
+      "translationSegmentSha256": "13ce001a1e539bcf79d9a4bb0149c34f9475957a8a36902f208171aff3e8f0df"
+    },
+    {
+      "sourceLine": 242,
+      "sourceEndLine": 242,
+      "sourceKind": "reference",
+      "sourceSha256": "7e80b1c4a2cbb90b740577726e75c80c6aaad00c3b69fd86cfd727094ee41cee",
+      "sourceReferences": [
+        "b18"
+      ],
+      "treatment": "bibliography-verbatim",
+      "targetId": "ref-18",
+      "section": "6",
+      "translationLineStart": 1005,
+      "translationLineEnd": 1011,
+      "translationSegmentSha256": "8b08442c92bb2a62c95d1ec1d6556c5a6a493388697202b900edb37ede3a0071"
+    },
+    {
+      "sourceLine": 243,
+      "sourceEndLine": 243,
+      "sourceKind": "reference",
+      "sourceSha256": "2f11a4cb56ff06227c7a094c1539b0845be5ee730c0f0f707e5c776fec1537f9",
+      "sourceReferences": [
+        "b19"
+      ],
+      "treatment": "bibliography-verbatim",
+      "targetId": "ref-19",
+      "section": "6",
+      "translationLineStart": 1012,
+      "translationLineEnd": 1018,
+      "translationSegmentSha256": "fcf8a53828a90c711cb451acddf53968a8bddf5a9db27ad71e11492980ba073f"
+    },
+    {
+      "sourceLine": 244,
+      "sourceEndLine": 244,
+      "sourceKind": "reference",
+      "sourceSha256": "7f9ea180d631bd579ff57304cf83cbbe11abbfcfe5830f8a667f57f47033313a",
+      "sourceReferences": [
+        "b20"
+      ],
+      "treatment": "bibliography-verbatim",
+      "targetId": "ref-20",
+      "section": "6",
+      "translationLineStart": 1019,
+      "translationLineEnd": 1025,
+      "translationSegmentSha256": "b30fb84f138df4bda6e341e6107c1581addd9074b0636f05cd42b5b5a881c057"
+    },
+    {
+      "sourceLine": 245,
+      "sourceEndLine": 245,
+      "sourceKind": "reference",
+      "sourceSha256": "d716ad9342a0ef2b7afc131bd7ac183ac0906e6710b9fb71ebfe32811fb84d99",
+      "sourceReferences": [
+        "b21"
+      ],
+      "treatment": "bibliography-verbatim",
+      "targetId": "ref-21",
+      "section": "6",
+      "translationLineStart": 1026,
+      "translationLineEnd": 1032,
+      "translationSegmentSha256": "26894f855e39c0f22b4c9cad421884c98f0f87624d1a48c0de0bcf8c33cdca1d"
+    },
+    {
+      "sourceLine": 246,
+      "sourceEndLine": 246,
+      "sourceKind": "reference",
+      "sourceSha256": "7cdaab24471de2969e141f3935172067e0b8339b5358fe4fe22aa9c0e584c4f9",
+      "sourceReferences": [
+        "b22"
+      ],
+      "treatment": "bibliography-verbatim",
+      "targetId": "ref-22",
+      "section": "6",
+      "translationLineStart": 1033,
+      "translationLineEnd": 1039,
+      "translationSegmentSha256": "d9baad3cc052721db122e97a23d0f49fb33fef97eadcfe56ff3a74f87a60c9e6"
+    },
+    {
+      "sourceLine": 247,
+      "sourceEndLine": 247,
+      "sourceKind": "reference",
+      "sourceSha256": "377071c7bccd8509427acd9ca8424d9eb865e5d327e9c14689a8f6115cfbde09",
+      "sourceReferences": [
+        "b23"
+      ],
+      "treatment": "bibliography-verbatim",
+      "targetId": "ref-23",
+      "section": "6",
+      "translationLineStart": 1040,
+      "translationLineEnd": 1046,
+      "translationSegmentSha256": "3f51aa6f37564a043df07630c846447b10973d40e25e38e23e143d201b890ddd"
+    },
+    {
+      "sourceLine": 248,
+      "sourceEndLine": 248,
+      "sourceKind": "reference",
+      "sourceSha256": "e907d399d36f9d9f1d20986f7a1e4d582dacfccdd56e2df000e19ce149a416d7",
+      "sourceReferences": [
+        "b24"
+      ],
+      "treatment": "bibliography-verbatim",
+      "targetId": "ref-24",
+      "section": "6",
+      "translationLineStart": 1047,
+      "translationLineEnd": 1053,
+      "translationSegmentSha256": "9acc4d03b90d0ad40fa289d4733a885f66ba46e89a57ff10b4e595c09b65afe6"
+    },
+    {
+      "sourceLine": 249,
+      "sourceEndLine": 249,
+      "sourceKind": "reference",
+      "sourceSha256": "3848d10479a9d7921efe425a343ee0af013b4b00a54bba9ca06361e638134bf9",
+      "sourceReferences": [
+        "b25"
+      ],
+      "treatment": "bibliography-verbatim",
+      "targetId": "ref-25",
+      "section": "6",
+      "translationLineStart": 1054,
+      "translationLineEnd": 1060,
+      "translationSegmentSha256": "5a4389918d256bd4c5428adf212e4db01d0b013b1e36fdecf89c083c47fb8f98"
+    },
+    {
+      "sourceLine": 250,
+      "sourceEndLine": 250,
+      "sourceKind": "reference",
+      "sourceSha256": "709f526ed92edcaa7206ea6c731f5e247e73ae155ca98f2f521776bcd90a18c8",
+      "sourceReferences": [
+        "b26"
+      ],
+      "treatment": "bibliography-verbatim",
+      "targetId": "ref-26",
+      "section": "6",
+      "translationLineStart": 1061,
+      "translationLineEnd": 1067,
+      "translationSegmentSha256": "d00a4c1c899f303fa5f9f97b39a6c7f823a20e50d52edb3532a23d2fa4926a9a"
+    },
+    {
+      "sourceLine": 251,
+      "sourceEndLine": 251,
+      "sourceKind": "reference",
+      "sourceSha256": "d04c5a1e93f4a1236866b48954b9bc69203978585875070cc042d5c6a1a5c288",
+      "sourceReferences": [
+        "b27"
+      ],
+      "treatment": "bibliography-verbatim",
+      "targetId": "ref-27",
+      "section": "6",
+      "translationLineStart": 1068,
+      "translationLineEnd": 1074,
+      "translationSegmentSha256": "762551db030807793425735aebcd9b137d20a106794ee2ae794a3c9b3d9e213e"
+    },
+    {
+      "sourceLine": 252,
+      "sourceEndLine": 252,
+      "sourceKind": "reference",
+      "sourceSha256": "4489ac8605d7c2fcb25de6796d149c52f3202cb5b53d86b7b10a4f050bf99e84",
+      "sourceReferences": [
+        "b28"
+      ],
+      "treatment": "bibliography-verbatim",
+      "targetId": "ref-28",
+      "section": "6",
+      "translationLineStart": 1075,
+      "translationLineEnd": 1081,
+      "translationSegmentSha256": "0883e977e4c1150972be9911a24c526aa6d6a76994e0f76f782c53f48bb20ba4"
+    },
+    {
+      "sourceLine": 254,
+      "sourceEndLine": 254,
+      "sourceKind": "rule",
+      "sourceSha256": "cb3f91d54eee30e53e35b2b99905f70f169ed549fd78909d3dac2defc9ed8d3b",
+      "sourceReferences": [],
+      "treatment": "separator"
+    },
+    {
+      "sourceLine": 256,
+      "sourceEndLine": 256,
+      "sourceKind": "paragraph",
+      "sourceSha256": "28c529f619450a80d8e924a443a6f4e40bfc4891bd70c4926d2b319e88ebcf12",
+      "sourceReferences": [],
+      "treatment": "translated",
+      "targetId": "t4en-u256",
+      "section": "6",
+      "translationLineStart": 1082,
+      "translationLineEnd": 1091,
+      "translationSegmentSha256": "08c3ab417b605e37c9407c03e06f6128bdfba79ce9b2243e84566f222592d07d"
+    },
+    {
+      "sourceLine": 258,
+      "sourceEndLine": 258,
+      "sourceKind": "paragraph",
+      "sourceSha256": "cc3a1051bab6be4886a0191380ee2474c64f1b55b855b5375a80bfc0f7e032cf",
+      "sourceReferences": [],
+      "treatment": "existing-english-verbatim",
+      "targetId": "t4en-u258",
+      "section": "6",
+      "translationLineStart": 1092,
+      "translationLineEnd": 1097,
+      "translationSegmentSha256": "972447f0e0318707b8859f6e21e069a9cd9b5608e87c538d502114ca93a553e1"
+    },
+    {
+      "sourceLine": 260,
+      "sourceEndLine": 260,
+      "sourceKind": "rule",
+      "sourceSha256": "cb3f91d54eee30e53e35b2b99905f70f169ed549fd78909d3dac2defc9ed8d3b",
+      "sourceReferences": [],
+      "treatment": "separator"
+    }
+  ]
+}

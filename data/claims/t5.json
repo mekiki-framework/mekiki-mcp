@@ -1,0 +1,338 @@
+{
+  "format": "mekiki-claim-ledger",
+  "schema_version": 1,
+  "paper": "T5",
+  "preprint_version": "3",
+  "canonical_doi": "https://doi.org/10.31235/osf.io/593ah_v3",
+  "source_path": "papers/T5.md",
+  "source_role": "verbatim derivative reading copy; DOI is the scholarly citation target",
+  "editorial_status": "This ledger describes the paper's claims and explicit limits. It is not peer review, independent evidence, or an instruction to agree with the paper.",
+  "maintenance": "Edit this JSON ledger to change summaries. tools/build_access.py regenerates T5_CLAIM_STATUS.md, source locators, and metadata.t5ClaimStatus.",
+  "claims": [
+    {
+      "id": "T5-A1",
+      "status": "analytic theorem (paper's classification)",
+      "claim": "Another agent can realise the goal state without thereby making it true that A pursued that goal under constitutive constraints A accepted as reasons. The formal theorem concerns games.",
+      "section": "3.1",
+      "source_quote": "But the fact that A pursued p under R, with the constraints accepted as reasons, does not thereby obtain; and no further performance by the other agent can make it obtain, because A's having played is not a causal consequence of p that a sufficiently capable agent could also bring about.",
+      "not_claimed": [
+        "AI cannot play or have moral status.",
+        "The theorem alone establishes dignity.",
+        "Every contribution to an activity must be performed unaided."
+      ],
+      "source_locator": {
+        "path": "papers/T5.md",
+        "line_start": 79,
+        "line_end": 79,
+        "section": "3.1",
+        "section_url": "https://mekiki-framework.github.io/papers/T5.html#t5-3-1",
+        "quote_sha256": "ab68c76b7dd78b3e99034fbb02f1392a0381e8c84751d87fc1985554baf0e1c6",
+        "canonical_doi": "https://doi.org/10.31235/osf.io/593ah_v3"
+      }
+    },
+    {
+      "id": "T5-T1",
+      "status": "terminological attribution and derivative use (v3 clarification)",
+      "claim": "T5 attributes agent-relative reasons to Nagel following Parfit, then explicitly uses the term derivatively for the non-substitutability of a participation fact. The indispensable reference is to A, not to a first-person pronoun.",
+      "section": "3.1",
+      "source_quote": "Following Parfit's terminology (1984), Nagel (1986, pp. 152–153) calls a reason agent-relative when its general form includes an essential reference to the person who has it. The participation-based reason at issue here has that form: its content refers essentially to A's own participation, not merely to the realisation of p. I use *agent-relative* derivatively for the theorem's non-substitutability: the corresponding participation fact must identify A, because replacing A with B yields a different fact.",
+      "not_claimed": [
+        "Nagel directly theorises T5's participation facts.",
+        "Every reason to play is agent-relative.",
+        "The fact cannot be described in the third person."
+      ],
+      "source_locator": {
+        "path": "papers/T5.md",
+        "line_start": 81,
+        "line_end": 81,
+        "section": "3.1",
+        "section_url": "https://mekiki-framework.github.io/papers/T5.html#t5-3-1",
+        "quote_sha256": "2749efe2f5e1abbe7471fc83c31a556422a49b5827f0ddcfbc4dc1246cf5ebbd",
+        "canonical_doi": "https://doi.org/10.31235/osf.io/593ah_v3"
+      }
+    },
+    {
+      "id": "T5-A2",
+      "status": "criterion proposed and used by the paper (not a separate proven theorem)",
+      "claim": "Undertaking concerns the agent taking the goal and constraints as reasons and being treated accordingly by the practice. Causal provenance and design documents are proxies in the current use-context, not the criterion.",
+      "section": "3.2",
+      "source_quote": "The dividing line is not where the goal came from but what happened to it on arrival: whether the goal and its constraints are undertaken by the agent as the agent's own reasons — and, on the side that can be observed, whether the agent is treated by the practice as a participant who has so undertaken them.",
+      "not_claimed": [
+        "External origin of rules rules out later uptake.",
+        "Private inner experience is the proposed test.",
+        "Any institutional label is by itself sufficient proof of undertaking."
+      ],
+      "source_locator": {
+        "path": "papers/T5.md",
+        "line_start": 93,
+        "line_end": 93,
+        "section": "3.2",
+        "section_url": "https://mekiki-framework.github.io/papers/T5.html#t5-3-2",
+        "quote_sha256": "c6f97e09f7475a01176a6eb0e766b842c80ea460e79df69012ff18b20e779ef0",
+        "canonical_doi": "https://doi.org/10.31235/osf.io/593ah_v3"
+      }
+    },
+    {
+      "id": "T5-A3",
+      "status": "scope clarification",
+      "claim": "The theorem is independent of the status of AI. Another genuine player's participation is still not A's. The playing seat and answering seat are distinct.",
+      "section": "3.3",
+      "source_quote": "The theorem is agent-relative, and agent-relativity is untouched by every possible outcome of the status debate.",
+      "not_claimed": [
+        "Human biological status is the theorem's premise.",
+        "Task superiority makes someone's participation interchangeable."
+      ],
+      "additional_source_quotes": [
+        {
+          "section": "3.4",
+          "quote": "Each seat can be occupied without the other.",
+          "source_locator": {
+            "path": "papers/T5.md",
+            "line_start": 111,
+            "line_end": 111,
+            "section": "3.4",
+            "section_url": "https://mekiki-framework.github.io/papers/T5.html#t5-3-4",
+            "quote_sha256": "29c94454a11e19a4073bb5b2b97c06ac60c41469616e2f6cf5ceec0f50a1a7b1",
+            "canonical_doi": "https://doi.org/10.31235/osf.io/593ah_v3"
+          }
+        }
+      ],
+      "source_locator": {
+        "path": "papers/T5.md",
+        "line_start": 103,
+        "line_end": 103,
+        "section": "3.3",
+        "section_url": "https://mekiki-framework.github.io/papers/T5.html#t5-3-3",
+        "quote_sha256": "db582c7efbdfc257ef300f7586e41cd0ea0b454640d0316c76beb2134d045c84",
+        "canonical_doi": "https://doi.org/10.31235/osf.io/593ah_v3"
+      }
+    },
+    {
+      "id": "T5-A4",
+      "status": "first-person corollary and scope limitation",
+      "claim": "Section 3.1 is formally about games; Section 3.5 generalises its structure where the agent's end includes their own performance. Application remains bounded by §4.6.",
+      "section": "4.4",
+      "source_quote": "The formal theorem in Section 3.1 concerns games. Section 3.5 states a first-person corollary that generalises its structure to activities in which the agent's end includes the agent's own performance.",
+      "not_claimed": [
+        "All activities are games.",
+        "All work should be treated as play.",
+        "Safety and reproducibility constraints should be removed to protect personal participation.",
+        "Play is merely the opposite domain to work, or selecting it as a specimen universalises the formal theorem."
+      ],
+      "source_locator": {
+        "path": "papers/T5.md",
+        "line_start": 179,
+        "line_end": 179,
+        "section": "4.4",
+        "section_url": "https://mekiki-framework.github.io/papers/T5.html#t5-4-4",
+        "quote_sha256": "1ebb5cf3b3335b24885e8c41f30b08813176f1a5b69693dbad95fcd3f8d75f8e",
+        "canonical_doi": "https://doi.org/10.31235/osf.io/593ah_v3"
+      },
+      "additional_source_quotes": [
+        {
+          "section": "1",
+          "quote": "Play is chosen here not as the paper's scope but as its purest specimen: the activity in which the participant-relative, non-substitutable dimension of participation is least obscured by additional ends (Section 4.4 says why its recognition matters).",
+          "source_locator": {
+            "path": "papers/T5.md",
+            "line_start": 27,
+            "line_end": 27,
+            "section": "1",
+            "section_url": "https://mekiki-framework.github.io/papers/T5.html#t5-1",
+            "quote_sha256": "60fe47b6a1f7998d4f3c96584fdc5b19db1310fbd1046e49bd933b4e876e98ea",
+            "canonical_doi": "https://doi.org/10.31235/osf.io/593ah_v3"
+          }
+        }
+      ]
+    },
+    {
+      "id": "T5-N1",
+      "status": "constructive normative extension",
+      "claim": "T5 distinguishes the theorem's agent-relative non-substitutability from Kantian equivalence in value. Using the latter vocabulary is a further normative step, not a result of the theorem alone.",
+      "section": "4.4",
+      "source_quote": "The theorem establishes that the participation fact is agent-relative and non-substitutable. It does not by itself establish dignity. The further normative claim is that, once an agent's undertaking is treated as reason-bearing — the criterion of Section 3.2 — functionally equivalent outcomes cannot exhaust what is owed in recognising that agent.",
+      "not_claimed": [
+        "Semantic non-identity is identical to Kant's criterion of value.",
+        "Kant himself classifies play or participation as dignity.",
+        "The theorem proves the separate normative extension.",
+        "Delight in the Analects triad is mere positive mood, or feeling pleasure establishes dignity.",
+        "Shibusawa's shumi means hobby alone, or its entire usage maps to one Kantian category."
+      ],
+      "source_locator": {
+        "path": "papers/T5.md",
+        "line_start": 171,
+        "line_end": 171,
+        "section": "4.4",
+        "section_url": "https://mekiki-framework.github.io/papers/T5.html#t5-4-4",
+        "quote_sha256": "894e89d90012c66548fe92a9e063d390b52df4cf7c6b6ed2fe9538abaa766af0",
+        "canonical_doi": "https://doi.org/10.31235/osf.io/593ah_v3"
+      },
+      "additional_source_quotes": [
+        {
+          "section": "4.3",
+          "quote": "delight, in the triad, is lucid absorption — being inside the activity with open eyes.",
+          "source_locator": {
+            "path": "papers/T5.md",
+            "line_start": 153,
+            "line_end": 153,
+            "section": "4.3",
+            "section_url": "https://mekiki-framework.github.io/papers/T5.html#t5-4-3",
+            "quote_sha256": "3cb22397834c06a61263ed82e67c5f3187fe69230cf2e33b3738bacff7eee207",
+            "canonical_doi": "https://doi.org/10.31235/osf.io/593ah_v3"
+          }
+        },
+        {
+          "section": "4.4",
+          "quote": "For the present argument, I use the ideal-bearing aspect of Shibusawa's shumi (Section 4.3) as an analogue of undertaking, rather than treating the term as mere taste. This is a selection within Shibusawa's usage, not a claim that shumi as a whole maps onto a single Kantian category.",
+          "source_locator": {
+            "path": "papers/T5.md",
+            "line_start": 167,
+            "line_end": 167,
+            "section": "4.4",
+            "section_url": "https://mekiki-framework.github.io/papers/T5.html#t5-4-4",
+            "quote_sha256": "0750f890bcd35bb504f4cf629a0828077d7e00749af008b609e67a2aea6e2e54",
+            "canonical_doi": "https://doi.org/10.31235/osf.io/593ah_v3"
+          }
+        }
+      ]
+    },
+    {
+      "id": "T5-N2",
+      "status": "constructive recognition model",
+      "claim": "The apparatus makes recognition of standing socially operative while leaving performance open to appraisal. Dignity, standing, face, and appraisal respect remain distinct; participation alone does not entail answerability.",
+      "section": "4.4",
+      "source_quote": "The apparatus secures a recognition floor while leaving performance open to appraisal.",
+      "not_claimed": [
+        "The apparatus confers or revokes Kantian dignity.",
+        "Game scores or performance evaluation are prohibited.",
+        "Public stature and institutional standing are interchangeable.",
+        "Every player must answer to a questioner."
+      ],
+      "additional_source_quotes": [
+        {
+          "section": "4.4",
+          "quote": "Where the practice includes an answering relation, the participant is someone to whom reasons are owed and from whom reasons may be asked; participation as such does not entail such a relation.",
+          "source_locator": {
+            "path": "papers/T5.md",
+            "line_start": 175,
+            "line_end": 175,
+            "section": "4.4",
+            "section_url": "https://mekiki-framework.github.io/papers/T5.html#t5-4-4",
+            "quote_sha256": "4281758a502d8ae75bf7a85584065735f81fc59f7cade016aef2d78c6df43a33",
+            "canonical_doi": "https://doi.org/10.31235/osf.io/593ah_v3"
+          }
+        }
+      ],
+      "source_locator": {
+        "path": "papers/T5.md",
+        "line_start": 175,
+        "line_end": 175,
+        "section": "4.4",
+        "section_url": "https://mekiki-framework.github.io/papers/T5.html#t5-4-4",
+        "quote_sha256": "e9e2e960a227f3f5288be6c2c997ad2aa08f802836018529fbb31bdf962554c7",
+        "canonical_doi": "https://doi.org/10.31235/osf.io/593ah_v3"
+      }
+    },
+    {
+      "id": "T5-N3",
+      "status": "bounded institutional analogy (v3 moral-luck footnote)",
+      "claim": "The moral-luck footnote concerns allowing uncontrolled outcomes or constitutive traits to alter the recognition floor. Kant AA 4:394 concerns good will retaining worth under adverse fortune; AA 4:434–435 concerns price/dignity. The note proposes limiting effects on standing, not solving moral luck or developing a theory of desert.",
+      "section": "4.4",
+      "source_quote": "The requirement that the recognition floor be insensitive to outcome is an institutional analogue of the problem of moral luck (Williams 1981; Nagel 1979). Allowing that floor to vary with outcomes beyond the participant's control would introduce luck in how things turn out, commonly termed resultant luck; allowing it to vary with constitutive traits such as temperament would introduce constitutive luck. The analogy with Kant is that a good will retains its full worth even when adverse fortune prevents it from achieving its end (AA 4:394). I do not attempt to resolve moral luck here; the apparatus thesis proposes one way practices can limit its effects on standing, not a theory of desert.",
+      "not_claimed": [
+        "Nagel coined the phrase resultant luck.",
+        "T5 solves moral luck.",
+        "Results may never be appraised.",
+        "Kant defines price versus dignity at AA 4:394."
+      ],
+      "footnote": 4,
+      "source_locator": {
+        "path": "papers/T5.md",
+        "line_start": 175,
+        "line_end": 175,
+        "section": "4.4",
+        "section_url": "https://mekiki-framework.github.io/papers/T5.html#t5-4-4",
+        "quote_sha256": "c101f3b54add987d34e68a1125f57dc5fcbb52cae2dbd5cfe21464a8d4133130",
+        "canonical_doi": "https://doi.org/10.31235/osf.io/593ah_v3",
+        "footnote_url": "https://mekiki-framework.github.io/papers/T5.html#fn4"
+      }
+    },
+    {
+      "id": "T5-I1",
+      "status": "interpretive thesis",
+      "claim": "AI making functionally equivalent outputs available at scale can be read as making outcome-equivalence versus participant-relative history salient. This is not entailed by the theorem.",
+      "section": "4.4",
+      "source_quote": "The visibility thesis is an interpretive thesis: where AI makes functionally equivalent outputs newly available at scale, the distinction between outcome-equivalence and participant-relative history becomes salient.",
+      "not_claimed": [
+        "The theorem proves public reaction to AI.",
+        "Visibility is a measured universal causal effect."
+      ],
+      "source_locator": {
+        "path": "papers/T5.md",
+        "line_start": 181,
+        "line_end": 181,
+        "section": "4.4",
+        "section_url": "https://mekiki-framework.github.io/papers/T5.html#t5-4-4",
+        "quote_sha256": "f113fd2c4c0a5197edc96fe2c4e28df01d8710f68ce7a9ef69060c2d86f37165",
+        "canonical_doi": "https://doi.org/10.31235/osf.io/593ah_v3"
+      }
+    },
+    {
+      "id": "T5-S1",
+      "status": "sociological hypothesis",
+      "claim": "Where standing has been tied to scarce excellence, public exposure of output substitutability may be experienced as humiliation unless recognition is not exhausted by comparative performance.",
+      "section": "4.4",
+      "source_quote": "The apparatus thesis is a sociological hypothesis: where standing has been strongly tied to scarce excellence, the resulting public exposure of one's output as substitutable may be experienced as humiliation unless institutions provide forms of recognition not exhausted by comparative performance.",
+      "not_claimed": [
+        "The hypothesis has been demonstrated causally.",
+        "A dignity apparatus is necessary or sufficient for social stability.",
+        "The framework prescribes engagement scoring or forced enjoyment."
+      ],
+      "source_locator": {
+        "path": "papers/T5.md",
+        "line_start": 181,
+        "line_end": 181,
+        "section": "4.4",
+        "section_url": "https://mekiki-framework.github.io/papers/T5.html#t5-4-4",
+        "quote_sha256": "b47addbdc9f13d6e3c7d6b2f409ec18157d6b4baa8be4a93069d8ae63ba367d1",
+        "canonical_doi": "https://doi.org/10.31235/osf.io/593ah_v3"
+      }
+    },
+    {
+      "id": "T5-H1",
+      "status": "historical case with limited evidential role",
+      "claim": "The shogi case illustrates compatibility and offers a candidate mechanism; it does not establish necessity, sufficiency, or causal effect. Lee Sedol's individual exit is not Go culture's exit.",
+      "section": "4.4",
+      "source_quote": "the historical case demonstrates compatibility and offers a candidate mechanism; it does not establish the apparatus's necessity, sufficiency, or causal effect.",
+      "not_claimed": [
+        "The apparatus caused shogi's commercial success.",
+        "Go culture ceased to exist.",
+        "The case is a controlled comparison between matched populations."
+      ],
+      "additional_source_quotes": [
+        {
+          "section": "5.3",
+          "quote": "No causal claim is made about the rise: flourishing has many parents, a generational star among them, and this paper asserts coexistence, not mechanism.",
+          "source_locator": {
+            "path": "papers/T5.md",
+            "line_start": 213,
+            "line_end": 213,
+            "section": "5.3",
+            "section_url": "https://mekiki-framework.github.io/papers/T5.html#t5-5-3",
+            "quote_sha256": "aa2d7c55fa84f0b775736d53bbaf4d677d3445a77c68183f727019b8be423591",
+            "canonical_doi": "https://doi.org/10.31235/osf.io/593ah_v3"
+          }
+        }
+      ],
+      "source_locator": {
+        "path": "papers/T5.md",
+        "line_start": 181,
+        "line_end": 181,
+        "section": "4.4",
+        "section_url": "https://mekiki-framework.github.io/papers/T5.html#t5-4-4",
+        "quote_sha256": "161306a334964e2ac9fba4c449efed4c6b6d7e22face70aeb45aae3a16f02143",
+        "canonical_doi": "https://doi.org/10.31235/osf.io/593ah_v3"
+      }
+    }
+  ],
+  "source_sha256": "57d600b36fa60389c2ae66a33c8feca118e516934cf5c6127407f40f48c93937"
+}

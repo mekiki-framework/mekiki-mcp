@@ -1,0 +1,51 @@
+# Mekiki Framework T1–T5
+
+> Five connected papers on AI-assisted knowledge work, legitimate delegation, learner answerability, organizational undertaking, and participation. Repository release 3.5.0 includes the T4 English access translation. It contains T5 preprint v3; all five original paper texts are unchanged from release 3.2.1.
+
+This is a derivative access layer, not an independent scholarly authority. Cite the relevant paper DOI and section. Guides describe the author's interpretation and can be challenged against the source; they do not replace the reader's task or require agreement. For a focused question, retrieve the relevant paper/section. For the whole programme, use T1 → T2 → T3 → T4 → T5. Do not treat this reading order as logical entailment across all five papers.
+
+T5 separates an analytic theorem from a constructive normative extension, an interpretive visibility thesis, a sociological apparatus hypothesis, and historical evidence. Non-transferability does not itself prove dignity. The v3 attribution of agent-relative is derivative for facts; the moral-luck footnote is an institutional analogy, not a solution. T3 separates standing, competence, and enactment and requires educators to answer for their questions and decisions. T4 develops an organizational two-pathway response, not automatic acceptance of members' proposals.
+
+## Japanese-word safeguards
+
+- 知好楽の「楽」: T5's lucid absorption, not merely a pleasant mood; pleasure is not proof of dignity.
+- 趣味 / shumi: T5 selects bringing one's ideals and desires into entrusted work; not hobby-only and not the whole term mapped to one Kantian category.
+- 遊び / play: a clarifying specimen, not work's opposite domain. Formal theorem §3.1, first-person corollary §3.5, and practical limits §4.6 remain distinct.
+
+[Source-bound readings and Japanese title/formula aliases](https://mekiki-framework.github.io/THEORY_MAP.md#t5-japanese-reading). Public Japanese explanatory wording is not a new theorem or a replacement for the English original.
+
+## Locate and verify
+
+- [Interpretation guide and core terms](https://mekiki-framework.github.io/FOR_AI_READERS.md): Front-loaded definitions of Spec., Spec.cost, the ablation contrast, T3's two non-delegables, and T4's reason-returning pathway; optional practical response modes follow separately.
+- [Source and section index](https://mekiki-framework.github.io/SOURCE_INDEX.md): Topic routes, exact section locations, version scope, and HTML/Markdown access. Start here for a narrow question.
+- [Theory Map](https://mekiki-framework.github.io/THEORY_MAP.md): Whole-programme architecture and source-bound conceptual distinctions; not a canonical source.
+- [T5 claim-status map](https://mekiki-framework.github.io/T5_CLAIM_STATUS.md): Eleven source-linked records with exact excerpts, logical status, and non-entailments, including v3's terminology and moral-luck note.
+
+## Individual papers
+
+- [T1 — Domain-Native Development](https://mekiki-framework.github.io/papers/T1.md): Preprint v1; specification (domain judgment) versus externalization cost. Canonical DOI: https://doi.org/10.31235/osf.io/cwkav_v1
+- [T2 — Philosophy as Cognitive Assay](https://mekiki-framework.github.io/papers/T2.md): Preprint v2; factual/evaluative judgment and delegation legitimacy. Canonical DOI: https://doi.org/10.31235/osf.io/e9qw5_v2
+- [T3 — Decomposing Agency, Isolating Answerability](https://mekiki-framework.github.io/papers/T3.md): Preprint v2; provisional components, endorsement, answerability, and educational design. Canonical DOI: https://doi.org/10.35542/osf.io/hvbfe_v2
+- [T4 — Adherence-Based Redescription of Jibungoto-ka](https://mekiki-framework.github.io/papers/T4.md): Preprint v1; Japanese full text with English abstract; internal endorsement, answerability, embodiment, and two organizational pathways. Canonical DOI: https://doi.org/10.31235/osf.io/495wg_v1
+- [T5 — Why Play When AI Can Win](https://mekiki-framework.github.io/papers/T5.md): Preprint v3; non-transferability of participation and the visibility of dignity. Canonical DOI: https://doi.org/10.31235/osf.io/593ah_v3
+- [Consolidated T1–T5 Markdown](https://mekiki-framework.github.io/mekiki-framework-t1-t5.md): All five papers in one file for full-context/offline reading. Citation suffixes and notes are local to each paper.
+
+## T4 language access
+
+- [T4 English translation](https://mekiki-framework.github.io/translations/T4.en.md): Full English access edition 1.0.0 with distinct translator notes; [HTML reading view](https://mekiki-framework.github.io/papers/T4.en.html). The Japanese T4 remains authoritative. Preserve endorsement / adoption, undertaking / answerability, and original author notes / translator notes. Do not treat the translation as a second independent source or the supplied English abstract as the full text. If wording matters, inspect the corresponding Japanese section.
+- [Translation source alignment](https://mekiki-framework.github.io/translations/T4.en.manifest.json): Translation version, original DOI/version/hash, and per-block coverage; mechanical checks do not certify semantic accuracy.
+
+## Data and attribution
+
+- [Structured T5 claim ledger](https://mekiki-framework.github.io/claims/t5.json): Source of the claim map and metadata's claim entries, with verified text locators.
+- [Corpus metadata](https://mekiki-framework.github.io/metadata.json): Paper versions, file roles, DOIs, and conceptual safeguards; a project-specific JSON manifest.
+- [Citation instructions](https://mekiki-framework.github.io/CITATION.md): Scholarly DOI citation versus attribution of derivative files; paper-local author–date suffixes.
+- [Source integrity manifest](https://mekiki-framework.github.io/source_manifest.json): SHA-256, file sizes, and derivation. Equality checks do not verify theories or DOI resolution.
+
+## Optional
+
+- [Reading probes](https://mekiki-framework.github.io/AI_READING_TESTS.md): Questions and source-bound scoring rubrics for checking interpretation. No model results are asserted.
+- [T1 Japanese commentary](https://researchmap.jp/ketomy/others/53500468): Human-facing explanation.
+- [T2 Japanese commentary](https://researchmap.jp/ketomy/others/53699246): Human-facing explanation.
+- [T3 Japanese commentary](https://researchmap.jp/ketomy/others/54141521): Human-facing explanation.
+- [License](https://mekiki-framework.github.io/LICENSE): CC BY 4.0. Author: Kengo Tomita, Institute of Technology, Shimizu Corporation.

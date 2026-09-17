@@ -1,0 +1,135 @@
+{
+  "corpus": {
+    "commit": "67480613108cf72c29d5691e3d7a6c7e6553eb9b",
+    "corpus_version": "3.5.0",
+    "git_ref": "refs/tags/v3.5.0",
+    "ref_type": "lightweight-tag",
+    "repository": "https://github.com/mekiki-framework/mekiki-framework.github.io",
+    "tree": "7c50a4fc2bf20f1529aebe8a8b7898e26332f1a1"
+  },
+  "files": [
+    {
+      "bytes": 20667,
+      "git_blob_sha1": "8ff18484ca7750ed8c18362e2fc40a3b2cf5fb9d",
+      "path": "AI_READING_TESTS.md",
+      "sha256": "c710fade5cf37fe8ca6adf3abdbdfdcc4f2a55271b21ff0c16171e4630abe57a"
+    },
+    {
+      "bytes": 3832,
+      "git_blob_sha1": "61ada9c05c4453a150a9cdb48126d0ce3722f980",
+      "path": "CITATION.md",
+      "sha256": "fb1577bc5f7cca6aa98775ec569e965a4ea8b83c6edc3bd1168e93d35ae49378"
+    },
+    {
+      "bytes": 9636,
+      "git_blob_sha1": "993a93d0241b8229bb2b0a7c4cc4d376fd20cd17",
+      "path": "FOR_AI_READERS.md",
+      "sha256": "ddee2e7370ed9423be4a12f475a68c2acf9e8502b90a478f02c4ef2a5d8c01d7"
+    },
+    {
+      "bytes": 18657,
+      "git_blob_sha1": "da6ab6cc8f333d7e89a99812866df8f24374d47c",
+      "path": "LICENSE",
+      "sha256": "9ba9550ad48438d0836ddab3da480b3b69ffa0aac7b7878b5a0039e7ab429411"
+    },
+    {
+      "bytes": 17118,
+      "git_blob_sha1": "b69f731cd819863e54e5d5a4ddc6621876108935",
+      "path": "SOURCE_INDEX.md",
+      "sha256": "0f9aff163414e48afefdb4d43c24a1c45ce8d61a3579cfdfcc9fa4b299cfc408"
+    },
+    {
+      "bytes": 14984,
+      "git_blob_sha1": "687c90b83c9cb73db615a3dcc181fee7f14a60ef",
+      "path": "T5_CLAIM_STATUS.md",
+      "sha256": "16a6b5ac14fc679fc8643b9fdc157886c6931a2843a0d86ff51c973bbab1c9d9"
+    },
+    {
+      "bytes": 38291,
+      "git_blob_sha1": "c95b7b0da281951897fa85d2363964f5f5cacea1",
+      "path": "THEORY_MAP.md",
+      "sha256": "2225e5a69e3f2968af233af8aee2133b217355085f434e164e611139304d213a"
+    },
+    {
+      "bytes": 19250,
+      "git_blob_sha1": "f931185fd25d343888decd1f21774d15ba34e2a3",
+      "path": "claims/t5.json",
+      "sha256": "26babf80b6779667b452455772350ba2cdbab3f9154ec924b0d608713bc9e003"
+    },
+    {
+      "bytes": 6519,
+      "git_blob_sha1": "64ea2e6996c1cfe702632361cf5018309bfb6e91",
+      "path": "llms.txt",
+      "sha256": "df33559d07e6233c95fc77cd536422dcaabf64d0500b1b4dfef3bb7793290ef9"
+    },
+    {
+      "bytes": 82244,
+      "git_blob_sha1": "cc684fbc19a820a0f547bc57a84c41f0ade11412",
+      "path": "papers/T1.md",
+      "sha256": "2b027f11fd7a0f9241c02e97e20ebd08588b6d2bcfc6a0aa8bc211b837b52893"
+    },
+    {
+      "bytes": 78119,
+      "git_blob_sha1": "efd57a1603957a784ea5540e83ce5e9194b8cdb9",
+      "path": "papers/T2.md",
+      "sha256": "ec2437e5418b34de1ad488e5628edb68d0ba98718529b97919319a123ea805fc"
+    },
+    {
+      "bytes": 59409,
+      "git_blob_sha1": "2602eacc29c1406f2b62c3465108c0af0ffec375",
+      "path": "papers/T3.md",
+      "sha256": "0d4a367b297db2b8481d71b71aabf7377abee23715a7c4452ed3a647a659dc5b"
+    },
+    {
+      "bytes": 66526,
+      "git_blob_sha1": "42c943d06b05e4ab46498eea768568e3a538cbd0",
+      "path": "papers/T4.md",
+      "sha256": "9d2e09840323244b58c1fb02586bca79ea78dbe6f8b3deb8f30bc996d17832d5"
+    },
+    {
+      "bytes": 85758,
+      "git_blob_sha1": "cc094ecc75449bb04c3ffb3e58cd5066157ceb84",
+      "path": "papers/T5.md",
+      "sha256": "57d600b36fa60389c2ae66a33c8feca118e516934cf5c6127407f40f48c93937"
+    },
+    {
+      "bytes": 36918,
+      "git_blob_sha1": "33f8190b865ba56dd5ba4e95a62a9d356e30fb1f",
+      "path": "source_manifest.json",
+      "sha256": "ec8d9f55cd032534225dd25c7b70dc7371212c27266e60caf80a88ea53b70829"
+    },
+    {
+      "bytes": 21177,
+      "git_blob_sha1": "d130e9e46b3e884930217aef27b647c491693522",
+      "path": "tests/reading_cases.json",
+      "sha256": "d76740461ec37bec7a0fbbf7ac55ccb0e37f862fc21f261cc8ad222400d118ec"
+    },
+    {
+      "bytes": 66107,
+      "git_blob_sha1": "1aa13cb36af22e8067d27f02129c985e9a1c6540",
+      "path": "translations/T4.en.manifest.json",
+      "sha256": "d6768d66ce13716caaf64544c8b93454e6659a90cfb6ed03914d7d471e050fc1"
+    },
+    {
+      "bytes": 87137,
+      "git_blob_sha1": "47fce6b3dc8e87c83ea3856c1bcccb86c1cac3d2",
+      "path": "translations/T4.en.md",
+      "sha256": "bdf8690f23f1a79b1b7307fe99629540d07f9a5a97ba210b2c637cb9511ae5d9"
+    }
+  ],
+  "format": "mekiki-reader-bundle-manifest",
+  "format_version": 1,
+  "hash_algorithm": "sha256",
+  "not_bundled_references": [
+    "mekiki-framework-t1-t5.md",
+    "metadata.json",
+    "papers/T1.html",
+    "papers/T2.html",
+    "papers/T3.html",
+    "papers/T4.en.html",
+    "papers/T4.html",
+    "papers/T5.html",
+    "tools/build_access.py",
+    "tools/validate_corpus.py"
+  ]
+}

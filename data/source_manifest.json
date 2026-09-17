@@ -1,0 +1,1268 @@
+{
+  "format": "mekiki-source-manifest",
+  "schema_version": 1,
+  "corpus_version": "3.5.0",
+  "built_for": "2026-09-06",
+  "deployment": "This package is an upload artifact; building it does not deploy the site.",
+  "canonical_citation_rule": "Cite the DOI and section; local copies and guides are derivative.",
+  "inputs": {
+    "baseline_package": {
+      "filename": "mekiki-framework.github.io-main_T1-T5_v3.1.0_20260904.zip",
+      "sha256": "7a7869eec48cdebf8206665783a36670f4f09e141960e3ce4a20c7766f43c263",
+      "publication_note": "Prepared locally; author states it was not uploaded. No intervening 3.1.0 deployment is required."
+    },
+    "t5_v3_input": {
+      "filename": "T5_submission_6_20260905.md",
+      "sha256": "01b3df5eb6db9292f80d92bf086c6129c6424f5828076c95548cba02042754de",
+      "retained_span": "From ## Abstract to end of References, byte-for-byte in the consolidated T5 body. Title matches; author/affiliation and preprint version are managed in the corpus wrapper."
+    },
+    "baseline_t1_t4_sha256": "20621cd9fb5d46dfea22f7f427313011b5f4b298c696f3540c4e40ae3f71f67b",
+    "t5_v3_body_sha256": "36e7d46373a3c4d05aeec1928bd7360c5bab24b661a8f38c83919ed96c0be74b",
+    "release_3_5_0_inputs": {
+      "published_baseline": {
+        "filename": "mekiki-framework.github.io-main_T1-T5_v3.2.1_20260905.zip",
+        "sha256": "16f5339f8700e4ea006754ff767b5735dc8d614ad34576a4c066815eae018df7",
+        "status": "Author states release 3.2.1 is published."
+      },
+      "unpublished_translation_patch": {
+        "filename": "mekiki-framework_T4-English_patch_for_v3.2.1_20260906.zip",
+        "sha256": "3e2c6253bd9d3b3ed0d7fa3175d9980fedb12927cb59f7d56ea8bc6c18cb98dc",
+        "status": "Author states this patch was not uploaded; incorporated directly in release 3.5.0."
+      },
+      "update_scope": "Access translation, source-grounded language guidance, display-expression mapping, and release synchronization only. All original manuscripts and the English translation Markdown are unchanged.",
+      "frozen_text_sha256": {
+        "mekiki-framework-t1-t5.md": "c8d3f51ca4920699508f7a8b9a0c67d2a7cbf21c85d68219068c2fcd3989ce53",
+        "papers/T1.md": "2b027f11fd7a0f9241c02e97e20ebd08588b6d2bcfc6a0aa8bc211b837b52893",
+        "papers/T2.md": "ec2437e5418b34de1ad488e5628edb68d0ba98718529b97919319a123ea805fc",
+        "papers/T3.md": "0d4a367b297db2b8481d71b71aabf7377abee23715a7c4452ed3a647a659dc5b",
+        "papers/T4.md": "9d2e09840323244b58c1fb02586bca79ea78dbe6f8b3deb8f30bc996d17832d5",
+        "papers/T5.md": "57d600b36fa60389c2ae66a33c8feca118e516934cf5c6127407f40f48c93937",
+        "translations/T4.en.md": "bdf8690f23f1a79b1b7307fe99629540d07f9a5a97ba210b2c637cb9511ae5d9"
+      },
+      "frozen_html_main_sha256": {
+        "papers/T1.html": "9562ff13ecedf0994876fadb66af7cd2a09cbc2d3b28974055ac558e501cb049",
+        "papers/T2.html": "1167c912e95fd51637f931e51dbdd1d970fa4c006f1a128deb63759bed6c2795",
+        "papers/T3.html": "a6fd71ce32802ed29c7d35739da797fd60478d9ca7a07cc224bf47bc9d82a70b",
+        "papers/T4.html": "e1e4455505e39ef0ea955cebf416aa29d54b422e4255b893d3c33d11aac45667",
+        "papers/T5.html": "594ccbc337ed2acdc56a006ba9cc960129a9a526bf90caaa6881a462d2669d45",
+        "papers/T4.en.html": "62a1af6ea3b16f043abc81e55d02e6e0256fd0b9caa3f451887a53731d51f4dd"
+      },
+      "canonical_identity": {
+        "T1": {
+          "name": "Domain-Native Development: A Mekiki Framework for AI-Assisted Knowledge Work",
+          "sameAs": "https://doi.org/10.31235/osf.io/cwkav_v1",
+          "version": "1",
+          "alternateName": null
+        },
+        "T2": {
+          "name": "Philosophy as Cognitive Assay: Measuring the Delegation Legitimacy Boundary in AI-Assisted Knowledge Work",
+          "sameAs": "https://doi.org/10.31235/osf.io/e9qw5_v2",
+          "version": "2",
+          "alternateName": null
+        },
+        "T3": {
+          "name": "Decomposing Agency, Isolating Answerability: Cultivating What Cannot Be Delegated in AI-Assisted Learning",
+          "sameAs": "https://doi.org/10.35542/osf.io/hvbfe_v2",
+          "version": "2",
+          "alternateName": null
+        },
+        "T4": {
+          "name": "組織における「自分ごと化」のアドヒアランス的再記述：知識労働がAIで加速された時に組織に求められるもの",
+          "sameAs": "https://doi.org/10.31235/osf.io/495wg_v1",
+          "version": "1",
+          "alternateName": "An Adherence-Based Redescription of \"Jibungoto-ka\" (Treating Matters as One's Own) in Organizations: What AI-Accelerated Knowledge Work Requires of Organizations"
+        },
+        "T5": {
+          "name": "Why Play When AI Can Win: The Non-Transferability of Participation and the Visibility of Dignity",
+          "sameAs": "https://doi.org/10.31235/osf.io/593ah_v3",
+          "version": "3",
+          "alternateName": null
+        }
+      }
+    }
+  },
+  "corpus": {
+    "path": "mekiki-framework-t1-t5.md",
+    "sha256": "c8d3f51ca4920699508f7a8b9a0c67d2a7cbf21c85d68219068c2fcd3989ce53",
+    "bytes": 375455
+  },
+  "papers": [
+    {
+      "paper": "T1",
+      "canonical_doi": "https://doi.org/10.31235/osf.io/cwkav_v1",
+      "preprint_version": "1",
+      "markdown": "papers/T1.md",
+      "html": "papers/T1.html",
+      "sha256": "2b027f11fd7a0f9241c02e97e20ebd08588b6d2bcfc6a0aa8bc211b837b52893",
+      "bytes": 82244,
+      "lines": 442,
+      "derivation": "Exact paper block extracted from the consolidated Markdown; no prose changes.",
+      "html_text_equivalence": "Pandoc plain-text equality before/after anchor transformation passed",
+      "sections": [
+        {
+          "title": "Paper T1 — Domain-Native Development: A Mekiki Framework for AI-Assisted Knowledge Work",
+          "id": "paper-t1",
+          "line_start": 1,
+          "line_end": 11,
+          "level": 1
+        },
+        {
+          "title": "Abstract",
+          "id": "t1-abstract",
+          "line_start": 12,
+          "line_end": 17,
+          "level": 2
+        },
+        {
+          "title": "Keywords",
+          "id": "t1-keywords",
+          "line_start": 18,
+          "line_end": 23,
+          "level": 2
+        },
+        {
+          "title": "1. Introduction",
+          "id": "t1-1",
+          "line_start": 24,
+          "line_end": 45,
+          "level": 2
+        },
+        {
+          "title": "2. Conceptual Framework",
+          "id": "t1-2",
+          "line_start": 46,
+          "line_end": 47,
+          "level": 2
+        },
+        {
+          "title": "2.1 Two-component decomposition",
+          "id": "t1-2-1",
+          "line_start": 48,
+          "line_end": 63,
+          "level": 3
+        },
+        {
+          "title": "2.2 The distillation model of authorship",
+          "id": "t1-2-2",
+          "line_start": 64,
+          "line_end": 71,
+          "level": 3
+        },
+        {
+          "title": "2.3 Positioning among existing frameworks",
+          "id": "t1-2-3",
+          "line_start": 72,
+          "line_end": 88,
+          "level": 3
+        },
+        {
+          "title": "2.4 Applicability conditions",
+          "id": "t1-2-4",
+          "line_start": 89,
+          "line_end": 96,
+          "level": 3
+        },
+        {
+          "title": "3. Case Study",
+          "id": "t1-3",
+          "line_start": 97,
+          "line_end": 104,
+          "level": 2
+        },
+        {
+          "title": "3.1 Specification cost as the determinant of design",
+          "id": "t1-3-1",
+          "line_start": 105,
+          "line_end": 118,
+          "level": 3
+        },
+        {
+          "title": "3.2 Reversal of the translation direction",
+          "id": "t1-3-2",
+          "line_start": 119,
+          "line_end": 126,
+          "level": 3
+        },
+        {
+          "title": "3.3 Exploratory value of reduced externalisation cost",
+          "id": "t1-3-3",
+          "line_start": 127,
+          "line_end": 138,
+          "level": 3
+        },
+        {
+          "title": "3.4 Two identification points",
+          "id": "t1-3-4",
+          "line_start": 139,
+          "line_end": 148,
+          "level": 3
+        },
+        {
+          "title": "4. Methods",
+          "id": "t1-4",
+          "line_start": 149,
+          "line_end": 152,
+          "level": 2
+        },
+        {
+          "title": "4.1 Dialogue logs as cognitive records",
+          "id": "t1-4-1",
+          "line_start": 153,
+          "line_end": 160,
+          "level": 3
+        },
+        {
+          "title": "4.2 Domain-ablation experiment",
+          "id": "t1-4-2",
+          "line_start": 161,
+          "line_end": 194,
+          "level": 3
+        },
+        {
+          "title": "4.3 Data availability",
+          "id": "t1-4-3",
+          "line_start": 195,
+          "line_end": 198,
+          "level": 3
+        },
+        {
+          "title": "4.4 AI use disclosure",
+          "id": "t1-4-4",
+          "line_start": 199,
+          "line_end": 206,
+          "level": 3
+        },
+        {
+          "title": "5. Discussion",
+          "id": "t1-5",
+          "line_start": 207,
+          "line_end": 208,
+          "level": 2
+        },
+        {
+          "title": "5.1 Theoretical positioning: the visibility thesis",
+          "id": "t1-5-1",
+          "line_start": 209,
+          "line_end": 226,
+          "level": 3
+        },
+        {
+          "title": "5.2 Domain knowledge as the substance of specification cost",
+          "id": "t1-5-2",
+          "line_start": 227,
+          "line_end": 238,
+          "level": 3
+        },
+        {
+          "title": "5.3 Non-functional requirements and the responsibility boundary",
+          "id": "t1-5-3",
+          "line_start": 239,
+          "line_end": 250,
+          "level": 3
+        },
+        {
+          "title": "5.4 Methodological contribution of dialogue logs",
+          "id": "t1-5-4",
+          "line_start": 251,
+          "line_end": 260,
+          "level": 3
+        },
+        {
+          "title": "5.5 Cumulative optimisation risk and educational implications",
+          "id": "t1-5-5",
+          "line_start": 261,
+          "line_end": 280,
+          "level": 3
+        },
+        {
+          "title": "5.6 Safety considerations and limitations",
+          "id": "t1-5-6",
+          "line_start": 281,
+          "line_end": 298,
+          "level": 3
+        },
+        {
+          "title": "6. Conclusion",
+          "id": "t1-6",
+          "line_start": 299,
+          "line_end": 302,
+          "level": 2
+        },
+        {
+          "title": "The PhD as specification training",
+          "id": "t1-the-phd-as-specification-training",
+          "line_start": 303,
+          "line_end": 310,
+          "level": 3
+        },
+        {
+          "title": "Observed diffusion and framework-derived conjectures",
+          "id": "t1-observed-diffusion-and-framework-derived-conjectures",
+          "line_start": 311,
+          "line_end": 316,
+          "level": 3
+        },
+        {
+          "title": "Urgency",
+          "id": "t1-urgency",
+          "line_start": 317,
+          "line_end": 322,
+          "level": 3
+        },
+        {
+          "title": "Closing",
+          "id": "t1-closing",
+          "line_start": 323,
+          "line_end": 332,
+          "level": 3
+        },
+        {
+          "title": "Postscript: A general form of domain-native development",
+          "id": "t1-postscript-a-general-form-of-domain-native-development",
+          "line_start": 333,
+          "line_end": 344,
+          "level": 2
+        },
+        {
+          "title": "Ethical approval",
+          "id": "t1-ethical-approval",
+          "line_start": 345,
+          "line_end": 348,
+          "level": 2
+        },
+        {
+          "title": "Informed consent",
+          "id": "t1-informed-consent",
+          "line_start": 349,
+          "line_end": 352,
+          "level": 2
+        },
+        {
+          "title": "Competing interests",
+          "id": "t1-competing-interests",
+          "line_start": 353,
+          "line_end": 356,
+          "level": 2
+        },
+        {
+          "title": "Data availability",
+          "id": "t1-data-availability",
+          "line_start": 357,
+          "line_end": 362,
+          "level": 2
+        },
+        {
+          "title": "References",
+          "id": "t1-references",
+          "line_start": 363,
+          "line_end": 416,
+          "level": 2
+        },
+        {
+          "title": "Figure legends (images omitted)",
+          "id": "t1-figure-legends-images-omitted",
+          "line_start": 417,
+          "line_end": 418,
+          "level": 2
+        },
+        {
+          "title": "Figure 1",
+          "id": "t1-figure-1",
+          "line_start": 419,
+          "line_end": 424,
+          "level": 3
+        },
+        {
+          "title": "Figure 2",
+          "id": "t1-figure-2",
+          "line_start": 425,
+          "line_end": 442,
+          "level": 3
+        }
+      ]
+    },
+    {
+      "paper": "T2",
+      "canonical_doi": "https://doi.org/10.31235/osf.io/e9qw5_v2",
+      "preprint_version": "2",
+      "markdown": "papers/T2.md",
+      "html": "papers/T2.html",
+      "sha256": "ec2437e5418b34de1ad488e5628edb68d0ba98718529b97919319a123ea805fc",
+      "bytes": 78119,
+      "lines": 376,
+      "derivation": "Exact paper block extracted from the consolidated Markdown; no prose changes.",
+      "html_text_equivalence": "Pandoc plain-text equality before/after anchor transformation passed",
+      "sections": [
+        {
+          "title": "Paper T2 — Philosophy as Cognitive Assay: Measuring the Delegation Legitimacy Boundary in AI-Assisted Knowledge Work",
+          "id": "paper-t2",
+          "line_start": 1,
+          "line_end": 10,
+          "level": 1
+        },
+        {
+          "title": "Abstract",
+          "id": "t2-abstract",
+          "line_start": 11,
+          "line_end": 18,
+          "level": 2
+        },
+        {
+          "title": "1. Introduction",
+          "id": "t2-1",
+          "line_start": 19,
+          "line_end": 32,
+          "level": 2
+        },
+        {
+          "title": "2. The internal structure of specification: deriving the Sein/Sollen decomposition",
+          "id": "t2-2",
+          "line_start": 33,
+          "line_end": 34,
+          "level": 2
+        },
+        {
+          "title": "2.1 Three concepts, not two",
+          "id": "t2-2-1",
+          "line_start": 35,
+          "line_end": 38,
+          "level": 3
+        },
+        {
+          "title": "2.2 Derivation from the Mekiki case study",
+          "id": "t2-2-2",
+          "line_start": 39,
+          "line_end": 48,
+          "level": 3
+        },
+        {
+          "title": "2.3 Philosophical foundations",
+          "id": "t2-2-3",
+          "line_start": 49,
+          "line_end": 64,
+          "level": 3
+        },
+        {
+          "title": "2.4 Generalization beyond Externalization",
+          "id": "t2-2-4",
+          "line_start": 65,
+          "line_end": 72,
+          "level": 3
+        },
+        {
+          "title": "3. Philosophy as cognitive assay: operationalization",
+          "id": "t2-3",
+          "line_start": 73,
+          "line_end": 74,
+          "level": 2
+        },
+        {
+          "title": "3.1 Why the assay conditions are now met",
+          "id": "t2-3-1",
+          "line_start": 75,
+          "line_end": 78,
+          "level": 3
+        },
+        {
+          "title": "3.2 The scoring protocol",
+          "id": "t2-3-2",
+          "line_start": 79,
+          "line_end": 104,
+          "level": 3
+        },
+        {
+          "title": "3.3 Worked example: a minimal demonstration",
+          "id": "t2-3-3",
+          "line_start": 105,
+          "line_end": 116,
+          "level": 3
+        },
+        {
+          "title": "3.4 Philosophical frameworks as candidate assay axes",
+          "id": "t2-3-4",
+          "line_start": 117,
+          "line_end": 124,
+          "level": 3
+        },
+        {
+          "title": "4. First application: re-describing SECI through the assay",
+          "id": "t2-4",
+          "line_start": 125,
+          "line_end": 128,
+          "level": 2
+        },
+        {
+          "title": "4.1 Externalization: the Mekiki framework's direct domain",
+          "id": "t2-4-1",
+          "line_start": 129,
+          "line_end": 132,
+          "level": 3
+        },
+        {
+          "title": "4.2 Combination: AI's strongest domain",
+          "id": "t2-4-2",
+          "line_start": 133,
+          "line_end": 136,
+          "level": 3
+        },
+        {
+          "title": "4.3 Socialization: the domain of Sollen-type specification",
+          "id": "t2-4-3",
+          "line_start": 137,
+          "line_end": 140,
+          "level": 3
+        },
+        {
+          "title": "4.4 Internalization: AI as catalyst, not substitute",
+          "id": "t2-4-4",
+          "line_start": 141,
+          "line_end": 144,
+          "level": 3
+        },
+        {
+          "title": "4.5 The rate-limiting shift: an analytic consequence",
+          "id": "t2-4-5",
+          "line_start": 145,
+          "line_end": 165,
+          "level": 3
+        },
+        {
+          "title": "5. Convergent evidence",
+          "id": "t2-5",
+          "line_start": 166,
+          "line_end": 169,
+          "level": 2
+        },
+        {
+          "title": "5.1 Predictive validity",
+          "id": "t2-5-1",
+          "line_start": 170,
+          "line_end": 173,
+          "level": 3
+        },
+        {
+          "title": "5.2 Discriminant validity",
+          "id": "t2-5-2",
+          "line_start": 174,
+          "line_end": 177,
+          "level": 3
+        },
+        {
+          "title": "5.3 Convergent and ecological validity",
+          "id": "t2-5-3",
+          "line_start": 178,
+          "line_end": 183,
+          "level": 3
+        },
+        {
+          "title": "5.4 Failure modes",
+          "id": "t2-5-4",
+          "line_start": 184,
+          "line_end": 187,
+          "level": 3
+        },
+        {
+          "title": "6. Discussion",
+          "id": "t2-6",
+          "line_start": 188,
+          "line_end": 191,
+          "level": 2
+        },
+        {
+          "title": "6.1 The assay structure in practice: convergent implementation and convergent failure",
+          "id": "t2-6-1",
+          "line_start": 192,
+          "line_end": 201,
+          "level": 3
+        },
+        {
+          "title": "6.2 Implications for AGI discourse",
+          "id": "t2-6-2",
+          "line_start": 202,
+          "line_end": 205,
+          "level": 3
+        },
+        {
+          "title": "6.3 Agent-relative residues in LLM output",
+          "id": "t2-6-3",
+          "line_start": 206,
+          "line_end": 209,
+          "level": 3
+        },
+        {
+          "title": "6.4 Scope, limitations, and safeguards",
+          "id": "t2-6-4",
+          "line_start": 210,
+          "line_end": 223,
+          "level": 3
+        },
+        {
+          "title": "6.5 Do-type as a heuristic extension",
+          "id": "t2-6-5",
+          "line_start": 224,
+          "line_end": 227,
+          "level": 3
+        },
+        {
+          "title": "7. Conclusion",
+          "id": "t2-7",
+          "line_start": 228,
+          "line_end": 241,
+          "level": 2
+        },
+        {
+          "title": "Postscript",
+          "id": "t2-postscript",
+          "line_start": 242,
+          "line_end": 247,
+          "level": 2
+        },
+        {
+          "title": "Ethical approval",
+          "id": "t2-ethical-approval",
+          "line_start": 248,
+          "line_end": 251,
+          "level": 2
+        },
+        {
+          "title": "Informed consent",
+          "id": "t2-informed-consent",
+          "line_start": 252,
+          "line_end": 255,
+          "level": 2
+        },
+        {
+          "title": "Author contributions",
+          "id": "t2-author-contributions",
+          "line_start": 256,
+          "line_end": 259,
+          "level": 2
+        },
+        {
+          "title": "Competing interests",
+          "id": "t2-competing-interests",
+          "line_start": 260,
+          "line_end": 263,
+          "level": 2
+        },
+        {
+          "title": "Data availability",
+          "id": "t2-data-availability",
+          "line_start": 264,
+          "line_end": 269,
+          "level": 2
+        },
+        {
+          "title": "References",
+          "id": "t2-references",
+          "line_start": 270,
+          "line_end": 367,
+          "level": 2
+        },
+        {
+          "title": "Figure legends (images omitted)",
+          "id": "t2-figure-legends-images-omitted",
+          "line_start": 368,
+          "line_end": 376,
+          "level": 2
+        }
+      ]
+    },
+    {
+      "paper": "T3",
+      "canonical_doi": "https://doi.org/10.35542/osf.io/hvbfe_v2",
+      "preprint_version": "2",
+      "markdown": "papers/T3.md",
+      "html": "papers/T3.html",
+      "sha256": "0d4a367b297db2b8481d71b71aabf7377abee23715a7c4452ed3a647a659dc5b",
+      "bytes": 59409,
+      "lines": 251,
+      "derivation": "Exact paper block extracted from the consolidated Markdown; no prose changes.",
+      "html_text_equivalence": "Pandoc plain-text equality before/after anchor transformation passed",
+      "sections": [
+        {
+          "title": "Paper T3 — Decomposing Agency, Isolating Answerability: Cultivating What Cannot Be Delegated in AI-Assisted Learning",
+          "id": "paper-t3",
+          "line_start": 1,
+          "line_end": 8,
+          "level": 1
+        },
+        {
+          "title": "Abstract",
+          "id": "t3-abstract",
+          "line_start": 9,
+          "line_end": 12,
+          "level": 2
+        },
+        {
+          "title": "1. Introduction",
+          "id": "t3-1",
+          "line_start": 13,
+          "line_end": 30,
+          "level": 2
+        },
+        {
+          "title": "2. Decomposing learner agency by delegability",
+          "id": "t3-2",
+          "line_start": 31,
+          "line_end": 32,
+          "level": 2
+        },
+        {
+          "title": "2.1 The choice of axis",
+          "id": "t3-2-1",
+          "line_start": 33,
+          "line_end": 38,
+          "level": 3
+        },
+        {
+          "title": "2.2 Three components",
+          "id": "t3-2-2",
+          "line_start": 39,
+          "line_end": 42,
+          "level": 3
+        },
+        {
+          "title": "2.3 Two forms of magnitude",
+          "id": "t3-2-3",
+          "line_start": 43,
+          "line_end": 46,
+          "level": 3
+        },
+        {
+          "title": "2.4 The sort",
+          "id": "t3-2-4",
+          "line_start": 47,
+          "line_end": 71,
+          "level": 3
+        },
+        {
+          "title": "2.5 What the sort shows about distribution",
+          "id": "t3-2-5",
+          "line_start": 72,
+          "line_end": 75,
+          "level": 3
+        },
+        {
+          "title": "3. A design conjecture: encounter, crystallization, conversion",
+          "id": "t3-3",
+          "line_start": 76,
+          "line_end": 85,
+          "level": 2
+        },
+        {
+          "title": "4. What the decomposition isolates",
+          "id": "t3-4",
+          "line_start": 86,
+          "line_end": 87,
+          "level": 2
+        },
+        {
+          "title": "4.1 A different kind of remainder",
+          "id": "t3-4-1",
+          "line_start": 88,
+          "line_end": 93,
+          "level": 3
+        },
+        {
+          "title": "4.2 Not an artifact of the axis",
+          "id": "t3-4-2",
+          "line_start": 94,
+          "line_end": 97,
+          "level": 3
+        },
+        {
+          "title": "4.3 The second-personal ground",
+          "id": "t3-4-3",
+          "line_start": 98,
+          "line_end": 105,
+          "level": 3
+        },
+        {
+          "title": "4.4 What the relation grounds",
+          "id": "t3-4-4",
+          "line_start": 106,
+          "line_end": 117,
+          "level": 3
+        },
+        {
+          "title": "5. The two-layer prescription",
+          "id": "t3-5",
+          "line_start": 118,
+          "line_end": 121,
+          "level": 2
+        },
+        {
+          "title": "5.1 Layer one: an analytic compass",
+          "id": "t3-5-1",
+          "line_start": 122,
+          "line_end": 129,
+          "level": 3
+        },
+        {
+          "title": "5.2 Layer one: encounter engineering",
+          "id": "t3-5-2",
+          "line_start": 130,
+          "line_end": 139,
+          "level": 3
+        },
+        {
+          "title": "5.3 Layer one: AI guardrails",
+          "id": "t3-5-3",
+          "line_start": 140,
+          "line_end": 147,
+          "level": 3
+        },
+        {
+          "title": "5.4 Layer two: the second person",
+          "id": "t3-5-4",
+          "line_start": 148,
+          "line_end": 155,
+          "level": 3
+        },
+        {
+          "title": "6. Boundary conditions and research agenda",
+          "id": "t3-6",
+          "line_start": 156,
+          "line_end": 159,
+          "level": 2
+        },
+        {
+          "title": "7. Conclusion",
+          "id": "t3-7",
+          "line_start": 160,
+          "line_end": 163,
+          "level": 2
+        },
+        {
+          "title": "Practitioner Notes",
+          "id": "t3-practitioner-notes",
+          "line_start": 164,
+          "line_end": 181,
+          "level": 2
+        },
+        {
+          "title": "Statements",
+          "id": "t3-statements",
+          "line_start": 182,
+          "line_end": 191,
+          "level": 2
+        },
+        {
+          "title": "References",
+          "id": "t3-references",
+          "line_start": 192,
+          "line_end": 251,
+          "level": 2
+        }
+      ]
+    },
+    {
+      "paper": "T4",
+      "canonical_doi": "https://doi.org/10.31235/osf.io/495wg_v1",
+      "preprint_version": "1",
+      "markdown": "papers/T4.md",
+      "html": "papers/T4.html",
+      "sha256": "9d2e09840323244b58c1fb02586bca79ea78dbe6f8b3deb8f30bc996d17832d5",
+      "bytes": 66526,
+      "lines": 261,
+      "derivation": "Exact paper block extracted from the consolidated Markdown; no prose changes.",
+      "html_text_equivalence": "Pandoc plain-text equality before/after anchor transformation passed",
+      "sections": [
+        {
+          "title": "Paper T4 — 組織における「自分ごと化」のアドヒアランス的再記述：知識労働がAIで加速された時に組織に求められるもの",
+          "id": "paper-t4",
+          "line_start": 1,
+          "line_end": 24,
+          "level": 1
+        },
+        {
+          "title": "1. 問題の所在",
+          "id": "t4-1",
+          "line_start": 25,
+          "line_end": 26,
+          "level": 3
+        },
+        {
+          "title": "1.1 「自分ごと化」という未成熟な要請",
+          "id": "t4-1-1",
+          "line_start": 27,
+          "line_end": 30,
+          "level": 4
+        },
+        {
+          "title": "1.2 医療が一度通過した同型の問題",
+          "id": "t4-1-2",
+          "line_start": 31,
+          "line_end": 34,
+          "level": 4
+        },
+        {
+          "title": "1.3 説明言語の不在という横断的な構造",
+          "id": "t4-1-3",
+          "line_start": 35,
+          "line_end": 38,
+          "level": 4
+        },
+        {
+          "title": "1.4 なぜ今この再記述が必要か",
+          "id": "t4-1-4",
+          "line_start": 39,
+          "line_end": 42,
+          "level": 4
+        },
+        {
+          "title": "1.5 本稿の貢献",
+          "id": "t4-1-5",
+          "line_start": 43,
+          "line_end": 46,
+          "level": 4
+        },
+        {
+          "title": "2. 概念枠組み：アドヒアランスと引き受けの構造",
+          "id": "t4-2",
+          "line_start": 47,
+          "line_end": 48,
+          "level": 3
+        },
+        {
+          "title": "2.1 医療アドヒアランスの核心：正統性の所在",
+          "id": "t4-2-1",
+          "line_start": 49,
+          "line_end": 56,
+          "level": 4
+        },
+        {
+          "title": "2.2 Mekikiによる翻訳：二つの区別の輸入",
+          "id": "t4-2-2",
+          "line_start": 57,
+          "line_end": 64,
+          "level": 4
+        },
+        {
+          "title": "2.3 中核命題：自分ごと化とは何か",
+          "id": "t4-2-3",
+          "line_start": 65,
+          "line_end": 72,
+          "level": 4
+        },
+        {
+          "title": "2.4 引き受けの核：応答可能性（answerability）",
+          "id": "t4-2-4",
+          "line_start": 73,
+          "line_end": 97,
+          "level": 4
+        },
+        {
+          "title": "3. 事例分析",
+          "id": "t4-3",
+          "line_start": 98,
+          "line_end": 109,
+          "level": 3
+        },
+        {
+          "title": "4. 考察：非対称の経路依存と二経路モデル",
+          "id": "t4-4",
+          "line_start": 110,
+          "line_end": 111,
+          "level": 3
+        },
+        {
+          "title": "4.1 なぜ医療で成立しやすく組織で難しいのか",
+          "id": "t4-4-1",
+          "line_start": 112,
+          "line_end": 117,
+          "level": 4
+        },
+        {
+          "title": "4.2 非対称の正体は経路にある",
+          "id": "t4-4-2",
+          "line_start": 118,
+          "line_end": 127,
+          "level": 4
+        },
+        {
+          "title": "4.3 組織アドヒアランスの二経路モデル",
+          "id": "t4-4-3",
+          "line_start": 128,
+          "line_end": 145,
+          "level": 4
+        },
+        {
+          "title": "4.4 射程の限定とその反転",
+          "id": "t4-4-4",
+          "line_start": 146,
+          "line_end": 151,
+          "level": 4
+        },
+        {
+          "title": "5. 失敗と成功の様式：形骸化と3M",
+          "id": "t4-5",
+          "line_start": 152,
+          "line_end": 155,
+          "level": 3
+        },
+        {
+          "title": "5.1 失敗の様式：形骸化と自惚れ",
+          "id": "t4-5-1",
+          "line_start": 156,
+          "line_end": 165,
+          "level": 4
+        },
+        {
+          "title": "5.2 成功の様式：3Mの三操作",
+          "id": "t4-5-2",
+          "line_start": 166,
+          "line_end": 181,
+          "level": 4
+        },
+        {
+          "title": "5.3 先行指標による観測",
+          "id": "t4-5-3",
+          "line_start": 182,
+          "line_end": 202,
+          "level": 4
+        },
+        {
+          "title": "6. 結論",
+          "id": "t4-6",
+          "line_start": 203,
+          "line_end": 214,
+          "level": 3
+        },
+        {
+          "title": "注",
+          "id": "t4-notes",
+          "line_start": 215,
+          "line_end": 222,
+          "level": 2
+        },
+        {
+          "title": "参考文献",
+          "id": "t4-references",
+          "line_start": 223,
+          "line_end": 261,
+          "level": 2
+        }
+      ]
+    },
+    {
+      "paper": "T5",
+      "canonical_doi": "https://doi.org/10.31235/osf.io/593ah_v3",
+      "preprint_version": "3",
+      "markdown": "papers/T5.md",
+      "html": "papers/T5.html",
+      "sha256": "57d600b36fa60389c2ae66a33c8feca118e516934cf5c6127407f40f48c93937",
+      "bytes": 85758,
+      "lines": 325,
+      "derivation": "Exact paper block extracted from the consolidated Markdown; no prose changes.",
+      "html_text_equivalence": "Pandoc plain-text equality before/after anchor transformation passed",
+      "sections": [
+        {
+          "title": "Paper T5 — Why Play When AI Can Win: The Non-Transferability of Participation and the Visibility of Dignity",
+          "id": "paper-t5",
+          "line_start": 1,
+          "line_end": 10,
+          "level": 1
+        },
+        {
+          "title": "Abstract",
+          "id": "t5-abstract",
+          "line_start": 11,
+          "line_end": 14,
+          "level": 2
+        },
+        {
+          "title": "Keywords",
+          "id": "t5-keywords",
+          "line_start": 15,
+          "line_end": 20,
+          "level": 2
+        },
+        {
+          "title": "1. Introduction",
+          "id": "t5-1",
+          "line_start": 21,
+          "line_end": 46,
+          "level": 2
+        },
+        {
+          "title": "2. The Separation: Achieved State and Participation",
+          "id": "t5-2",
+          "line_start": 47,
+          "line_end": 48,
+          "level": 2
+        },
+        {
+          "title": "2.1 The apparatus",
+          "id": "t5-2-1",
+          "line_start": 49,
+          "line_end": 58,
+          "level": 3
+        },
+        {
+          "title": "2.2 What delegation delivers, and what it dissolves",
+          "id": "t5-2-2",
+          "line_start": 59,
+          "line_end": 68,
+          "level": 3
+        },
+        {
+          "title": "2.3 Two clarifications",
+          "id": "t5-2-3",
+          "line_start": 69,
+          "line_end": 74,
+          "level": 3
+        },
+        {
+          "title": "3. The Non-Transferability Theorem",
+          "id": "t5-3",
+          "line_start": 75,
+          "line_end": 76,
+          "level": 2
+        },
+        {
+          "title": "3.1 Statement and scope",
+          "id": "t5-3-1",
+          "line_start": 77,
+          "line_end": 88,
+          "level": 3
+        },
+        {
+          "title": "3.2 The criterion: undertaking, not provenance",
+          "id": "t5-3-2",
+          "line_start": 89,
+          "line_end": 96,
+          "level": 3
+        },
+        {
+          "title": "3.3 Independence from the status of AI",
+          "id": "t5-3-3",
+          "line_start": 97,
+          "line_end": 106,
+          "level": 3
+        },
+        {
+          "title": "3.4 Two roots and two world-images",
+          "id": "t5-3-4",
+          "line_start": 107,
+          "line_end": 120,
+          "level": 3
+        },
+        {
+          "title": "3.5 A first-person corollary",
+          "id": "t5-3-5",
+          "line_start": 121,
+          "line_end": 126,
+          "level": 3
+        },
+        {
+          "title": "4. The Conditions of Acceptance",
+          "id": "t5-4",
+          "line_start": 127,
+          "line_end": 128,
+          "level": 2
+        },
+        {
+          "title": "4.1 The vision of collapse and its heirs",
+          "id": "t5-4-1",
+          "line_start": 129,
+          "line_end": 140,
+          "level": 3
+        },
+        {
+          "title": "4.2 Diagnosis and the third response",
+          "id": "t5-4-2",
+          "line_start": 141,
+          "line_end": 148,
+          "level": 3
+        },
+        {
+          "title": "4.3 Dignity apparatuses",
+          "id": "t5-4-3",
+          "line_start": 149,
+          "line_end": 164,
+          "level": 3
+        },
+        {
+          "title": "4.4 Price and dignity: what the apparatus protects",
+          "id": "t5-4-4",
+          "line_start": 165,
+          "line_end": 182,
+          "level": 3
+        },
+        {
+          "title": "4.5 Two further pillars",
+          "id": "t5-4-5",
+          "line_start": 183,
+          "line_end": 190,
+          "level": 3
+        },
+        {
+          "title": "4.6 What this account does not license",
+          "id": "t5-4-6",
+          "line_start": 191,
+          "line_end": 194,
+          "level": 3
+        },
+        {
+          "title": "5. A Completed Historical Case",
+          "id": "t5-5",
+          "line_start": 195,
+          "line_end": 196,
+          "level": 2
+        },
+        {
+          "title": "5.1 The case",
+          "id": "t5-5-1",
+          "line_start": 197,
+          "line_end": 202,
+          "level": 3
+        },
+        {
+          "title": "5.2 The assay: three axes",
+          "id": "t5-5-2",
+          "line_start": 203,
+          "line_end": 208,
+          "level": 3
+        },
+        {
+          "title": "5.3 What survived, and the record",
+          "id": "t5-5-3",
+          "line_start": 209,
+          "line_end": 216,
+          "level": 3
+        },
+        {
+          "title": "5.4 Conclusion",
+          "id": "t5-5-4",
+          "line_start": 217,
+          "line_end": 224,
+          "level": 3
+        },
+        {
+          "title": "Postscript",
+          "id": "t5-postscript",
+          "line_start": 225,
+          "line_end": 230,
+          "level": 2
+        },
+        {
+          "title": "Acknowledgements",
+          "id": "t5-acknowledgements",
+          "line_start": 231,
+          "line_end": 234,
+          "level": 2
+        },
+        {
+          "title": "References",
+          "id": "t5-references",
+          "line_start": 235,
+          "line_end": 325,
+          "level": 2
+        }
+      ]
+    }
+  ],
+  "validation_scope": "Equality, parsing, source excerpt presence and local links; not independent scholarship or DOI resolution."
+}

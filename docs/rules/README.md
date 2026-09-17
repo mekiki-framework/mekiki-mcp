@@ -8,4 +8,8 @@
 | SEARCH | 1.0.0 | 確定（未実装） | 2 | [SEARCH.md](SEARCH.md) |
 | TERMS | 0.0.0（空） | 確定（未実装） | 2 | [SEARCH.md](SEARCH.md) の「用語対応表」 |
 | CAND・NEAR・GUIDE・LIMITS・JSON・SCHEMA・PATTERNS・PROMPTS | — | 未起草 | 2 | `docs/PLAN.md` A-3 |
-| LINES・LANG・SECTION・T4MAP・BUNDLE | — | 未起草 | 1 | `docs/PLAN.md` A-2 |
+| BUNDLE | 1.0.0 | 提案（実装済み） | 1 | [BUNDLE.md](BUNDLE.md) |
+| LINES | 1.0.0 | 提案（実装済み） | 1 | [LINES.md](LINES.md) |
+| LANG | 1.0.0 | 確定（実装済み） | 1 | [LANG.md](LANG.md) |
+| SECTION | 1.0.0 | 提案（実装済み） | 1 | [SECTION.md](SECTION.md) |
+| T4MAP | 1.0.0 | 提案（実装済み） | 1 | [T4MAP.md](T4MAP.md) |

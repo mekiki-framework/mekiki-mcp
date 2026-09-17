@@ -65,14 +65,25 @@ def test_approved_tables_and_empty_start(reader):
 
 
 def test_prompts_are_approved_with_guard(reader):
+    """六つの雛形（日本語三つ・英語三つ。SPEC v2.2 §6・案B）。"""
     assert PR.PROMPTS_STATUS == "approved" and PR.APPROVED_ON == "2026-09-18"
-    assert [t.name for t in PR.TEMPLATES] == ["read_with_guards", "four_modes", "answer_format"]
+    assert [t.name for t in PR.TEMPLATES] == ["read_with_guards", "four_modes", "answer_format",
+                                              "read_with_guards_en", "four_modes_en", "answer_format_en"]
+    assert [t.language for t in PR.TEMPLATES] == ["ja"] * 3 + ["en"] * 3
     for t in PR.TEMPLATES:
-        assert PR.GUARD_SENTENCE in t.text
+        guard = PR.GUARD_SENTENCE if t.language == "ja" else PR.GUARD_SENTENCE_EN
+        assert guard in t.text and t.text.startswith(f"[{t.name}]" if t.language == "en" else f"【{t.name}】")
+    material = {"ja": PR.MATERIAL_SENTENCE, "en": PR.MATERIAL_SENTENCE_EN}
+    for t in (PR.READ_WITH_GUARDS, PR.READ_WITH_GUARDS_EN):
+        assert material[t.language] in t.text
+    # 英語版は日本語版と一対一（名前は `_en` を足しただけ）。
+    assert {t.name[:-3] for t in PR.TEMPLATES if t.language == "en"} == {t.name for t in PR.TEMPLATES
+                                                                        if t.language == "ja"}
     headings = {line[4:] for line in _CORPUS.lines["FOR_AI_READERS.md"] if line.startswith("### Mode")}
-    for line in PR.FOUR_MODES.text.split("\n"):
-        if line.startswith("- Mode"):
-            assert line[2:] in headings
+    for template in (PR.FOUR_MODES, PR.FOUR_MODES_EN):
+        for line in template.text.split("\n"):
+            if line.startswith("- Mode"):
+                assert line[2:] in headings
 
 
 def test_reading_guide(reader):
@@ -82,7 +93,8 @@ def test_reading_guide(reader):
     assert r["source_kind"] == "reading_guide" and r["canonical_doi"] is None and r["paper_id"] is None
     assert (r["locator"]["line_start"], r["locator"]["line_end"]) == (42, 61)
     assert r["payload"]["text"].startswith("## Four practical response modes")
-    assert env["templates"]["status"] == "approved" and len(env["templates"]["items"]) == 3
+    assert env["templates"]["status"] == "approved" and len(env["templates"]["items"]) == 6
+    assert [i["language"] for i in env["templates"]["items"]] == ["ja"] * 3 + ["en"] * 3
     assert rt(T.get_reading_guide(reader, "all"))["results"][0]["locator"]["line_end"] == 73
     ranges = {p: reader.guide_ranges[p][:2] for p, _ in T.GUIDE_PARTS}
     assert ranges["interpretation"] == (5, 41) and ranges["core-terms"] == (7, 29)

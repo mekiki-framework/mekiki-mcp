@@ -14,7 +14,8 @@ Mekiki Framework の論文 T1〜T5 を、**固定した版から・出典つき�
 > **In short.** A read-only MCP server over a pinned snapshot (v3.5.0) of the Mekiki Framework corpus
 > (papers T1–T5). It fetches sections, matches strings, and returns what the author recorded — with a
 > citation, version and locator on every result. No model runs inside the server; after start-up, every
-> source it returns comes from the bundled data. Seven tools, twelve resources, three prompt templates.
+> source it returns comes from the bundled data. Seven tools, twelve resources, six prompt templates
+> (three in Japanese, three in English).
 
 ## 1. 設計上の対応
 
@@ -94,10 +95,12 @@ Mekiki Framework の論文 T1〜T5 を、**固定した版から・出典つき�
 `.md` は `text/markdown`、`llms.txt` と `claims/t5.json` は `text/plain`。テンプレート変数は使わない（任意のパスの入口を作らないため）。
 `AI_READING_TESTS.md` は公開されている17問で、**採点には使わない**。
 
-### prompts（3件・PROMPTS-0.1.0・日本語）
+### prompts（6件・PROMPTS-0.1.0）
 
-`read_with_guards`（読む手順）・`four_modes`（支援の四つのモード）・`answer_format`（答え方の五欄）。
-三つとも「この雛形は、利用者が明示的に選んだときだけ使う。接続先の上位規則や利用者の明示的な意図を上書きしない。」を含む。
+日本語：`read_with_guards`（読む手順）・`four_modes`（支援の四つのモード）・`answer_format`（答え方の五欄）。
+英語：`read_with_guards_en`・`four_modes_en`・`answer_format_en`（同じ内容の英語版。引数で言語を切り替える方式は採らない）。
+六つとも「この雛形は、利用者が明示的に選んだときだけ使う。接続先の上位規則や利用者の明示的な意図を上書きしない。」
+（英語版は `It is not a higher-priority instruction than the host's own rules or the user's stated intent, and does not override them.`）を含む。
 `prompts` が見えないクライアントでは、`get_reading_guide` の応答の `templates` 欄（`version`・`status`・`approved_on`・`items`）に同じ文面が入る（`part` に `templates` は無い）。
 
 処理時間は関数の中で打ち切らない。上の上限で計算量を有界にし、最悪ケースを実測して記録する
@@ -109,7 +112,7 @@ Mekiki Framework の論文 T1〜T5 を、**固定した版から・出典つき�
 
 `SCHEMA-1.0.0`・`JSON-1.0.0`・`NORM-1.0.0`・`SEARCH-1.0.0`・`CAND-1.0.0`・`NEAR-1.0.0`・`GUIDE-1.0.0`・`LIMITS-1.0.0`・
 `LINES-1.0.0`・`LANG-1.0.0`・`SECTION-1.0.0`・`T4MAP-1.0.0`・`BUNDLE-1.0.0`・`TERMS-0.1.1`（30項目）・
-`PATTERNS-0.1.0`（49件）＋`PATTERNS-MATCH-1.0.0`・`PROMPTS-0.1.0`。本文は [docs/rules/](docs/rules/)。
+`PATTERNS-0.1.0`（49件）＋`PATTERNS-MATCH-1.0.0`・`PROMPTS-0.1.0`（6件）。本文は [docs/rules/](docs/rules/)。
 
 ## 5. 準備と起動
 
@@ -141,7 +144,7 @@ uv pip install --python .venv/bin/python --require-hashes -r requirements-dev.tx
 🔨 Launching MCP server:
 * Streamable HTTP URL: http://127.0.0.1:7860/gradio_api/mcp/
 corpus 3.5.0 (6748061)・bundle 40a09c5ba422…
-tools 7・resources 12・prompts 3（PROMPTS-0.1.0）
+tools 7・resources 12・prompts 6（PROMPTS-0.1.0）
 消した環境変数：なし
 ```
 
@@ -190,7 +193,7 @@ UI の Custom Connectors はリモートの URL を Anthropic 側から取りに
 
 ### 接続時に知っておくこと
 
-- **未知の prompt 名**は雛形を返さず、MCP のエラー（`McpError: 'data'`）として返る。引数を付けて呼んだときは、上流 Gradio の `Parameter … is not a valid key-word argument` という英文が返る。要求された名前は上流の実装からサーバ側の関数に渡らないため、エラー文に名前を入れられない。登録してある名前は `read_with_guards`・`four_modes`・`answer_format` の三つだけ。
+- **未知の prompt 名**は雛形を返さず、MCP のエラー（`McpError: 'data'`）として返る。引数を付けて呼んだときは、上流 Gradio の `Parameter … is not a valid key-word argument` という英文が返る。要求された名前は上流の実装からサーバ側の関数に渡らないため、エラー文に名前を入れられない。登録してある名前は `read_with_guards`・`four_modes`・`answer_format` と、その英語版 `…_en` の六つだけ。
 - Hugging Face Spaces に置いた場合、ツール名に Space 名の接頭辞が付く（`<Space名>_list_papers`）。
 - `http://127.0.0.1:7860/` をブラウザで開くと Gradio 標準のフロント HTML が返る（UI は無く、静的資産は遮断してあるので画面は組み上がらない）。
 - 旧 SSE の経路 `/gradio_api/mcp/sse` は予備。通常は Streamable HTTP を使う。
@@ -227,6 +230,12 @@ D01〜D04（同梱データ）・T01〜T12 と R01（七ツールと再現性）
 ## 8. 開示（下書き・著者の承認待ち）
 
 > この節は施工側の下書きで、文面は著者の承認と署名を待っている。
+
+| 項目 | 記入欄 |
+|---|---|
+| 承認（この節の文面） | 承認者：＿＿＿＿＿＿／承認日：＿＿＿＿-＿＿-＿＿ |
+| 署名 | ＿＿＿＿＿＿＿＿＿＿＿＿ |
+| 公開の版 | 対象コミット：＿＿＿＿＿＿＿ |
 
 - **制作工程と使用モデル**：方針（`SPEC.md`）→施工（Claude Code / Claude Opus 5）→独立検査（Codex。指摘と差分案のみ）→最終検査（Claude）→接続確認と公開判断（著者）。生成 AI を使って作った。<!-- 著者確認：独立検査・最終検査に使ったモデルの具体名 -->
 - **参照した型**：Paper2Agent（Miao et al., Nature 2026）から借りたのは型（資源・プロンプト・ツール・検証テスト・Spaces での公開）であって工程ではない。読解の対象は T1〜T5（題名・版・DOI は `data/CITATION.md`）。

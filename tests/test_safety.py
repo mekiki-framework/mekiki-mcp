@@ -207,6 +207,8 @@ def test_s01_host_variants(server):
         (b"GET /config HTTP/1.1\r\nHost: [::1]\r\nConnection: close\r\n\r\n", (200,)),          # IPv6・ポートなし
         (b"GET /config HTTP/1.1\r\nHost: 127.0.0.1.evil.example\r\nConnection: close\r\n\r\n", (400,)),
         (b"GET /config HTTP/1.1\r\nHost: \r\nConnection: close\r\n\r\n", (400,)),               # 空
+        (b"GET /config HTTP/1.1\r\nHost: LocalHost:" + port + b"\r\nConnection: close\r\n\r\n", (200,)),  # 大小
+        (b"GET /config HTTP/1.1\r\nHost: 127.0.0.1.\r\nConnection: close\r\n\r\n", (400,)),       # 末尾の点
     ]
     for request, want in cases:
         status, head = server.raw(request)

@@ -110,8 +110,8 @@ BODY_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
 
 
 def _host_name(value: str) -> str:
-    """Host ヘッダからポートを外す。IPv6 は括弧のまま比べる。"""
-    value = value.strip()
+    """Host ヘッダからポートを外す。ホスト名は大小を区別しない。IPv6 は括弧のまま比べる。"""
+    value = value.strip().lower()
     if value.startswith("["):
         end = value.find("]")
         return value if end < 0 else value[:end + 1]

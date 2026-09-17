@@ -581,7 +581,7 @@ class Hit:
     positions: tuple[tuple[int, int, str, str], ...]  # (fold 上の開始, 終了, 断片, 経路)
 
     def key(self, paper_order: Mapping[str, int]) -> tuple:
-        # 語の種類数↓→総出現数↓→直接一致↓→論文順↑→行番号↑（SPEC §5.3）
+        # 語の種類数↓→直接一致↓→総出現数↓→論文順↑→行番号↑（SEARCH-1.0.0。SPEC §5.3 は v2.2 で訂正）
         return (-self.distinct, -self.direct, -self.total, paper_order[self.line.paper_id], self.line.no)
 
 

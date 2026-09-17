@@ -239,7 +239,7 @@ def get_reading_guide(part: str = "all") -> str:
     """Returns the author's reading guide for AI readers, and the reading templates.
 
     Args:
-        part: Which part to return: all, modes, cautions, questions or templates.
+        part: One of all, interpretation, core-terms, japanese-terms, t4-languages, modes, mode-1, mode-2, mode-3, mode-4, boundaries. Gradio keeps only the first line of an argument description, so this line stays long on purpose.
 
     Returns:
         A JSON object: status, results quoted from FOR_AI_READERS.md, templates, limitations.

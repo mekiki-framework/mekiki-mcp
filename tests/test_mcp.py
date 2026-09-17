@@ -77,6 +77,11 @@ def test_m01_tools_list_and_call(server):
         assert by_name[name].description
     assert by_name["search_passages"].inputSchema["properties"]["k"]["default"] == 5
     assert by_name["get_reading_guide"].inputSchema["properties"]["part"]["default"] == "all"
+    # 引数の説明は一行しか拾われない。GUIDE-1.0.0 の11個がすべて説明に載っていること。
+    part_desc = by_name["get_reading_guide"].inputSchema["properties"]["part"]["description"]
+    from mekiki_reader import tools as _T
+    for name, _title in _T.GUIDE_PARTS:
+        assert name in part_desc, name
     for (name, _args, want), result in zip(CALLS, results):
         assert result.isError is False, (name, MC.error_text(result))
         env = MC.payload(result)

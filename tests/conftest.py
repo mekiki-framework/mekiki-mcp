@@ -7,6 +7,8 @@ import os
 import sys
 from pathlib import Path
 
+import pytest
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
@@ -45,3 +47,25 @@ def pytest_sessionfinish(session, exitstatus):
         changed = sorted(set(after) ^ set(_SNAPSHOT) | {k for k in after if _SNAPSHOT.get(k) != after[k]})
         print(f"\nERROR: data/ changed during the test session: {changed[:10]}", file=sys.stderr)
         session.exitstatus = 1
+
+
+@pytest.fixture(scope="session")
+def reader():
+    """実データの Reader（実表を載せた状態）。"""
+    from mekiki_reader import corpus as C
+    from mekiki_reader import tools as T
+
+    return T.Reader(C.load_corpus())
+
+
+@pytest.fixture(scope="session")
+def server(tmp_path_factory):
+    """試験用サーバ（server マークのテストが使う）。停止まで一つを使い回す。"""
+    from tests._support.server import Server
+
+    srv = Server(tmp_path_factory.mktemp("server") / "audit.json")
+    srv.start()
+    try:
+        yield srv
+    finally:
+        srv.stop()

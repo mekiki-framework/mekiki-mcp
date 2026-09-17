@@ -14,7 +14,7 @@ from typing import Iterable, Mapping
 from .corpus import is_blank
 from .normalize import fold_search
 
-TERMS_VERSION = "TERMS-0.1.0"
+TERMS_VERSION = "TERMS-0.1.1"
 APPROVED_ON = "2026-09-18"
 
 # 項目ごとの出所（scripts/find_term_sources.py --terms の出力。TERMS-SRC-1.0.0）
@@ -25,7 +25,7 @@ SOURCES: dict[str, tuple[str, ...]] = {
         '訳注 translations/T4.en.md:227（tn-05）',
     ),
     'M02': (
-        '対訳の出所なし（日本語形の出現 0件）',
+        '英語の表記揺れだけの行（0.1.1 で日本語形「仕様化費用」を外した。同梱ファイルに一度も現れないため）',
         '英語形の出現 papers/T1.md:14・papers/T1.md:20・papers/T1.md:40 ほか',
     ),
     'M03': (
@@ -158,7 +158,8 @@ class TermEntry:
 # 出所（sources）は scripts/find_term_sources.py --terms の機械的な検索結果（TERMS-SRC-1.0.0）。
 TERMS: tuple[TermEntry, ...] = (
     TermEntry("M01", ('仕様', '専門性の基質'), ('specification', 'Spec.'), SOURCES["M01"], APPROVED_ON),
-    TermEntry("M02", ('仕様化費用',), ('specification cost', 'Spec.cost', 'Spec. cost'), SOURCES["M02"], APPROVED_ON),
+    # M02 は日本語形を持たない（英語の表記揺れだけ。0.1.1・著者確定）。
+    TermEntry("M02", (), ('specification cost', 'Spec.cost', 'Spec. cost'), SOURCES["M02"], APPROVED_ON),
     TermEntry("M03", ('外化', '外化費用'), ('externalization', 'externalisation', 'Ext.cost', 'externalization cost'), SOURCES["M03"], APPROVED_ON),
     TermEntry("M04", ('事実', '事実認識'), ('Sein', 'Sein-type'), SOURCES["M04"], APPROVED_ON),
     TermEntry("M05", ('価値判断',), ('Sollen', 'Sollen-type'), SOURCES["M05"], APPROVED_ON),
@@ -213,8 +214,8 @@ def build_term_index(entries: Iterable[TermEntry], version: str = TERMS_VERSION)
     for e in entries:
         if not isinstance(e, TermEntry) or not _ID_RE.match(e.id) or e.id in by_id:
             raise ValueError(f"invalid or duplicate term id: {getattr(e, 'id', e)!r}")
-        if not e.forms_ja or not e.forms_en or not e.sources:
-            raise ValueError(f"{e.id}: forms and sources are required")
+        if not e.sources or len(e.forms_ja) + len(e.forms_en) < 2:
+            raise ValueError(f"{e.id}: sources and at least two forms are required")
         if not _DATE_RE.match(e.approved_on or ""):
             raise ValueError(f"{e.id}: approved_on must be YYYY-MM-DD")
         fs = set()

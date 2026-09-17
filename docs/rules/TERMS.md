@@ -2,8 +2,8 @@
 
 | 項目 | 値 |
 |---|---|
-| 規則ID・版 | TERMS-0.1.0（30項目） |
-| 状態 | 確定（著者承認 2026-09-18。Q52・Q53） |
+| 規則ID・版 | TERMS-0.1.1（30項目。0.1.0 から M02 の日本語形を外した） |
+| 状態 | 確定（著者承認 2026-09-18。Q52・Q53。0.1.1 も同日の著者確定） |
 | 実装 | `mekiki_reader/terms.py`（`TERMS`・`SOURCES`・`build_term_index`）・`mekiki_reader/tools.py`（`_term_prepass`・`_expansions`） |
 | 出所の検索 | `scripts/find_term_sources.py --terms`（TERMS-SRC-1.0.0。同梱データだけを読む） |
 
@@ -11,6 +11,7 @@
 
 - 載せるのは著者が承認した項目だけ。範囲はコーパスが自ら示す対訳と表記揺れに限る（概念レベルの対応は入れない。SPEC §11）。
 - 項目の形：id（`M` と数字）・forms_ja・forms_en・sources（コーパス内の出所）・approved_on。起動時に形を確かめ、不正なら起動しない。
+- 語形は日英あわせて二つ以上。片側だけの行も置ける（0.1.1 で M02 を英語の表記揺れだけの行にしたため。日本語クエリからは当たらず、英語の表記揺れを束ねる働きだけを持つ）。
 - 索引：各語形を SEARCH-1.0.0 の畳み込みにかけ、語形 → 項目 id の表を作る（TERMS-0.1.0 では語形79個、項目どうしの重複なし）。
 - 検索での使い方（SEARCH-1.0.0）：
   1. 前処理：畳み込んだクエリの中から、語形（空白や記号を含むものも）を長い順・左から拾い、一つの断片として取り出す。
@@ -27,7 +28,7 @@ A：T4 本文の「日本語（…英語…）」表記。B：英訳 manifest �
 | ID | 日本語 | 英語（表記揺れを含む） | 出所（機械的な検索・TERMS-SRC-1.0.0） | 候補表の出所（参考） |
 |---|---|---|---|---|
 | M01 | 仕様／専門性の基質 | specification / Spec. | T4 本文の対訳表記 papers/T4.md:61；T4↔T4.en の manifest 対応で共起 1/1 unit（T4.md:61↔T4.en.md:220）；訳注 translations/T4.en.md:227（tn-05） | T4「専門性の基質（specification）」；THEORY_MAP T1 Terms |
-| M02 | 仕様化費用 | specification cost / Spec.cost / Spec. cost | 対訳の出所なし（日本語形の出現 0件）；英語形の出現 papers/T1.md:14・papers/T1.md:20・papers/T1.md:40 ほか | T1（"Spec. cost" 2件・"specification cost" 63件）；T4 |
+| M02 | （なし） | specification cost / Spec.cost / Spec. cost | 英語の表記揺れだけの行（0.1.1 で日本語形「仕様化費用」を外した。同梱ファイルに一度も現れないため）；英語形の出現 papers/T1.md:14・papers/T1.md:20・papers/T1.md:40 ほか | T1（"Spec. cost" 2件・"specification cost" 63件）；T4 |
 | M03 | 外化／外化費用 | externalization / externalisation / Ext.cost / externalization cost | T4↔T4.en の manifest 対応で共起 4/4 unit（T4.md:19↔T4.en.md:30・T4.md:41↔T4.en.md:126 ほか） | T1（英綴り externalisation）；T2〜T4（米綴り）；THEORY_MAP T1 |
 | M04 | 事実／事実認識 | Sein / Sein-type | T4 本文の対訳表記 papers/T4.md:61・papers/T4.md:104・papers/T4.md:116 ほか；T4↔T4.en の manifest 対応で共起 4/7 unit（T4.md:61↔T4.en.md:220・T4.md:104↔T4.en.md:386 ほか） | T4「事実（Sein）」「事実認識（Sein）」 |
 | M05 | 価値判断 | Sollen / Sollen-type | T4 本文の対訳表記 papers/T4.md:61・papers/T4.md:69・papers/T4.md:116 ほか；T4↔T4.en の manifest 対応で共起 4/8 unit（T4.md:61↔T4.en.md:220・T4.md:69↔T4.en.md:258 ほか） | T4「価値判断（Sollen）」 |
@@ -59,7 +60,7 @@ A：T4 本文の「日本語（…英語…）」表記。B：英訳 manifest �
 
 ## 注記
 
-- M02：日本語形「仕様化費用」は同梱ファイルに一度も現れず、対訳の出所はない。英語側の表記揺れ（specification cost・Spec. cost・Spec.cost）は T1 とガイドに現れる。著者の確定により載せた。
+- M02：日本語形「仕様化費用」は同梱ファイルに一度も現れないため、0.1.1（2026-09-18・著者確定）で外した。英語側の表記揺れ（specification cost・Spec. cost・Spec.cost）だけを登録する。日本語クエリからは当たらない。
 - M28：「承認」は recognition として登録しない（訳注 tn-07 が、承認を対象に応じて endorsement・adoption/approval と訳し分け、自動的には recognition としないと述べるため）。
 - 候補の M23（委任）・M29（是認）は削除した（同梱ファイルに日本語形が現れない）。
 - B の共起は、同じ unit に日本語と英語の語形がそろって現れることを示すだけで、語どうしの訳の対応を一つずつ確かめたものではない。

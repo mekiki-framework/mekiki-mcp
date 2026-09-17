@@ -49,6 +49,8 @@ SERVER_NAME = "127.0.0.1"  # 環境変数では変えない（Q67）
 
 MAX_CONCURRENCY = 4
 MAX_THREADS = 8
+SENTINEL_MESSAGE = ("unknown prompt: this server has only read_with_guards, four_modes and answer_format "
+                    "(the requested name is not passed to this endpoint by the server framework)")
 BUSY_MESSAGE = f"busy: this reader accepts at most {MAX_CONCURRENCY} concurrent calls"
 _SLOTS = threading.BoundedSemaphore(MAX_CONCURRENCY)
 
@@ -274,7 +276,7 @@ def _sentinel():
     """最後に登録する番兵（Q64）。prompts/get は名前が一致しないと最後の endpoint を呼ぶ。"""
 
     def mekiki_sentinel() -> str:
-        raise ValueError("unknown prompt or resource name")
+        raise gr.Error(SENTINEL_MESSAGE)
 
     # tools/list・resources/list・prompts/list のどれにも載らない印を付ける（上流は "tool" 以外を外す）。
     mekiki_sentinel._mcp_type = "sentinel"

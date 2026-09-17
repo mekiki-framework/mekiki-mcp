@@ -10,6 +10,7 @@
   3. `FR Lnn`（複数・範囲可） → FOR_AI_READERS.md の行。
   4. `THEORY_MAP Tn「見出し」`（`Tn「見出し」` の略記を含む） → THEORY_MAP.md の見出しの節。見出しが無ければ
      太字の項目行、それも無ければその文字列を含む行。番号つきの項目（`3–4` など）はその項目の行。
+     `：行 "…"` が続くときは、その節の中でその文字列を含む行が一つだけであることを確かめ、その行に解決する。
   5. 上のどれにも当たらない参照は未解決とし、その行は載せない。近い見出しなどを候補として報告する。
 
   python scripts/build_patterns.py            # 解決の結果・未解決の行・生成する定義を出力
@@ -74,9 +75,15 @@ def resolve_theory_map(corpus, ref: str):
                     return (TM_PATH, *heading_range(lines, heads, i))
         raise Unresolved(ref, "THEORY_MAP の参照の形が読めない")
     paper, label, num_from, num_to = m.group(1), m.group(2), m.group(3), m.group(4)
+    row = re.search(r"行 \"([^\"]+)\"", ref)
     cand = [i for i, (_no, _lv, title, p) in enumerate(heads) if title == label and (paper is None or p == paper)]
     if len(cand) == 1:
         start, end = heading_range(lines, heads, cand[0])
+        if row:
+            hit = [n for n in range(start, end + 1) if row.group(1) in lines[n - 1]]
+            if len(hit) != 1:
+                raise Unresolved(ref, f"「{label}」の中で 行 \"{row.group(1)}\" に当たる行が {len(hit)} 本ある")
+            return (TM_PATH, hit[0], hit[0])
         if num_from:
             items = [n for n in range(start, end + 1) if re.match(rf"^{num_from}\. ", lines[n - 1])]
             last = [n for n in range(start, end + 1) if re.match(rf"^{num_to or num_from}\. ", lines[n - 1])]

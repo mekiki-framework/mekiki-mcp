@@ -341,6 +341,24 @@ PATTERNS: tuple[Pattern, ...] = (
         approved_on=APPROVED_ON,
     ),
     Pattern(
+        id='P22',
+        version=PATTERNS_VERSION,
+        surface_forms=(
+            '心理的所有',
+            '心理的オーナーシップ',
+            'psychological ownership',
+            'エンゲージメント',
+            'engagement',
+            '当事者意識',
+            'オーナーシップを持たせる',
+        ),
+        related_sources=(
+            RelatedSource('papers/T4.md', 65, 72, 't4-2-3'),
+            RelatedSource('THEORY_MAP.md', 133, 133, None),
+        ),
+        approved_on=APPROVED_ON,
+    ),
+    Pattern(
         id='P23',
         version=PATTERNS_VERSION,
         surface_forms=(
@@ -633,6 +651,30 @@ PATTERNS: tuple[Pattern, ...] = (
         related_sources=(
             RelatedSource('papers/T5.md', 191, 194, 't5-4-6'),
             RelatedSource('papers/T5.md', 179, 179, 't5-4-4'),
+        ),
+        approved_on=APPROVED_ON,
+    ),
+    Pattern(
+        id='P39',
+        version=PATTERNS_VERSION,
+        surface_forms=(
+            '最後の砦',
+            'last stronghold',
+            'last bastion',
+            '唯一の防波堤',
+            '人間にしかできない',
+            'only humans can',
+            '人間に残る',
+            'remain human',
+            'left to humans',
+            'AIにできないこと',
+            '人間の領域',
+            'human domain',
+            '人間だけの',
+        ),
+        related_sources=(
+            RelatedSource('THEORY_MAP.md', 269, 269, None),
+            RelatedSource('papers/T5.md', 107, 120, 't5-3-4'),
         ),
         approved_on=APPROVED_ON,
     ),

@@ -1,6 +1,10 @@
 # check_compressions パターン候補一覧（PATTERNS-0.1.0 案・○×承認用）
 
-**2026-09-18 著者確定**：「採用」49行を PATTERNS-0.1.0 とした。うち47行を `mekiki_reader/patterns.py` に載せ、関連原文を解決できなかった P22・P39 は載せていない（候補は `docs/rules/PATTERNS.md`「載せなかった行」）。「保留」4行（P10・P16・P19・P47）も載せていない。確定した一覧は `docs/rules/PATTERNS.md`。本書は候補の記録として残す。
+**2026-09-18 著者確定**：「採用」49行を PATTERNS-0.1.0 とした（49行すべてを `mekiki_reader/patterns.py` に載せた）。「保留」4行（P10・P16・P19・P47）は載せていない。確定した一覧は `docs/rules/PATTERNS.md`。本書は候補の記録として残す。
+
+**同日・関連原文の差し替え（著者指定）**：解決できなかった2行について、著者が出所を指定した。
+- P22：起草は「THEORY_MAP T4「Terms that must remain distinct」；T4（心理的所有の対比箇所・施工時に節解決）；FR L40」。確定は「T4 §2.3 (t4-2-3)＋THEORY_MAP T4「Terms that must remain distinct」の Jibungoto-ka 行」。起草にあった FR L40 は著者の指定に含まれていないため載せていない（要確認）。
+- P39：起草は「THEORY_MAP「Cumulative structure」8」。確定は「THEORY_MAP「Cross-paper inference chain」8（THEORY_MAP.md:270）＋T5 §3.4」。
 
 起草：検査室（Claude）2026-09-18。承認：著者。施工は承認済み行だけを `patterns.py` に載せる（版・承認日を記録）。
 
@@ -35,7 +39,7 @@
 | P19 | 権威＝立場 | 権限があるから答える立場／肩書があるから／authority equals standing | THEORY_MAP T3「Authority is not standing」 | 語形が弱い | TM本文 | 保留 | |
 | P20 | T3＝一方向の尋問（教育者は答責を負わない） | 教育者は答責を負わない／学習者だけが答える／一方向の／one-way interrogation／only the learner answers | T3 §5.4；FR L52・L67 | | TM33・FR52 | 採用 | |
 | P21 | 支援された成果＝学習の証拠（performance／developmental delegation の混同） | 成果物で学習を証明／AIで書けた＝学んだ／output as evidence of learning／performance delegation／developmental delegation | FR L52（T3 の区別） | 後二者は同形注記 | FR52 | 採用 | |
-| P22 | 自分ごと化＝心理的オーナーシップ／エンゲージメント／当事者意識 | 心理的所有／心理的オーナーシップ／psychological ownership／エンゲージメント／engagement／当事者意識／オーナーシップを持たせる | THEORY_MAP T4「Terms that must remain distinct」；T4（心理的所有の対比箇所・施工時に節解決）；FR L40 | 「当事者意識」は T4 が退ける言説の語＝同形注記 | TM15・FR40 | 採用 | |
+| P22 | 自分ごと化＝心理的オーナーシップ／エンゲージメント／当事者意識 | 心理的所有／心理的オーナーシップ／psychological ownership／エンゲージメント／engagement／当事者意識／オーナーシップを持たせる | T4 §2.3 (t4-2-3)；THEORY_MAP T4「Terms that must remain distinct」：行 "**Jibungoto-ka**" | 「当事者意識」は T4 が退ける言説の語＝同形注記 | TM15・FR40 | 採用 | |
 | P23 | 引き受け＝服従／指示に従うこと／合意形成 | 指示に従えば／従順／compliance／コンプライアンス／合意形成／consensus building／納得させれば | T4 §2.4 (t4-2-4) | 「合意形成」は外部モデルの補間で観測 | TM16・LG | 採用 | |
 | P24 | 引き受け＝単なる是認／是認＝組織の採用 | 賛成すれば引き受け／是認＝採用／endorsement is adoption／merely endorsement／承認されたから採用 | FR L40；T4 §2.4 | | FR40 | 採用 | |
 | P25 | 逆方向経路＝目安箱／同意・参加権だけで足りる | 目安箱／意見箱／suggestion box／意見を吸い上げ／フィードバックを集める／聞く場を設ける／同意を得れば／参加の権利／consent alone | T4 §2.4 (t4-2-4)・§4.3 (t4-4-3)；FR L14・L67 | | TM34・FR14 | 採用 | |
@@ -52,7 +56,7 @@
 | P36 | 成績スコア＝参加者の立場／評価・採点の禁止 | 評価してはいけない／採点は禁止／評価は許されない／scores are prohibited／must not be assessed／スコアが立場を／成績で立場を | THEORY_MAP T5「Recognition is not the suspension of appraisal」；T5-N2・N3；FR L26・L60 | | TM28・FR60・CS | 採用 | |
 | P37 | 尊厳装置＝マネジメント手法（エンゲージメント測定・楽しめと命じる・ゲーミフィケーション） | ゲーミフィケーション／gamification／エンゲージメント測定／engagement score／楽しませる仕組み／モチベーション施策／forced enjoyment／楽しむことを義務 | THEORY_MAP T5「The dignity apparatus is not a management technique」；T5-S1；FR L60 | | TM29・FR60・CS-S1 | 採用 | |
 | P38 | T5＝置換説（遊びが仕事・ケア・意味の代わり） | 仕事の代わりに遊び／遊びが意味の源泉／games replace work／遊びに逃げる／働かなくてよい／余暇社会 | T5 §4.6 (t5-4-6)；T5-A4 | | TM31・CS-A4 | 採用 | |
-| P39 | シリーズ＝「遊びは人類最後の砦」／人間にしかできない領域 | 最後の砦／last stronghold／last bastion／唯一の防波堤／人間にしかできない／only humans can／人間に残る／remain human／left to humans／AIにできないこと／人間の領域／human domain／人間だけの | THEORY_MAP「Cumulative structure」8；T5 §3.4 (t5-3-4) | 最重要。外部モデル・記事で反復観測 | TM32・LG | 採用 | |
+| P39 | シリーズ＝「遊びは人類最後の砦」／人間にしかできない領域 | 最後の砦／last stronghold／last bastion／唯一の防波堤／人間にしかできない／only humans can／人間に残る／remain human／left to humans／AIにできないこと／人間の領域／human domain／人間だけの | THEORY_MAP「Cross-paper inference chain」8；T5 §3.4 (t5-3-4) | 最重要。外部モデル・記事で反復観測 | TM32・LG | 採用 | |
 | P40 | 知好楽の「楽」＝快い気分＝尊厳 | 楽しいから尊厳／楽しければ尊厳／快楽／楽しさ＝尊厳／pleasant mood／enjoyment establishes／fun therefore | T5 §4.3 (t5-4-3)・§4.4 (t5-4-4)；THEORY_MAP 日本語用語表 | | TM35・FR34 | 採用 | |
 | P41 | 趣味＝ホビー・余暇・嗜好のみ | 趣味（ホビー）／hobby／趣味＝余暇／趣味とは好きなこと／taste | T5 §4.3 (t5-4-3)；THEORY_MAP 日本語用語表 | | TM36・FR35 | 採用 | |
 | P42 | 遊び＝標本→すべての活動はゲーム／仕事はすべて遊び | すべてはゲーム／人生はゲーム／仕事も遊び／仕事を遊びに／all activities are games／everything is a game／work should be play／all work as play | T5 §3.5 (t5-3-5)・§4.6 (t5-4-6)；T5-A4 | | TM37・FR36・CS-A4 | 採用 | |

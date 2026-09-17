@@ -54,7 +54,7 @@ def lims(env: dict, code: str) -> list[str]:
 
 def test_approved_tables_and_empty_start(reader):
     assert PAT.PATTERNS_VERSION == "PATTERNS-0.1.0" and PAT.APPROVED_ON == "2026-09-18"
-    assert TM.TERMS_VERSION == "TERMS-0.1.0" and TM.APPROVED_ON == "2026-09-18"
+    assert TM.TERMS_VERSION == "TERMS-0.1.1" and TM.APPROVED_ON == "2026-09-18"
     assert len(reader.patterns) == len(PAT.PATTERNS) and len(reader.terms.entries) == len(TM.TERMS)
     empty = T.Reader(_CORPUS, terms=(), patterns=())  # 承認前も空で起動できる（CLAUDE.md 9）
     assert empty.patterns == () and len(empty.terms.entries) == 0
@@ -303,7 +303,7 @@ def test_t04_term_map_via_fixture(reader):
     assert any(r["locator"]["line_start"] == 78 and "query" in r["payload"]["match_via"] for r in multi["results"])
     ja = rt(T.search_passages(tr, "仕様化費用", paper_id="T1"))
     assert ja["status"] == "ok" and all(r["payload"]["match_via"] == ["term_map:M91"] for r in ja["results"])
-    plain = rt(T.search_passages(reader, "尊厳"))  # 実表（TERMS-0.1.0）では M17 で拾う
+    plain = rt(T.search_passages(reader, "尊厳"))  # 実表（TERMS-0.1.1）では M17 で拾う
     assert plain["status"] == "ok"
     assert all("term_map:M17" in r["payload"]["match_via"] for r in plain["results"])
 

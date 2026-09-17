@@ -1,0 +1,2 @@
+# 稼働用の直接依存（施工段階3・Q62・Q76）。固定は requirements.txt（uv pip compile --generate-hashes）
+gradio[mcp]==6.27.0

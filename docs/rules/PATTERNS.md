@@ -2,7 +2,7 @@
 
 | 項目 | 値 |
 |---|---|
-| 規則ID・版 | 一覧 PATTERNS-0.1.0（47件）・照合 PATTERNS-MATCH-1.0.0 |
+| 規則ID・版 | 一覧 PATTERNS-0.1.0（49件）・照合 PATTERNS-MATCH-1.0.0 |
 | 状態 | 確定（著者承認 2026-09-18。起草＝検査室・SPEC §10） |
 | 実装 | `mekiki_reader/patterns.py`・`mekiki_reader/tools.py`（`_check_compressions`） |
 | 候補・解決 | `docs/candidates/patterns_candidates_v0.md`・`scripts/build_patterns.py`（PATTERNS-SRC-1.0.0） |
@@ -41,6 +41,7 @@
 | P18 | AIの自己説明＝AIの立場（理由を出せる＝答責の担い手） | AIが説明できる / AIが理由を説明 / 解釈可能性 / interpretability / AI explains its reasoning / AIに説明責任を / AIが責任を負う | THEORY_MAP.md:290 |
 | P20 | T3＝一方向の尋問（教育者は答責を負わない） | 教育者は答責を負わない / 学習者だけが答える / 一方向の / one-way interrogation / only the learner answers | papers/T3.md:148-155（t3-5-4）・FOR_AI_READERS.md:52・FOR_AI_READERS.md:67 |
 | P21 | 支援された成果＝学習の証拠（performance／developmental delegation の混同） | 成果物で学習を証明 / AIで書けた＝学んだ / output as evidence of learning / performance delegation / developmental delegation | FOR_AI_READERS.md:52 |
+| P22 | 自分ごと化＝心理的オーナーシップ／エンゲージメント／当事者意識 | 心理的所有 / 心理的オーナーシップ / psychological ownership / エンゲージメント / engagement / 当事者意識 / オーナーシップを持たせる | papers/T4.md:65-72（t4-2-3）・THEORY_MAP.md:133 |
 | P23 | 引き受け＝服従／指示に従うこと／合意形成 | 指示に従えば / 従順 / compliance / コンプライアンス / 合意形成 / consensus building / 納得させれば | papers/T4.md:73-97（t4-2-4） |
 | P24 | 引き受け＝単なる是認／是認＝組織の採用 | 賛成すれば引き受け / 是認＝採用 / endorsement is adoption / merely endorsement / 承認されたから採用 | FOR_AI_READERS.md:40・papers/T4.md:73-97（t4-2-4） |
 | P25 | 逆方向経路＝目安箱／同意・参加権だけで足りる | 目安箱 / 意見箱 / suggestion box / 意見を吸い上げ / フィードバックを集める / 聞く場を設ける / 同意を得れば / 参加の権利 / consent alone | papers/T4.md:73-97（t4-2-4）・papers/T4.md:128-145（t4-4-3）・FOR_AI_READERS.md:14・FOR_AI_READERS.md:67 |
@@ -57,6 +58,7 @@
 | P36 | 成績スコア＝参加者の立場／評価・採点の禁止 | 評価してはいけない / 採点は禁止 / 評価は許されない / scores are prohibited / must not be assessed / スコアが立場を / 成績で立場を | THEORY_MAP.md:227・papers/T5.md:175（t5-4-4）・papers/T5.md:175（t5-4-4）・FOR_AI_READERS.md:26・FOR_AI_READERS.md:60 |
 | P37 | 尊厳装置＝マネジメント手法（エンゲージメント測定・楽しめと命じる・ゲーミフィケーション） | ゲーミフィケーション / gamification / エンゲージメント測定 / engagement score / 楽しませる仕組み / モチベーション施策 / forced enjoyment / 楽しむことを義務 | THEORY_MAP.md:229・papers/T5.md:181（t5-4-4）・FOR_AI_READERS.md:60 |
 | P38 | T5＝置換説（遊びが仕事・ケア・意味の代わり） | 仕事の代わりに遊び / 遊びが意味の源泉 / games replace work / 遊びに逃げる / 働かなくてよい / 余暇社会 | papers/T5.md:191-194（t5-4-6）・papers/T5.md:179（t5-4-4） |
+| P39 | シリーズ＝「遊びは人類最後の砦」／人間にしかできない領域 | 最後の砦 / last stronghold / last bastion / 唯一の防波堤 / 人間にしかできない / only humans can / 人間に残る / remain human / left to humans / AIにできないこと / 人間の領域 / human domain / 人間だけの | THEORY_MAP.md:269・papers/T5.md:107-120（t5-3-4） |
 | P40 | 知好楽の「楽」＝快い気分＝尊厳 | 楽しいから尊厳 / 楽しければ尊厳 / 快楽 / 楽しさ＝尊厳 / pleasant mood / enjoyment establishes / fun therefore | papers/T5.md:149-164（t5-4-3）・papers/T5.md:165-182（t5-4-4）・THEORY_MAP.md:232-244 |
 | P41 | 趣味＝ホビー・余暇・嗜好のみ | 趣味（ホビー） / hobby / 趣味＝余暇 / 趣味とは好きなこと / taste | papers/T5.md:149-164（t5-4-3）・THEORY_MAP.md:232-244 |
 | P42 | 遊び＝標本→すべての活動はゲーム／仕事はすべて遊び | すべてはゲーム / 人生はゲーム / 仕事も遊び / 仕事を遊びに / all activities are games / everything is a game / work should be play / all work as play | papers/T5.md:121-126（t5-3-5）・papers/T5.md:191-194（t5-4-6）・papers/T5.md:179（t5-4-4） |
@@ -73,8 +75,6 @@
 
 ## 載せなかった行
 
-- P22（自分ごと化＝心理的オーナーシップ／エンゲージメント／当事者意識）：関連原文を解決できない。T4（心理的所有の対比箇所・施工時に節解決） → 節が書かれていない。心理的所有の対比箇所／心理的所有 を含む行：papers/T4.md:228（t4-references）
-- P39（シリーズ＝「遊びは人類最後の砦」／人間にしかできない領域）：関連原文を解決できない。THEORY_MAP「Cumulative structure」8 → 「Cumulative structure」に番号つきの項目 8 がない。候補：番号つきの項目を持つ節 T5: participation, non-transferability, and the visibility of dignity・The theorem does not establish dignity・Cross-paper inference chain・Reading rule for AI systems
 - P10（Sin＝Sein（制度化された規範性 vs 事実判断））：候補一覧で「保留」。
 - P16（答責＝主体性の要素）：候補一覧で「保留」。
 - P19（権威＝立場）：候補一覧で「保留」。

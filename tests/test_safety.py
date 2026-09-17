@@ -184,6 +184,18 @@ def _busy_count(results) -> int:
     return busy
 
 
+def test_s01_blocked_routes_with_body(server):
+    """遮断する経路に本文を付けて送っても、待たされずに拒まれる（本文の先読みで詰まらない）。"""
+    payload = b"x" * 1024
+    heavy = {"Content-Type": "application/octet-stream"}
+    assert server.request("POST", "/gradio_api/upload", body=payload, headers=heavy)[0] == 403
+    assert server.request("POST", "/gradio_api/queue/status", body=payload, headers=heavy)[0] == 404
+    for method, path, want in (("HEAD", "/", 200), ("OPTIONS", "/config", 405), ("DELETE", "/config", 405)):
+        assert server.request(method, path)[0] == want, (method, path)
+    # 本文なしの POST も、先読みの待ちに入らない（MCP は 400 を返す）。
+    assert server.request("POST", "/gradio_api/mcp/", body=b"", headers=MCP_HEADERS)[0] == 400
+
+
 def test_s01_host_variants(server):
     """Host の欠落・重複・IPv6（Codex① P1-2 の敵対的試験）。"""
     port = str(server.port).encode()

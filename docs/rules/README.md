@@ -5,17 +5,18 @@
 | 規則ID | 版 | 状態 | 施工段階 | 本文 |
 |---|---|---|---|---|
 | NORM | 1.0.0（表 `a9b1cf17…ecc7`） | 確定（実装済み） | 2 | [NORM.md](NORM.md) |
-| SEARCH | 1.0.0 | 確定（実装済み。順位は SPEC v2.1 §5.3 に合わせた） | 2 | [SEARCH.md](SEARCH.md) |
-| TERMS | 0.0.0（空） | 確定（仕組みは実装済み・中身は承認待ち） | 2 | [TERMS.md](TERMS.md) |
+| SEARCH | 1.0.0 | 確定（実装済み。順位は語の種類数→直接一致→総出現数→論文順→行番号。SPEC v2.1 §5.3 は方針側の誤りとして v2.2 で訂正） | 2 | [SEARCH.md](SEARCH.md) |
+| TERMS | 0.1.1（30項目・語形78） | 確定（著者承認 2026-09-18） | 2〜3 | [TERMS.md](TERMS.md) |
 | CAND | 1.0.0 | 提案（実装済み） | 2 | [CAND.md](CAND.md) |
 | NEAR | 1.0.0 | 提案（実装済み） | 2 | [NEAR.md](NEAR.md) |
 | GUIDE | 1.0.0 | 確定（実装済み） | 2 | [GUIDE.md](GUIDE.md) |
 | LIMITS | 1.0.0 | 提案（実装済み・値は実測） | 2 | [LIMITS.md](LIMITS.md) |
 | JSON | 1.0.0 | 提案（実装済み） | 2 | [JSON.md](JSON.md) |
-| SCHEMA | 1.0.0 | 提案（実装済み・資料種別の表は承認待ち） | 2 | [SCHEMA.md](SCHEMA.md) |
-| PATTERNS | 0.0.0（空）・照合 PATTERNS-MATCH-1.0.0 | 一覧は承認待ち・照合は提案（実装済み） | 2 | [PATTERNS.md](PATTERNS.md) |
-| PROMPTS | 0.1.0（起草） | 著者承認待ち | 2 | [PROMPTS.md](PROMPTS.md) |
+| SCHEMA | 1.0.0 | 提案（実装済み。資料種別の表は著者承認 2026-09-18・derivative_of 欄つき） | 2 | [SCHEMA.md](SCHEMA.md) |
+| PATTERNS | 0.1.0（49件）・照合 PATTERNS-MATCH-1.0.0 | 一覧は確定（著者承認 2026-09-18）・照合は提案 | 2〜3 | [PATTERNS.md](PATTERNS.md) |
+| PROMPTS | 0.1.0（日本語） | 確定（著者承認 2026-09-18）。英語版 0.2.0 は起草・承認待ち（`docs/candidates/prompts_en_v0.md`） | 2〜4 | [PROMPTS.md](PROMPTS.md) |
 | TERMS-SRC | 1.0.0 | 提案（施工用の道具） | 2 | `scripts/find_term_sources.py` |
+| PATTERNS-SRC | 1.0.0 | 提案（施工用の道具。`「見出し」：行 "…"` の指定を含む） | 2〜3 | `scripts/build_patterns.py` |
 | BUNDLE | 1.0.0 | 提案（実装済み） | 1 | [BUNDLE.md](BUNDLE.md) |
 | LINES | 1.0.0 | 提案（実装済み） | 1 | [LINES.md](LINES.md) |
 | LANG | 1.0.0 | 確定（実装済み） | 1 | [LANG.md](LANG.md) |

@@ -77,6 +77,11 @@ def test_m01_tools_list_and_call(server):
         assert by_name[name].description
     assert by_name["search_passages"].inputSchema["properties"]["k"]["default"] == 5
     assert by_name["get_reading_guide"].inputSchema["properties"]["part"]["default"] == "all"
+    # 引数の説明は一行しか拾われない。GUIDE-1.0.0 の11個がすべて説明に載っていること。
+    part_desc = by_name["get_reading_guide"].inputSchema["properties"]["part"]["description"]
+    from mekiki_reader import tools as _T
+    for name, _title in _T.GUIDE_PARTS:
+        assert name in part_desc, name
     for (name, _args, want), result in zip(CALLS, results):
         assert result.isError is False, (name, MC.error_text(result))
         env = MC.payload(result)
@@ -155,10 +160,11 @@ def test_m02_prompts(server):
         return listed, got, unknown
 
     listed, got, unknown = MC.session(server.mcp_url, body)
-    assert [p.name for p in listed] == [t.name for t in PR.TEMPLATES] and len(listed) == 3
+    assert [p.name for p in listed] == [t.name for t in PR.TEMPLATES] and len(listed) == 6
     for template in PR.TEMPLATES:
-        assert got[template.name].messages[0].content.text == template.text
-        assert PR.GUARD_SENTENCE in got[template.name].messages[0].content.text
+        text = got[template.name].messages[0].content.text
+        assert text == template.text
+        assert (PR.GUARD_SENTENCE if template.language == "ja" else PR.GUARD_SENTENCE_EN) in text
     # Q64：名前が一致しないとき、上流は endpoint 一覧の最後を実行する。番兵が例外にする。
     assert unknown[0] == "raised", unknown
     assert not any(t.text in unknown[1] for t in PR.TEMPLATES)

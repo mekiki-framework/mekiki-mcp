@@ -224,7 +224,7 @@ def check_compressions(text: str) -> str:
     """Finds wordings that the author has listed as compressions of the papers' distinctions.
 
     Each hit returns the related source text. A hit is a place to check against the paper; it is not a
-    judgement that the text is wrong, and zero hits is not a proof that a reading is correct.
+    judgment that the text is wrong, and zero hits is not a proof that a reading is correct.
 
     Args:
         text: The text to check, up to 2000 characters.
@@ -239,7 +239,7 @@ def get_reading_guide(part: str = "all") -> str:
     """Returns the author's reading guide for AI readers, and the reading templates.
 
     Args:
-        part: Which part to return: all, modes, cautions, questions or templates.
+        part: One of all, interpretation, core-terms, japanese-terms, t4-languages, modes, mode-1, mode-2, mode-3, mode-4, boundaries. Gradio keeps only the first line of an argument description, so this line stays long on purpose.
 
     Returns:
         A JSON object: status, results quoted from FOR_AI_READERS.md, templates, limitations.
@@ -339,30 +339,35 @@ def main() -> int:
     try:
         port = read_port(os.environ.get(PORT_ENV))
     except ValueError as exc:
-        print(f"起動しない：{exc}", file=sys.stderr)
+        print(f"起動しない：{exc}", file=sys.stderr, flush=True)
         return 2
     try:
         corpus = C.load_corpus()
     except C.BundleError as exc:
-        print(f"起動しない：同梱データの検査に失敗した（{exc.kind} {exc.path}）", file=sys.stderr)
+        print(f"起動しない：同梱データの検査に失敗した（{exc.kind} {exc.path}）", file=sys.stderr, flush=True)
         return 3
     READER = T.Reader(corpus)
     demo = build_blocks()
     problems = verify_blocks(demo)
     if problems:
-        print("起動しない：Gradio の設定が想定と違う：" + "・".join(problems), file=sys.stderr)
+        print("起動しない：Gradio の設定が想定と違う：" + "・".join(problems), file=sys.stderr, flush=True)
         return 4
-    launch(demo, port)
+    try:
+        launch(demo, port)
+    except OSError as exc:  # ポートが塞がっているなど
+        print(f"起動しない：ポート {port} で待ち受けられない（{type(exc).__name__}）。"
+              f"{PORT_ENV} で別のポートを指定する", file=sys.stderr, flush=True)
+        return 6
     problems = verify_blocks(demo)
     if not getattr(demo, "mcp_server", False):
         problems.append("mcp_server=False")
     if problems:
         demo.close()
-        print("停止する：起動後の確認に失敗した：" + "・".join(problems), file=sys.stderr)
+        print("停止する：起動後の確認に失敗した：" + "・".join(problems), file=sys.stderr, flush=True)
         return 5
-    print(f"corpus {C.CORPUS_VERSION} ({C.CORPUS_COMMIT[:7]})・bundle {C.EXPECTED_BUNDLE_SHA256[:12]}…")
-    print(f"tools 7・resources {len(RESOURCES)}・prompts {len(PR.TEMPLATES)}（{PR.PROMPTS_VERSION}）")
-    print(f"消した環境変数：{'・'.join(REMOVED_GRADIO_ENV) or 'なし'}")
+    print(f"corpus {C.CORPUS_VERSION} ({C.CORPUS_COMMIT[:7]})・bundle {C.EXPECTED_BUNDLE_SHA256[:12]}…", flush=True)
+    print(f"tools 7・resources {len(RESOURCES)}・prompts {len(PR.TEMPLATES)}（{PR.PROMPTS_VERSION}）", flush=True)
+    print(f"消した環境変数：{'・'.join(REMOVED_GRADIO_ENV) or 'なし'}", flush=True)
     try:
         demo.block_thread()
     except KeyboardInterrupt:

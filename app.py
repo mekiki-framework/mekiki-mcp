@@ -11,6 +11,7 @@ import os
 import re
 import sys
 import threading
+import urllib.parse
 from collections import deque
 
 # ---- gradio を import する前に環境を整える（Q93・Q80。import gradio は下の方にある） ----
@@ -42,6 +43,7 @@ REMOVED_GRADIO_ENV = sanitize_environ()
 
 import gradio as gr  # noqa: E402  （環境を整えた後に読み込む）
 import gradio.routes  # noqa: E402
+import gradio_client  # noqa: E402
 from starlette.middleware import Middleware  # noqa: E402
 
 from mekiki_reader import corpus as C  # noqa: E402
@@ -74,6 +76,17 @@ BUSY_MESSAGE = f"busy: this reader accepts at most {MAX_CONCURRENCY} concurrent 
 _SLOTS = threading.BoundedSemaphore(MAX_CONCURRENCY)
 _queue_gate: "asyncio.Semaphore | None" = None  # 自己呼び出しの同時数（要求は同じ event loop で走る）
 _QUEUE_STATE = {"waiting": 0, "max_waiting": 0, "rejected": 0}  # 順番待ちの実測（S01 の証跡）
+# 塞げない長時間接続（GET の流れ）の同時数の上限。超えた分は通信層で 503（LIMITS-2.0.0）。
+# 値は実測（2026-09-19）：内部クライアントは heartbeat 1本・queue/data 最大1本（resources/read 同時80本・
+# 8セッション混在でも同じ）。GET /gradio_api/mcp/ は mcp SDK（Python）が0本、mcp-remote@0.14.2 が
+# 1クライアントあたり最大4本（呼び出しを重ねても増えず、落ち着くと2本）。上限は内部分に余裕を足した8と、
+# mcp-remote 8クライアント分の32。内部クライアントの分も数えるが、断らない：heartbeat は 503 を受けると
+# 毎秒約1,000回の再試行に入るため（404 で実測・2026-09-18、503 で2秒に2,230回・2026-09-19）。
+# 内部かどうかは名乗るセッションで見分ける。
+STREAM_LIMITS = {"heartbeat": 8, "queue_data": 8, "mcp_get": 32}
+_STREAMS = {"open": dict.fromkeys(STREAM_LIMITS, 0), "peak": dict.fromkeys(STREAM_LIMITS, 0),
+            "internal_open": dict.fromkeys(STREAM_LIMITS, 0), "internal_peak": dict.fromkeys(STREAM_LIMITS, 0),
+            "rejected": dict.fromkeys(STREAM_LIMITS, 0)}
 _SWEEP = {"task": None, "dropped": 0, "runs": 0}  # 回収されない結果の掃除
 
 
@@ -98,14 +111,18 @@ BLOCKED_MARKS = ("file=", "proxy=", "/upload", "/run-history", "/vibe", "/dev/re
 #   /gradio_api/startup-events  起動時の確認（塞ぐと起動しない）
 #   /gradio_api/info（と末尾 / 付き）  自己呼び出しが読む（塞ぐと McpError）
 #   /gradio_api/queue/join・/queue/data  同じく自己呼び出しの実行と結果の受け取り
-#   /gradio_api/mcp で始まる経路  MCP 本体 /gradio_api/mcp/（Streamable HTTP）と、上流が同じ下に置く
-#                               /gradio_api/mcp/sse・/messages/（旧 SSE の予備経路）・/schema（ツールの JSON）
+#   /gradio_api/mcp/            MCP 本体（Streamable HTTP）。/gradio_api/mcp は / 付きへ 307
+#   /gradio_api/mcp/schema      ツールの JSON スキーマ（上流が同じ下に置く）
+#   （旧 SSE の /gradio_api/mcp/sse・/messages/ と、Streamable HTTP の別名 /gradio_api/mcp/http は閉じた。
+#    /gradio_api/mcp/ だけで三機能・SDK 検収・mcp-remote（http-only）が動くことを実測・2026-09-19。
+#    /schema は三機能には要らないが、著者の指示で開けている）
 #   /gradio_api/heartbeat/*     自己呼び出しの内部クライアントが送り続ける。塞ぐと 404 を受けて
 #                               毎秒約1,000回の再試行に入り、一時ポートを使い果たす（実測・2026-09-18）
 # /config は塞いでも三機能が動き、再試行も起きないことを確かめたので塞いだ（設定は上のとおり / から出る）。
 ALLOWED_EXACT = frozenset({"/", "/gradio_api/info", "/gradio_api/info/", "/gradio_api/startup-events",
-                           "/gradio_api/queue/join", "/gradio_api/queue/data"})
-ALLOWED_PREFIXES = ("/gradio_api/mcp", "/gradio_api/heartbeat/")
+                           "/gradio_api/queue/join", "/gradio_api/queue/data",
+                           "/gradio_api/mcp", "/gradio_api/mcp/", "/gradio_api/mcp/schema"})
+ALLOWED_PREFIXES = ("/gradio_api/heartbeat/",)
 # 自分自身への呼び出しでだけ使う経路。外から来た分も含めて同時数を絞る（Codex① P2-4）。
 # 断るのではなく順番待ちにする：即 503 にすると、正規の resources/read・prompts/get が
 # 上流の実装の中で未定義参照になって壊れる（検算で実測）。
@@ -196,6 +213,7 @@ class _PassThroughCORS:
 gradio.routes.CustomCORSMiddleware = _PassThroughCORS  # create_app が add_middleware に使う名前
 
 
+
 def sweep_results(queue, now: float) -> int:
     """回収されない結果を、件数・大きさ・期限で捨てる（Codex② 1）。捨てたセッション数を返す。
 
@@ -271,6 +289,60 @@ def _no_cors(send):
         await send(message)
 
     return wrapped
+
+
+def _stream_kind(method: str, path: str) -> "str | None":
+    """長時間つながったままになる経路の種類（上限を数える単位）。"""
+    if path.startswith("/gradio_api/heartbeat/"):
+        return "heartbeat"
+    if path == "/gradio_api/queue/data":
+        return "queue_data"
+    if path == "/gradio_api/mcp/" and method == "GET":  # Streamable HTTP の待ち受け（切られるまで続く）
+        return "mcp_get"
+    return None
+
+
+def _stream_session(kind: str, scope) -> "str | None":
+    """要求が名乗るセッション（heartbeat は経路の末尾、queue/data は問い合わせの session_hash の最後の値）。"""
+    if kind == "heartbeat":
+        return scope.get("path", "").rsplit("/", 1)[-1]
+    if kind == "queue_data":
+        pairs = urllib.parse.parse_qsl(scope.get("query_string", b"").decode("latin-1"), keep_blank_values=True)
+        values = [v for k, v in pairs if k == "session_hash"]
+        return values[-1] if values else None
+    return None
+
+
+def _internal_session(demo=None) -> "str | None":
+    """自己呼び出しの内部クライアントのセッション（まだ作られていなければ None）。"""
+    server = getattr(DEMO if demo is None else demo, "mcp_server_obj", None)
+    return getattr(getattr(server, "_client_instance", None), "session_hash", None)
+
+
+def warm_internal_client(demo) -> None:
+    """内部クライアント（resources/read・prompts/get の自己呼び出し）を、起動の直後に一つだけ作る。
+
+    上流は最初の呼び出しのときに worker thread で鍵なしに作るため、同時に来ると複数できる
+    （実測：16本同時で2〜16個。余りは heartbeat を張ったまま残り、内部と見分けられない）。
+    作成に鍵をかけると、待つ thread が共有の thread pool を塞ぎ、作成の自己要求（GET /）が空きを待って
+    失敗し続ける（検算：同時40本以上で全滅）。そこで要求を受ける前に作っておく。
+    引数は上流（gradio/mcp.py の _get_or_create_client・Gradio 6.27.0）と同じ。失敗は verify_blocks が拾う。
+    """
+    server = getattr(demo, "mcp_server_obj", None)
+    if server is None or getattr(server, "_client_instance", None) is not None:
+        return
+    try:
+        server._client_instance = gradio_client.Client(
+            server.local_url,
+            download_files=False,
+            verbose=False,
+            analytics_enabled=False,
+            ssl_verify=False,
+            _skip_components=False,
+            headers={"x-gradio-user": "mcp"},
+        )
+    except Exception as exc:  # noqa: BLE001 - 起動後の確認で止める
+        print(f"internal client failed: {type(exc).__name__}", file=sys.stderr, flush=True)
 
 
 def _replayer(body: bytes, receive):
@@ -373,6 +445,25 @@ def _guard_middleware():
                     return await _reply(send, 400, "conflicting framing", path)
                 forward = _replayer(b"".join(chunks), receive)
 
+            kind = _stream_kind(scope.get("method", "GET").upper(), path)
+            if kind is not None:  # 長時間接続は種類ごとに同時数を絞る（内部クライアントは数えるが断らない）
+                session = _stream_session(kind, scope)
+                internal = session is not None and session == _internal_session()
+                if not internal and _STREAMS["open"][kind] >= STREAM_LIMITS[kind]:
+                    _STREAMS["rejected"][kind] += 1
+                    return await _reply(send, 503, "too many open streams", path)
+                _STREAMS["open"][kind] += 1
+                _STREAMS["peak"][kind] = max(_STREAMS["peak"][kind], _STREAMS["open"][kind])
+                if internal:
+                    _STREAMS["internal_open"][kind] += 1
+                    _STREAMS["internal_peak"][kind] = max(_STREAMS["internal_peak"][kind],
+                                                          _STREAMS["internal_open"][kind])
+                try:
+                    return await self.app(scope, forward, send)
+                finally:
+                    _STREAMS["open"][kind] -= 1
+                    if internal:
+                        _STREAMS["internal_open"][kind] -= 1
             if path in SELF_CALL_PATHS:  # 自己呼び出しの経路は順番待ちにする（受付8・待機は上限つき）
                 gate = _queue_slots()
                 if _QUEUE_STATE["waiting"] >= QUEUE_WAITING_MAX:
@@ -604,12 +695,14 @@ def verify_blocks(demo, launched: bool = False, port: int | None = None) -> list
             problems.append(f"local_url={url!r}")
         if port is not None:
             problems += check_cors(port)
+        if _internal_session(demo) is None:
+            problems.append("internal-client=missing")
     return problems
 
 
 def launch(demo, port: int):
-    """loopback で起動する。環境変数では bind 先が変わらない（Q67）。"""
-    return demo.launch(
+    """loopback で起動する。環境変数では bind 先が変わらない（Q67）。内部クライアントもここで作る。"""
+    launched = demo.launch(
         mcp_server=True,
         share=False,
         server_name=SERVER_NAME,
@@ -628,6 +721,8 @@ def launch(demo, port: int):
         prevent_thread_lock=True,
         app_kwargs={"middleware": [Middleware(_guard_middleware())]},
     )
+    warm_internal_client(demo)
+    return launched
 
 
 def main() -> int:

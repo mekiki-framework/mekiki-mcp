@@ -19,7 +19,7 @@ from . import prompts as PR
 from . import schema as S
 from . import terms as TM
 
-# LIMITS-1.1.0（docs/rules/LIMITS.md。1.0.0 の値は変えずに項目を足した）
+# LIMITS-2.0.0（docs/rules/LIMITS.md。この層の値は 1.0.0 から変えていない。2.0.0 は通信層の開放経路の変更）
 ID_MAX = 128
 QUERY_RAW_MAX = 1000
 QUERY_NORM_MAX = 200
@@ -35,7 +35,7 @@ DIFFS_MAX = 20
 EXCERPT_RADIUS = 100
 SOURCE_EXCERPT_MAX = 1000  # check_compressions の関連原文の抜粋
 
-LIMITS_VERSION = "LIMITS-1.1.0"
+LIMITS_VERSION = "LIMITS-2.0.0"
 SEARCH_VERSION = "SEARCH-1.1.0"
 CAND_VERSION = "CAND-1.0.0"
 NEAR_VERSION = "NEAR-1.0.0"

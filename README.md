@@ -114,7 +114,7 @@ Mekiki Framework の論文 T1〜T5 を、**固定した版から・出典つき�
 
 `SCHEMA-1.0.0`・`JSON-1.0.0`・`NORM-1.1.0`・`SEARCH-1.1.0`・`CAND-1.0.0`・`NEAR-1.0.0`・`GUIDE-1.0.0`・`LIMITS-1.0.0`・
 `LINES-1.0.0`・`LANG-1.0.0`・`SECTION-1.0.0`・`T4MAP-1.0.0`・`BUNDLE-1.0.0`・`TERMS-0.1.1`（30項目）・
-`PATTERNS-0.2.0`（50件）＋`PATTERNS-MATCH-1.0.0`・`PROMPTS-0.1.0`（6件）。本文は [docs/rules/](docs/rules/)。
+`PATTERNS-0.2.1`（50件）＋`PATTERNS-MATCH-1.1.0`・`PROMPTS-0.1.0`（6件）。本文は [docs/rules/](docs/rules/)。
 
 ## 5. 準備と起動
 

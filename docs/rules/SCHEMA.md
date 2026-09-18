@@ -39,6 +39,6 @@ status が ok でなければ results は空。limitations は `"CODE: 本文"` 
 | T5_CLAIM_STATUS.md | claims（台帳から生成された表示） | （結果に出ないので値なし。関連原文にもできない） | 出ない |
 | THEORY_MAP.md | theory_map | 論文五本 `["papers/T1.md",…,"papers/T5.md"]` | check_compressions の関連原文としてだけ |
 | FOR_AI_READERS.md | reading_guide | 論文五本 | 出る（get_reading_guide と関連原文） |
-| SOURCE_INDEX.md・llms.txt | reading_guide | （PATTERNS-0.2.0 が引いていないので現状は出ない。種別としては reading_guide なので、将来の承認パターンが引けば論文五本で出る） | 出ない |
+| SOURCE_INDEX.md・llms.txt | reading_guide | （PATTERNS-0.2.1 が引いていないので現状は出ない。種別としては reading_guide なので、将来の承認パターンが引けば論文五本で出る） | 出ない |
 | AI_READING_TESTS.md・tests/reading_cases.json | reading_test | （関連原文にできない種別。結果に出ない） | 出ない |
 | source_manifest.json・LICENSE・CITATION.md | （種別なし。記録・表示の資料） | （種別が無く結果にならない） | 出ない（list_papers は payload.record で source_manifest.json の位置を示す） |

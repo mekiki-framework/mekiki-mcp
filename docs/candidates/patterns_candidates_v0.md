@@ -1,6 +1,6 @@
 # check_compressions パターン候補一覧（PATTERNS-0.1.0 案・○×承認用）
 
-**2026-09-18 著者確定**：（配置段階一の検収のあと、同日に PATTERNS-0.2.0 として P31・P39 に語形を足し、P54 を新設した。下の各行に反映済み）
+**2026-09-18 著者確定**：（配置段階一の検収のあと、同日に PATTERNS-0.2.0 として P31・P39 に語形を足し、P54 を新設した。続く 0.2.1 で P54 に英語の語形3つを足し、照合を PATTERNS-MATCH-1.1.0 にした。下の各行に反映済み）
 「採用」49行を PATTERNS-0.1.0 とした（49行すべてを `mekiki_reader/patterns.py` に載せた）。「保留」4行（P10・P16・P19・P47）は載せていない。確定した一覧は `docs/rules/PATTERNS.md`。本書は候補の記録として残す。
 
 **同日・関連原文の差し替え（著者指定）**：解決できなかった2行について、著者が出所を指定した。
@@ -72,7 +72,7 @@
 | P51 | 非移転性＝参加の義務（参加し続けるべき／楽しむべき） | 参加すべき／続けるべき／楽しむべき／must participate／should keep playing／must enjoy | FR L68；T5 §4.6 (t5-4-6) | | FR68 | 採用 | |
 | P52 | 凍結文①の反転・改変（AIは参加を届けられる／事態を届けられない） | AIは参加を届けられる／AIは参加という事実を届け／AI can deliver participation／AI cannot deliver the state of affairs | T5 abstract (t5-abstract)・§3.1 (t5-3-1)：原文 "AI can deliver the state of affairs; it cannot deliver the fact of participation." | 返す抜粋は原文そのもの | 凍結定式 | 採用 | |
 | P53 | 凍結文②の反転・改変（AIは遊びを支援できない／代われる） | AIは遊びを支援できない／AI cannot assist play／AIが代われる／take one's place in it | T5 §5.4 (t5-5-4)：原文 "AI can assist play. It cannot take one's place in it." | 返す抜粋は原文そのもの | 凍結定式 | 採用 | |
-| P54 | 定理＝医療・安全の仕事でも参加のために障害を残すべき（適用範囲の取り違え） | 障害を残す／制約を残す／retain obstacles | T5 §4.6 (t5-4-6)：原文 "A boundary condition on application: in phases of work where obstacles have no constitutive role — replication, safety assessment, clinical judgement — nothing in this paper counsels retaining them." | 返す抜粋は §4.6 の脚注（L193）そのもの。2026-09-18 追加（検収 E01 の R08 で取りこぼし） | LG | 採用 | |
+| P54 | 定理＝医療・安全の仕事でも参加のために障害を残すべき（適用範囲の取り違え） | 障害を残す／制約を残す／retain obstacles／preserve obstacles／preserving obstacles／keep obstacles | T5 §4.6 (t5-4-6)：原文 "A boundary condition on application: in phases of work where obstacles have no constitutive role — replication, safety assessment, clinical judgement — nothing in this paper counsels retaining them." | 返す抜粋は §4.6 の脚注（L193）そのもの。2026-09-18 追加（検収 E01 の R08 で取りこぼし） | LG | 採用 | |
 
 補記
 - 語形は初版の候補。承認後、Codex の敵対試験（同義語再生・否定形・引用形）で漏れた語形を二版で追加する。

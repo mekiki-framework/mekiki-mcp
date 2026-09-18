@@ -6,7 +6,7 @@
 | 対象 | コミット `6b8dcaa`（施工段階3の merge 時点）・corpus v3.5.0・Gradio 6.27.0・Python 3.13.15 |
 | 受領 | 2026-09-18（著者経由） |
 | 反映 | ブランチ `codex1` → コミット `f88effc`（10件すべて差分案どおり反映） |
-| 試験 | `.venv/bin/python -m pytest -q` → 390 passed |
+| 試験 | `.venv/bin/python -m pytest -q` → 392 passed（反映後の自己点検で2件足した） |
 
 > **この記録について**：ここに載せているのは、著者から渡された指摘の一覧（P1-2〜P3-10）と、施工側での反映結果である。
 > Codex の報告本文そのもの（前文・行番号つきの分析・差分の全文）は施工側に届いていないため、本書はその要約にあたる。
@@ -47,7 +47,7 @@
 - **実測**：`/gradio_api/call/*` は**閉じられる**（塞いでも `resources/read`・`prompts/get` は通る）。
   `/gradio_api/queue/join` は**閉じられない**（塞ぐと `resources/read` が `McpError` になる）。
 - **反映**：`/call/*` を許可一覧から外した。`queue(max_size=16, default_concurrency_limit=4)`。
-  `/queue/join` は同時8件まで（超過は 503）。resources・prompts も七ツールと同じ実行枠（同時4）を使う。
+  `/queue/join` は同時8件までを**順番待ち**で受ける（20秒を超えたときだけ 503。初版は即 503 にして退行を起こし、下の自己点検で直した）。resources・prompts も七ツールと同じ実行枠（同時4）を使う。
   README §4・§8 と `docs/rules/LIMITS.md` に明記した。
 
 ### P2-5 無制限に伸びる入れ物
@@ -73,7 +73,7 @@
 - **差分案**：正準 JSON 化して SHA-256 を規則文書に記し、import 時に照合。PATTERNS は 0.1.1（49件）に上げ、
   0.1.0＝47件は撤回として記録。
 - **反映**：`terms.table_sha256()`＝`790e124094aeca1ccd3cf72823e9acbd70a897057b12d357eece26486e467be0`、
-  `patterns.table_sha256()`＝`b38299528fe444babb2fb343d8877dcd284a8021f0621e91c6c4a0439c8dd70d`。
+  `patterns.table_sha256()`＝`92666827a79b31b55c0fa1b424f7be9e4891b97fab044d316b2622ec1a3a304b`（`match_rule` を含めた形。下の自己点検⑦）。
   どちらも import 時に定数と照合し、違えば起動しない。`docs/rules/TERMS.md`・`PATTERNS.md` に値を載せた。
   PATTERNS は 0.1.1（49件）。0.1.0（47件）は撤回（`DECISIONS.md`）。
 
@@ -107,3 +107,26 @@
 | S01 | Host の欠落・重複・IPv6（`[::1]` とポート付き）・空・紛らわしい名前／CL と TE の併記・CL の重複・全角の CL・符号つきの CL／本文 65,535・65,536・65,537 バイト | `test_s01_host_variants`・`test_s01_framing_is_checked`・`test_s01_body_size_boundary` |
 | 同時実行 | `Event` で4枠を占有し、5件目と resources/prompts の枠が通信層のエラーになること。解放後に戻ること | `test_s01_concurrency_slots_are_held` |
 | S03 | 宛先 host:port・自己接続だけ免除・Unix ソケット非免除・open の flags・起動から停止まで・陽性対照 | `test_s03_no_outbound_traffic` |
+
+### 反映後の自己点検（2026-09-18・施工側）
+
+Codex① の反映（`f88effc`）を、下位エージェント3体（通信層・監査・表と文書）＋検算1体で点検した。
+**反映そのものが持ち込んだ退行が2件**見つかったので、merge の前に直した。
+
+| # | 見つかったこと | 直し方 | 確かめ方 |
+|---|---|---|---|
+| 退行① | `/gradio_api/queue/join` を即 503 にしたため、**正規の `resources/read`・`prompts/get` が同時9本以上で壊れる**（上流の実装が未定義参照になり `code:0` の内部エラー文を返す）。`6b8dcaa` では24本まで通っていた | 断らずに順番待ちにした（`asyncio.Semaphore` と20秒の上限。超えたときだけ 503） | 同時 9・14・24本の `resources/read` が 24/24 `ok`、`blocked 503` は0件（実測） |
+| 退行② | `scripts/build_patterns.py --write` が表だけ書き換えて `PATTERNS_TABLE_SHA256` を置き換えないため、**再生成するとリポジトリが起動不能**になる | 生成器が定数も書き換え、そのあと reload で突き合わせる。死んでいた 0.0.0 用の置換も直した | 複製で候補に語形を足して `--write` → import 成功・定数と文書が新しい値に（実測） |
+| ③ | 遮断の記録に制御文字がそのまま載る（`%0a` で偽の記録行を立てられる） | `unicode_escape` で逃がして200字で切る | `GET /%0aFAKE` が一行に収まること |
+| ④ | 本文を送り切らない要求で接続が残り続ける（先読みを入れたことで生じた待ち面） | 本文を読むのは MCP と自己呼び出しの経路だけにし、10秒で 408 | `POST /config` に長さだけ宣言して送らない要求が即 405（先読みに入らない） |
+| ⑤ | `Content-Length` の重複・非 ASCII は実際には HTTP の層（h11）が拒んでおり、規則文書の書き方と食い違う。死んだ条件も残っていた | `LIMITS.md` を実物に合わせ、条件を削った | 生ソケットで各形を実測し、どの層が拒むかを記録 |
+| ⑥ | 監査フックが子プロセス・`socket.sendmsg`・`os.rename` などを見ていない。`OPEN_MAX` に達すると黙って空振りする | `PROCESS_EVENTS`（子プロセスは遮断）・`sendmsg`・`MUTATE_EVENTS`・`socket.bind`・取りこぼし件数を追加し、S03 で検査 | `audit["process"]==[]`・リポジトリ配下の書き換え0件・`open_dropped==0`・`bind` が `127.0.0.1` |
+| ⑦ | `match_rule` だけ表の正準形に入っていなかった | `table_rows()` を `asdict` にして全欄を入れた（欄を足せば必ずハッシュが変わる）。PATTERNS-0.1.1 の表ハッシュは `92666827a79b31b55c0fa1b424f7be9e4891b97fab044d316b2622ec1a3a304b` | `pytest` と生成器の reload |
+| ⑧ | `docs/rules/SEARCH.md`（TERMS-0.0.0＝空）・`terms.py` の注釈・`README.md` の「prompts 3件」・検収記録が古い | 現物に合わせた。SDK の検収記録は**取り直した**（prompts 6件・PATTERNS-0.1.1・同時24本の結果を追加） | `test_rule_documents_match_the_tables`（規則文書の64桁と件数を実装と突き合わせる新しい試験） |
+| ⑨ | Host のポートを検査していない。監査の自己接続の免除が名前（`localhost`・`0.0.0.0`）でも通る | ポートは省略か十進1〜65535のときだけ認める。免除は数値の loopback＋自ポートに限る | `Host: localhost:0 / :99999 / :abc / :` が 400（実測） |
+
+**著者の判断が要るもの（実装していない）**：
+1. `SPEC.md` §5.6・§12 の「PATTERNS-0.1.0（49件・語形293）」は、現物が `PATTERNS-0.1.1`・語形313（P22・P39 を載せた後）。SPEC の改版は著者判断。
+2. Gradio の CORS は `http://localhost:<任意のポート>` などの Origin に `Access-Control-Allow-Origin` を返す（実測）。
+   遠隔のページからは読めないが、**同じ機械の別のローカルサーバが配ったページ**からは応答を読める。
+   Origin の検査を入れるか（入れると開示文にも一行要る）は著者判断。

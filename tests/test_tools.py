@@ -65,6 +65,27 @@ def test_approved_tables_and_empty_start(reader):
     assert [f.anchor for f in reader.frames] == ["translation-guide", "edition-integrity"]
 
 
+def test_rule_documents_match_the_tables():
+    """規則文書に書いた SHA-256 と件数が、実装と一致すること（文書だけ古くならないように）。"""
+    docs = REPO_ROOT / "docs" / "rules"
+    terms_doc = (docs / "TERMS.md").read_text(encoding="utf-8")
+    patterns_doc = (docs / "PATTERNS.md").read_text(encoding="utf-8")
+    norm_doc = (docs / "NORM.md").read_text(encoding="utf-8")
+    assert TM.TERMS_TABLE_SHA256 in terms_doc and TM.TERMS_VERSION in terms_doc
+    assert PAT.PATTERNS_TABLE_SHA256 in patterns_doc and PAT.PATTERNS_VERSION in patterns_doc
+    assert N.NORM_TABLE_SHA256 in norm_doc
+    for doc, pinned in ((terms_doc, TM.TERMS_TABLE_SHA256), (patterns_doc, PAT.PATTERNS_TABLE_SHA256)):
+        assert set(re.findall(r"\b[0-9a-f]{64}\b", doc)) == {pinned}, doc[:40]
+    assert f"（{len(PAT.PATTERNS)}件）" in patterns_doc
+    assert f"（{len(TM.TERMS)}項目" in terms_doc
+    forms = {f for e in TM.TERMS for f in e.forms_ja + e.forms_en}
+    index = TM.build_term_index(TM.TERMS)
+    assert f"語形{len(index.forms)}個" in terms_doc and len(forms) >= len(index.forms)
+    readme = (docs / "README.md").read_text(encoding="utf-8")
+    assert PAT.PATTERNS_TABLE_SHA256[:8] in readme and TM.TERMS_TABLE_SHA256[:8] in readme
+    assert f"{len(PR.TEMPLATES)}件" in (docs / "PROMPTS.md").read_text(encoding="utf-8")
+
+
 def test_prompts_are_approved_with_guard(reader):
     """六つの雛形（日本語三つ・英語三つ。SPEC v2.2 §6・案B）。"""
     assert PR.PROMPTS_STATUS == "approved" and PR.APPROVED_ON == "2026-09-18"

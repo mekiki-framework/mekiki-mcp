@@ -190,7 +190,7 @@ UI の Custom Connectors はリモートの URL を Anthropic 側から取りに
 `--allow-http` は暗号化されない loopback 接続を許すための指定で、外に出る経路では使わない。
 
 橋渡し自体の動作は確認済み：`mcp-remote@0.14.2`（Node v24.13.1）を stdio で起動して MCP クライアントからつなぐと、
-ツール7件・resources 12件・prompts 3件が見え、`list_papers` は `ok` を返した。Claude Desktop 本体での確認は
+ツール7件・resources 12件・prompts 6件が見え、`list_papers` は `ok` を返した。Claude Desktop 本体での確認は
 利用者が行い、`docs/acceptance/` に記録する。
 
 ### 接続時に知っておくこと

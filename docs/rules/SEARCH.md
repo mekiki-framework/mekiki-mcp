@@ -4,7 +4,7 @@
 |---|---|
 | 規則ID・版 | SEARCH-1.0.0 |
 | 状態 | 確定（回答票 Q50〜Q61、2026-09-18） |
-| 実装 | 施工段階2で実装（`mekiki_reader/tools.py`・`mekiki_reader/normalize.py` の `fold_search`。用語対応表は `mekiki_reader/terms.py`、TERMS-0.0.0＝空。規則は docs/rules/TERMS.md） |
+| 実装 | 施工段階2で実装（`mekiki_reader/tools.py`・`mekiki_reader/normalize.py` の `fold_search`。用語対応表は `mekiki_reader/terms.py`（TERMS-0.1.1・30項目・語形78）。規則は docs/rules/TERMS.md） |
 | 対象 | `search_passages`（SPEC §5.3）。verify_quote の近接候補と get_claim_record の query は別規則 CAND（docs/rules/CAND.md。Q92） |
 | 出典 | DECISIONS.md 付録B-2（段階0）から分離 |
 

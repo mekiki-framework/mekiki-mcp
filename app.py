@@ -5,6 +5,7 @@
 読むデータ：リポジトリ内の `data/` だけ。環境変数でも引数でも変えられない（Q12）。
 """
 
+import asyncio
 import os
 import re
 import sys
@@ -57,12 +58,21 @@ MAX_CONCURRENCY = 4
 MAX_THREADS = 8
 QUEUE_MAX_SIZE = 16            # Gradio の待ち行列の長さ（Codex① P2-4）
 QUEUE_INFLIGHT_MAX = MAX_CONCURRENCY + 4  # 同時に受け付ける queue/join の数（未回収の結果を溜めない）
+QUEUE_WAIT_SECONDS = 20.0      # 自己呼び出しの順番待ちの上限（超えたら 503）
+BODY_READ_SECONDS = 10.0       # 本文が届くのを待つ上限（超えたら 408）
 GUARD_LOG_MAX = 256            # 遮断の記録の保持数（固定長。Codex① P2-5）
 SENTINEL_MESSAGE = ("unknown prompt: this server has only read_with_guards, four_modes and answer_format "
                     "(the requested name is not passed to this endpoint by the server framework)")
 BUSY_MESSAGE = f"busy: this reader accepts at most {MAX_CONCURRENCY} concurrent calls"
 _SLOTS = threading.BoundedSemaphore(MAX_CONCURRENCY)
-_QUEUE_SLOTS = threading.BoundedSemaphore(QUEUE_INFLIGHT_MAX)
+_queue_gate: "asyncio.Semaphore | None" = None  # 自己呼び出しの同時数（要求は同じ event loop で走る）
+
+
+def _queue_slots() -> "asyncio.Semaphore":
+    global _queue_gate
+    if _queue_gate is None:
+        _queue_gate = asyncio.Semaphore(QUEUE_INFLIGHT_MAX)
+    return _queue_gate
 
 # ---- 標準経路の遮断（Q66） ----
 
@@ -79,7 +89,11 @@ ALLOWED_EXACT = frozenset({"/", "/config", "/config/", "/gradio_api/info", "/gra
                            "/gradio_api/queue/join", "/gradio_api/queue/data"})
 ALLOWED_PREFIXES = ("/gradio_api/mcp", "/gradio_api/heartbeat/")
 # 自分自身への呼び出しでだけ使う経路。外から来た分も含めて同時数を絞る（Codex① P2-4）。
+# 断るのではなく順番待ちにする：即 503 にすると、正規の resources/read・prompts/get が
+# 上流の実装の中で未定義参照になって壊れる（検算で実測）。
 SELF_CALL_PATHS = frozenset({"/gradio_api/queue/join"})
+# 本文を読み切ってから渡す経路。ここ以外は本文に触れない（触ると送り切らない要求で待たされる）。
+PRE_READ_PREFIXES = ("/gradio_api/mcp", "/gradio_api/queue/join")
 GUARD_LOG: "deque[tuple[int, str]]" = deque(maxlen=GUARD_LOG_MAX)  # 遮断の記録（固定長・S01 の証跡）
 GUARD_COUNTS: dict[int, int] = {}  # 応答コードごとの総数（記録が溢れても件数は残す）
 
@@ -110,12 +124,28 @@ BODY_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
 
 
 def _host_name(value: str) -> str:
-    """Host ヘッダからポートを外す。ホスト名は大小を区別しない。IPv6 は括弧のまま比べる。"""
+    """Host ヘッダからホスト名を取り出す（大小は区別しない）。形が変なら "" を返して拒ませる。
+
+    ポートは省略か、十進 1〜65535 のときだけ認める（検算⑨）。IPv6 は括弧のまま比べる。
+    """
     value = value.strip().lower()
     if value.startswith("["):
         end = value.find("]")
-        return value if end < 0 else value[:end + 1]
-    return value.rsplit(":", 1)[0] if value.count(":") == 1 else value
+        if end < 0:
+            return ""
+        host, rest = value[:end + 1], value[end + 1:]
+    elif value.count(":") == 1:
+        host, _, port = value.partition(":")
+        rest = ":" + port
+    elif ":" in value:
+        return ""  # 括弧なしの IPv6 や、ポートの書き間違い
+    else:
+        host, rest = value, ""
+    if rest:
+        port = rest[1:]
+        if not (port.isascii() and port.isdigit() and 1 <= int(port) <= 65535):
+            return ""
+    return host
 
 
 def _replayer(body: bytes, receive):
@@ -139,9 +169,10 @@ def _guard_middleware():
     """Gradio の標準経路を遮断する ASGI ミドルウェア（Q66・Codex① P1-2・P2-4）。"""
 
     async def _reply(send, status: int, text: str, path: str = "") -> None:
-        GUARD_LOG.append((status, path))
+        safe = path.encode("unicode_escape").decode("ascii")[:200]  # 記録に制御文字を通さない
+        GUARD_LOG.append((status, safe))
         GUARD_COUNTS[status] = GUARD_COUNTS.get(status, 0) + 1
-        print(f"blocked {status} {path}", file=sys.stderr, flush=True)
+        print(f"blocked {status} {safe}", file=sys.stderr, flush=True)
         await send({"type": "http.response.start", "status": status,
                     "headers": [(b"content-type", b"text/plain; charset=utf-8")]})
         await send({"type": "http.response.body", "body": text.encode("utf-8")})
@@ -168,7 +199,7 @@ def _guard_middleware():
             chunked = any("chunked" in v for v in encodings)
             if lengths and encodings:
                 return await _reply(send, 400, "conflicting framing", path)
-            if len(lengths) > 1 or len(set(lengths)) > 1:
+            if len(lengths) > 1:  # 値の違う重複は h11 が先に 400 にする。同値は畳まれてここには来ない
                 return await _reply(send, 400, "conflicting framing", path)
             declared = None
             if lengths:
@@ -183,12 +214,18 @@ def _guard_middleware():
             if path not in ALLOWED_EXACT and not path.startswith(ALLOWED_PREFIXES):
                 return await _reply(send, 404, "not found", path)
 
-            # 本文は実際に届いたバイト数で打ち切る（表明を信じない）。
+            # 本文を読む経路だけ、実際に届いたバイト数で打ち切る（表明を信じない）。
+            # それ以外の経路では本文に触れない（送り切らない要求で待たされないため）。
             forward = receive
-            if declared is not None or chunked or scope.get("method", "GET").upper() in BODY_METHODS:
+            takes_body = (declared is not None or chunked
+                          or scope.get("method", "GET").upper() in BODY_METHODS)
+            if takes_body and path.startswith(PRE_READ_PREFIXES):
                 chunks, total = [], 0
                 while True:
-                    message = await receive()
+                    try:
+                        message = await asyncio.wait_for(receive(), BODY_READ_SECONDS)
+                    except (asyncio.TimeoutError, TimeoutError):
+                        return await _reply(send, 408, "request body timeout", path)
                     if message["type"] == "http.disconnect":
                         return
                     chunks.append(message.get("body", b""))
@@ -201,13 +238,16 @@ def _guard_middleware():
                     return await _reply(send, 400, "conflicting framing", path)
                 forward = _replayer(b"".join(chunks), receive)
 
-            if path in SELF_CALL_PATHS:  # 自己呼び出しの経路は同時数を絞る（未回収の結果を溜めない）
-                if not _QUEUE_SLOTS.acquire(blocking=False):
+            if path in SELF_CALL_PATHS:  # 自己呼び出しの経路は順番待ちにする（未回収の結果を溜めない）
+                gate = _queue_slots()
+                try:
+                    await asyncio.wait_for(gate.acquire(), QUEUE_WAIT_SECONDS)
+                except (asyncio.TimeoutError, TimeoutError):
                     return await _reply(send, 503, "busy", path)
                 try:
                     return await self.app(scope, forward, send)
                 finally:
-                    _QUEUE_SLOTS.release()
+                    gate.release()
             return await self.app(scope, forward, send)
 
     return Guard

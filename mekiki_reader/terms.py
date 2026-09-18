@@ -156,7 +156,7 @@ class TermEntry:
     approved_on: str
 
 
-# 著者承認済みの項目（TERMS-0.1.0・承認 2026-09-18・docs/rules/TERMS.md）。
+# 著者承認済みの項目（TERMS-0.1.1・承認 2026-09-18・docs/rules/TERMS.md）。
 # 出所（sources）は scripts/find_term_sources.py --terms の機械的な検索結果（TERMS-SRC-1.0.0）。
 TERMS: tuple[TermEntry, ...] = (
     TermEntry("M01", ('仕様', '専門性の基質'), ('specification', 'Spec.'), SOURCES["M01"], APPROVED_ON),

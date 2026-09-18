@@ -19,6 +19,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 import re
 import sys
 from pathlib import Path
@@ -32,6 +34,7 @@ CANDIDATES = REPO_ROOT / "docs/candidates/patterns_candidates_v0.md"
 TM_PATH = "THEORY_MAP.md"
 FR_PATH = "FOR_AI_READERS.md"
 APPROVED_ON = "2026-09-18"
+MATCH_RULE = "PATTERNS-MATCH-1.0.0"  # patterns.MATCH_RULE と同じ値（正準形に入る）
 PATTERNS_VERSION = "PATTERNS-0.1.1"
 
 
@@ -236,6 +239,25 @@ def forms_of(row) -> list[str]:
     return [f.strip() for f in row["forms"].split("／") if f.strip()]
 
 
+def canonical_hash(resolved) -> str:
+    """これから書き出す表の正準 JSON の SHA-256（patterns.table_rows() と同じ形）。
+
+    定数を書き換える前に値が要るので、ここで作る。書き出したあとに reload して突き合わせる。
+    """
+    rows = []
+    for r in resolved:
+        rows.append({
+            "id": r["id"], "version": PATTERNS_VERSION, "match_rule": MATCH_RULE,
+            "approved_on": APPROVED_ON, "surface_forms": forms_of(r),
+            "related_sources": [{"path": path, "line_start": a, "line_end": b, "anchor": anchor,
+                                 "char_start": c0, "char_end": c1}
+                                for path, a, b, anchor, c0, c1 in r["sources"]],
+        })
+    raw = json.dumps({"version": PATTERNS_VERSION, "patterns": rows},
+                     sort_keys=True, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    return hashlib.sha256(raw).hexdigest()
+
+
 def write_patterns(resolved) -> None:
     p = REPO_ROOT / "mekiki_reader/patterns.py"
     t = p.read_text(encoding="utf-8")
@@ -265,18 +287,24 @@ def write_patterns(resolved) -> None:
     start = t.index(mark)
     end = t.index("def validate_patterns(")
     t = t[:start] + "\n".join(body) + "\n\n\n" + t[end:]
-    t = t.replace('PATTERNS_VERSION = "PATTERNS-0.0.0"\nAPPROVED_ON: str | None = None',
-                  f'PATTERNS_VERSION = "{PATTERNS_VERSION}"\nAPPROVED_ON = "{APPROVED_ON}"')
+    t = re.sub(r'PATTERNS_VERSION = "[^"]*"', f'PATTERNS_VERSION = "{PATTERNS_VERSION}"', t, count=1)
+    t = re.sub(r'APPROVED_ON(?:: str \| None)? = (?:None|"[^"]*")', f'APPROVED_ON = "{APPROVED_ON}"', t, count=1)
+    # 表とそろえて定数も書き換える（ここを忘れると、次の import で必ず落ちる）。
+    new_hash = canonical_hash(resolved)
+    t, n = re.subn(r'PATTERNS_TABLE_SHA256 = "[0-9a-f]{64}"', f'PATTERNS_TABLE_SHA256 = "{new_hash}"', t, count=1)
+    if n != 1:
+        raise SystemExit("patterns.py に PATTERNS_TABLE_SHA256 の行が無い（生成器を直すこと）")
     p.write_text(t, encoding="utf-8")
 
 
 def table_hash() -> str:
-    """書き出した patterns.py を読み直して表の SHA-256 を得る（版を上げたら値も変わる）。"""
+    """書き出した patterns.py を読み直して表の SHA-256 を得る（定数との突き合わせも兼ねる）。"""
     import importlib
 
     from mekiki_reader import patterns as _patterns
 
-    return importlib.reload(_patterns).table_sha256()
+    reloaded = importlib.reload(_patterns)  # 定数と食い違えば、ここで RuntimeError になる
+    return reloaded.table_sha256()
 
 
 def write_doc(resolved, failed, held) -> None:

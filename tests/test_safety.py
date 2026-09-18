@@ -209,6 +209,10 @@ def test_s01_host_variants(server):
         (b"GET /config HTTP/1.1\r\nHost: \r\nConnection: close\r\n\r\n", (400,)),               # 空
         (b"GET /config HTTP/1.1\r\nHost: LocalHost:" + port + b"\r\nConnection: close\r\n\r\n", (200,)),  # 大小
         (b"GET /config HTTP/1.1\r\nHost: 127.0.0.1.\r\nConnection: close\r\n\r\n", (400,)),       # 末尾の点
+        (b"GET /config HTTP/1.1\r\nHost: localhost:0\r\nConnection: close\r\n\r\n", (400,)),      # ポート0
+        (b"GET /config HTTP/1.1\r\nHost: localhost:99999\r\nConnection: close\r\n\r\n", (400,)),  # 範囲外
+        (b"GET /config HTTP/1.1\r\nHost: localhost:abc\r\nConnection: close\r\n\r\n", (400,)),    # 数字でない
+        (b"GET /config HTTP/1.1\r\nHost: localhost:\r\nConnection: close\r\n\r\n", (400,)),       # ポート空
     ]
     for request, want in cases:
         status, head = server.raw(request)
@@ -410,6 +414,11 @@ def test_s03_no_outbound_traffic(tmp_path, reader):
     # 起動前に Gradio が一時領域へ書くこと自体はあるので、そこは対象にしない（記録には残る）。
     every_write = [r[0] for r in audit["opened"] if any(c in r[1] for c in "wax+") or _write_flags(r[2])]
     assert not [p for p in every_write if p.startswith(str(REPO_ROOT))], every_write[:5]
+    # 子プロセス・open 以外の書き換え・記録の取りこぼしが無いこと（検算⑥・⑨）。
+    assert audit["process"] == [], audit["process"][:3]
+    assert not [m for m in audit["mutated"] if m[1].startswith(str(REPO_ROOT))], audit["mutated"][:3]
+    assert audit["open_dropped"] == 0
+    assert any(b[1].startswith("('127.0.0.1'") for b in audit["bound"]), audit["bound"]
     assert audit["mcp_server"] is True and audit["share"] is False and audit["run_history"] is False
     assert audit["queue_max_size"] == app.QUEUE_MAX_SIZE and audit["queue_concurrency"] == app.MAX_CONCURRENCY
     # 番兵は endpoint 一覧の最後（prompts/get の取りこぼしを受け止める位置。Q64）。

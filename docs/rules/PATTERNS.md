@@ -3,7 +3,7 @@
 | 項目 | 値 |
 |---|---|
 | 規則ID・版 | 一覧 PATTERNS-0.1.1（49件）・照合 PATTERNS-MATCH-1.0.0 |
-| 表の SHA-256 | `b38299528fe444babb2fb343d8877dcd284a8021f0621e91c6c4a0439c8dd70d`（`patterns.table_sha256()` が import 時に照合。Q49） |
+| 表の SHA-256 | `92666827a79b31b55c0fa1b424f7be9e4891b97fab044d316b2622ec1a3a304b`（`patterns.table_sha256()` が import 時に照合。Q49） |
 | 状態 | 確定（著者承認 2026-09-18。起草＝検査室・SPEC §10） |
 | 実装 | `mekiki_reader/patterns.py`・`mekiki_reader/tools.py`（`_check_compressions`） |
 | 候補・解決 | `docs/candidates/patterns_candidates_v0.md`・`scripts/build_patterns.py`（PATTERNS-SRC-1.0.0） |

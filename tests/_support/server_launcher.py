@@ -24,8 +24,17 @@ sys.path.insert(0, str(REPO_ROOT))
 
 AUDIT_LOG = Path(os.environ["MEKIKI_AUDIT_LOG"])
 LOOPBACK_HOSTS = frozenset({"127.0.0.1", "::1", "localhost", "ip6-localhost", "0.0.0.0", ""})
-NET_EVENTS = ("socket.connect", "socket.getaddrinfo", "socket.sendto", "socket.gethostbyname",
-              "socket.gethostbyname_ex", "urllib.Request", "http.client.connect")
+NET_EVENTS = ("socket.connect", "socket.getaddrinfo", "socket.sendto", "socket.sendmsg",
+              "socket.gethostbyname", "socket.gethostbyname_ex", "socket.gethostbyaddr",
+              "socket.getnameinfo", "urllib.Request", "http.client.connect")
+# 子プロセスは別のプロセスなのでフックが届かない。起こすこと自体を記録する（検算⑥a）。
+PROCESS_EVENTS = ("subprocess.Popen", "os.system", "os.posix_spawn", "os.fork", "os.forkpty",
+                  "os.exec", "os.spawn", "pty.spawn")
+# open 以外の書き換え経路（検算⑥c）。リポジトリ配下に出たら S03 が落ちる。
+MUTATE_EVENTS = ("os.rename", "os.remove", "os.unlink", "os.mkdir", "os.rmdir", "os.symlink",
+                 "os.link", "os.truncate", "os.chmod", "os.chown", "os.replace", "shutil.rmtree",
+                 "shutil.move", "shutil.copyfile")
+BIND_EVENTS = ("socket.bind",)
 OPEN_MAX = 20000  # 記録の上限（起動前の import も全部入るため）
 
 STATE = {"phase": "import", "port": None, "control": False}
@@ -33,6 +42,10 @@ NET: list[list] = []          # 通信の記録（全部・[event, target, phase
 OUTBOUND: list[list] = []     # 自己接続以外（例外にした分。陽性対照の分は含めない）
 CONTROL_NET: list[list] = []  # 陽性対照で自分から試みた分
 OPENED: list[list] = []       # 開いたファイル（[パス, mode, flags, phase]）
+OPEN_DROPPED = {"n": 0}       # 上限で捨てた件数（黙って空振りしないため）
+PROCESS: list[list] = []      # 子プロセスを起こした記録
+MUTATED: list[list] = []      # open 以外の書き換え（rename・remove ほか）
+BOUND: list[list] = []        # 待ち受けた宛先
 CONTROL: dict[str, str] = {}  # 陽性対照の結果
 
 
@@ -63,8 +76,11 @@ def _is_self(event: str, target: str) -> bool:
     host, _, port = target.rpartition(":")
     if host not in LOOPBACK_HOSTS:
         return False
-    if event in ("socket.getaddrinfo", "socket.gethostbyname", "socket.gethostbyname_ex"):
-        return True  # loopback の名前解決は宛先が自分に限られる
+    if event in ("socket.getaddrinfo", "socket.gethostbyname", "socket.gethostbyname_ex",
+                 "socket.gethostbyaddr", "socket.getnameinfo"):
+        return host in ("127.0.0.1", "::1")  # 名前ではなく数値のときだけ免除（検算⑨）
+    if host not in ("127.0.0.1", "::1"):
+        return False  # localhost・0.0.0.0 を名乗るだけでは免除しない
     return STATE["port"] is not None and port == str(STATE["port"])
 
 
@@ -76,13 +92,23 @@ def _audit(event, args) -> None:
         if not _is_self(event, target):
             (CONTROL_NET if STATE["control"] else OUTBOUND).append(record)
             raise RuntimeError(f"outbound connection blocked in the test launcher: {event} {target}")
-    elif event == "open" and len(OPENED) < OPEN_MAX:
+    elif event == "open":
+        if len(OPENED) >= OPEN_MAX:
+            OPEN_DROPPED["n"] += 1
+            return
         path = args[0] if args else ""
         if isinstance(path, (str, bytes, os.PathLike)):
             name = path.decode("utf-8", "replace") if isinstance(path, bytes) else os.fspath(path)
             mode = args[1] if len(args) > 1 else ""
             flags = args[2] if len(args) > 2 else ""
             OPENED.append([str(name), str(mode), str(flags), STATE["phase"]])
+    elif event.startswith(PROCESS_EVENTS):
+        PROCESS.append([event, str(args[0])[:120] if args else "", STATE["phase"]])
+        raise RuntimeError(f"child process blocked in the test launcher: {event}")
+    elif event in MUTATE_EVENTS:
+        MUTATED.append([event, str(args[0])[:200] if args else "", STATE["phase"]])
+    elif event in BIND_EVENTS:
+        BOUND.append([event, str(args[1])[:80] if len(args) > 1 else "", STATE["phase"]])
 
 
 sys.addaudithook(_audit)
@@ -127,7 +153,9 @@ def _positive_control() -> None:
 
 def _write_log() -> None:
     AUDIT_LOG.write_text(json.dumps({
-        "net": NET, "outbound": OUTBOUND, "opened": OPENED, "control": CONTROL, "control_net": CONTROL_NET,
+        "net": NET, "outbound": OUTBOUND, "opened": OPENED, "open_dropped": OPEN_DROPPED["n"],
+        "process": PROCESS, "mutated": MUTATED, "bound": BOUND,
+        "control": CONTROL, "control_net": CONTROL_NET,
         "guard": [list(x) for x in app.GUARD_LOG], "guard_counts": app.GUARD_COUNTS,
         "removed_env": app.REMOVED_GRADIO_ENV,
         "server_name": app.SERVER_NAME,

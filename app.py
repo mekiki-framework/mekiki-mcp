@@ -58,16 +58,23 @@ SERVER_NAME = "127.0.0.1"  # 環境変数では変えない（Q67）
 
 MAX_CONCURRENCY = 4
 MAX_THREADS = 8
-QUEUE_MAX_SIZE = 16            # Gradio の待ち行列の長さ（Codex① P2-4）
+QUEUE_MAX_SIZE = 72            # Gradio の待ち行列の長さ（＝受付8＋待機64。断るのはこちらの層にする）
 QUEUE_INFLIGHT_MAX = MAX_CONCURRENCY + 4  # 同時に受け付ける queue/join の数（未回収の結果を溜めない）
-QUEUE_WAIT_SECONDS = 20.0      # 自己呼び出しの順番待ちの上限（超えたら 503）
-BODY_READ_SECONDS = 10.0       # 本文が届くのを待つ上限（超えたら 408）
+QUEUE_WAIT_SECONDS = 20.0      # 自己呼び出しの順番待ちの時間の上限（超えたら 503）
+QUEUE_WAITING_MAX = 64         # 順番待ちに並べる数の上限（値は実測。Codex② 1）
+RESULT_TTL_SECONDS = 120.0     # 回収されない結果を残す時間
+RESULT_MESSAGES_MAX = 64       # 同じセッションに溜める結果の数
+RESULT_BYTES_MAX = 4 * 1024 * 1024   # 同じセッションに溜める結果の大きさ
+RESULT_SWEEP_SECONDS = 5.0     # 掃除の間隔
+BODY_READ_SECONDS = 10.0       # 本文が届き切るまでの上限（受信ループ全体で一つ。超えたら 408）
 GUARD_LOG_MAX = 256            # 遮断の記録の保持数（固定長。Codex① P2-5）
 SENTINEL_MESSAGE = ("unknown prompt: this server has only read_with_guards, four_modes and answer_format "
                     "(the requested name is not passed to this endpoint by the server framework)")
 BUSY_MESSAGE = f"busy: this reader accepts at most {MAX_CONCURRENCY} concurrent calls"
 _SLOTS = threading.BoundedSemaphore(MAX_CONCURRENCY)
 _queue_gate: "asyncio.Semaphore | None" = None  # 自己呼び出しの同時数（要求は同じ event loop で走る）
+_QUEUE_STATE = {"waiting": 0, "max_waiting": 0, "rejected": 0}  # 順番待ちの実測（S01 の証跡）
+_SWEEP = {"task": None, "dropped": 0, "runs": 0}  # 回収されない結果の掃除
 
 
 def _queue_slots() -> "asyncio.Semaphore":
@@ -145,6 +152,8 @@ def _host_name(value: str) -> str:
         if end < 0:
             return ""
         host, rest = value[:end + 1], value[end + 1:]
+        if rest and not rest.startswith(":"):
+            return ""  # `[::1]x80` のような接尾辞は受け付けない（Codex② 5）
     elif value.count(":") == 1:
         host, _, port = value.partition(":")
         rest = ":" + port
@@ -176,6 +185,55 @@ class _PassThroughCORS:
 
 
 gradio.routes.CustomCORSMiddleware = _PassThroughCORS  # create_app が add_middleware に使う名前
+
+
+def sweep_results(queue, now: float) -> int:
+    """回収されない結果を、件数・大きさ・期限で捨てる（Codex② 1）。捨てたセッション数を返す。
+
+    Gradio の待ち行列は、`/queue/join` で作った結果を `/queue/data` が取りに来るまで持ち続ける。
+    取りに来ない相手がいると溜まり続けるので、ここで打ち切る。
+    """
+    sessions = getattr(queue, "pending_messages_per_session", None)
+    if not isinstance(sessions, dict):
+        return 0
+    first_seen = _SWEEP.setdefault("first_seen", {})
+    dropped = 0
+    for session in list(sessions):
+        first_seen.setdefault(session, now)
+        pending = sessions.get(session)
+        items = list(getattr(pending, "_queue", []) or [])
+        size = sum(len(repr(item)) for item in items)
+        too_old = now - first_seen[session] > RESULT_TTL_SECONDS
+        if not (too_old or len(items) > RESULT_MESSAGES_MAX or size > RESULT_BYTES_MAX):
+            continue
+        sessions.pop(session, None)
+        first_seen.pop(session, None)
+        event_ids = getattr(queue, "pending_event_ids_session", {}).pop(session, set()) or set()
+        for event_id in event_ids:
+            getattr(queue, "event_ids_to_events", {}).pop(event_id, None)
+        dropped += 1
+    for session in list(first_seen):  # 消えたセッションの記録も片づける
+        if session not in sessions:
+            first_seen.pop(session, None)
+    _SWEEP["dropped"] += dropped
+    return dropped
+
+
+def start_sweeper(demo) -> None:
+    """掃除を、要求を処理している event loop の上で回す（最初の要求のときに一度だけ）。"""
+    if _SWEEP["task"] is not None:
+        return
+
+    async def loop_body():
+        while True:
+            await asyncio.sleep(RESULT_SWEEP_SECONDS)
+            _SWEEP["runs"] += 1
+            try:
+                sweep_results(getattr(demo, "_queue", None), asyncio.get_running_loop().time())
+            except Exception as exc:  # noqa: BLE001 - 掃除で落とさない
+                print(f"sweep failed: {type(exc).__name__}", file=sys.stderr, flush=True)
+
+    _SWEEP["task"] = asyncio.get_running_loop().create_task(loop_body())
 
 
 def check_cors(port: int) -> list[str]:
@@ -242,6 +300,8 @@ def _guard_middleware():
         async def __call__(self, scope, receive, send):
             if scope["type"] == "lifespan":
                 return await self.app(scope, receive, send)
+            if _SWEEP["task"] is None and DEMO is not None:
+                start_sweeper(DEMO)
             if scope["type"] != "http":
                 return  # websocket などは受け付けない
             path = scope.get("path", "")
@@ -281,9 +341,15 @@ def _guard_middleware():
                           or scope.get("method", "GET").upper() in BODY_METHODS)
             if takes_body and path.startswith(PRE_READ_PREFIXES):
                 chunks, total = [], 0
+                # 期限は受信ループ全体で一つ（小分けに送って総時間を延ばせないように。Codex② 3）。
+                loop = asyncio.get_running_loop()
+                deadline = loop.time() + BODY_READ_SECONDS
                 while True:
+                    remaining = deadline - loop.time()
+                    if remaining <= 0:
+                        return await _reply(send, 408, "request body timeout", path)
                     try:
-                        message = await asyncio.wait_for(receive(), BODY_READ_SECONDS)
+                        message = await asyncio.wait_for(receive(), remaining)
                     except (asyncio.TimeoutError, TimeoutError):
                         return await _reply(send, 408, "request body timeout", path)
                     if message["type"] == "http.disconnect":
@@ -298,12 +364,20 @@ def _guard_middleware():
                     return await _reply(send, 400, "conflicting framing", path)
                 forward = _replayer(b"".join(chunks), receive)
 
-            if path in SELF_CALL_PATHS:  # 自己呼び出しの経路は順番待ちにする（未回収の結果を溜めない）
+            if path in SELF_CALL_PATHS:  # 自己呼び出しの経路は順番待ちにする（受付8・待機は上限つき）
                 gate = _queue_slots()
+                if _QUEUE_STATE["waiting"] >= QUEUE_WAITING_MAX:
+                    _QUEUE_STATE["rejected"] += 1
+                    return await _reply(send, 503, "busy", path)
+                _QUEUE_STATE["waiting"] += 1
+                _QUEUE_STATE["max_waiting"] = max(_QUEUE_STATE["max_waiting"], _QUEUE_STATE["waiting"])
                 try:
                     await asyncio.wait_for(gate.acquire(), QUEUE_WAIT_SECONDS)
                 except (asyncio.TimeoutError, TimeoutError):
+                    _QUEUE_STATE["rejected"] += 1
                     return await _reply(send, 503, "busy", path)
+                finally:
+                    _QUEUE_STATE["waiting"] -= 1
                 try:
                     return await self.app(scope, forward, send)
                 finally:
@@ -487,6 +561,8 @@ def build_blocks() -> "gr.Blocks":
             gr.api(_prompt_fn(template), api_visibility="public", queue=False)
         gr.api(_sentinel(), api_visibility="public", queue=False)  # 必ず最後
     demo.queue(max_size=QUEUE_MAX_SIZE, default_concurrency_limit=MAX_CONCURRENCY)
+    global DEMO
+    DEMO = demo
     return demo
 
 
@@ -585,6 +661,7 @@ def main() -> int:
 
 
 READER: T.Reader | None = None
+DEMO = None  # 掃除がたどる Blocks（build_blocks で入れる）
 
 if __name__ == "__main__":
     sys.exit(main())

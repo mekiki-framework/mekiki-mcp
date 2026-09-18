@@ -78,13 +78,13 @@ Mekiki Framework の論文 T1〜T5 を、**固定した版から・出典つき�
 | `search_passages(query, paper_id="", k=5)` | 語句検索（モデルなし・行単位）。全語一致を `results`、一部一致を `candidates`。一致位置・±100字の抜粋・`match_via`・節への経路 | `ok` / `no_lexical_match` / `unknown_id` / `invalid_input` | query は生1000字・畳み込み後200字・断片8個、`k` は1〜20（既定5） |
 | `get_claim_record(claim_id="", query="")` | `claims/t5.json` の記録を逐語（台帳の `status`〔位置づけのラベル〕・`source_quote`・`not_claimed` ほか）。未記録欄は `null` | （応答の状態）`ok` / `unknown_id` / `ledger_not_available`（T1〜T4）/ `no_lexical_match` / `invalid_input` | `query` 経路の候補は5件。`unknown_id` では台帳の全項目、`ledger_not_available` ではその論文の全節を候補に出す |
 | `verify_quote(text, paper_id="", language="")` | 引用が原文にあるかの照合（`exact` / `normalized` / `none`）と、位置・差分・近接候補 | `ok` / `quote_not_found` / `unknown_id` / `invalid_input` | text 2000字、最小長は仮名・漢字を含めば5字・それ以外10字、一致20件 |
-| `check_compressions(text)` | 著者が承認した語形に当たった箇所と、その関連原文の抜粋 | `ok`（該当ゼロでも ok）/ `invalid_input` | text 2000字、抜粋1000字、一致20件 |
+| `check_compressions(text)` | 著者が承認した語形に当たった箇所と、その関連原文の抜粋 | `ok`（該当ゼロでも ok）/ `invalid_input` | text 2000字、抜粋1000字、**一致位置は1結果につき20件**（結果の数はパターンの関連原文の数だけ出る。最悪99件・約183 KiB） |
 | `get_reading_guide(part="all")` | `FOR_AI_READERS.md` の該当部分と、読み方の雛形（`templates`） | `ok` / `invalid_input` | `part` は11個の固定列挙 |
 
 `status` は六値（`ok` / `unknown_id` / `quote_not_found` / `no_lexical_match` / `invalid_input` / `ledger_not_available`）で、混ぜない。
 **通信層の制限は `status` に混ぜず、MCP のエラーか HTTP の応答コードで返す。**
-同時実行は4（七ツール・resources・prompts で共有）。要求本文は 64 KiB を**実際に届いたバイト数**で打ち切り、
-長さの表明（`Content-Length`）は ASCII 数字だけ・重複不可・`Transfer-Encoding` との併記不可で、表明と実測が食い違えば拒む。
+同時実行は4（七ツール・resources・prompts で共有）。自己呼び出しの経路は受付8・順番待ち64。要求本文は 64 KiB を**実際に届いたバイト数**で打ち切り（受信は全体で10秒まで）、
+`Transfer-Encoding` との併記は拒む。`Content-Length` の形（ASCII 数字か・値の違う重複か・表明と実測の食い違いか）は HTTP の層が先に拒む（同じ値の重複は畳まれて通る）。詳しくは [docs/rules/LIMITS.md](docs/rules/LIMITS.md)。
 
 各結果には出典が付く：`source_id`・`source_kind`・`derivative_of`・`paper_id`・`paper_version`・`language`・`source_path`・
 `source_hash`・`section_anchor`・`locator`（行・文字位置）・`canonical_doi`・`source_url`・`snapshot_url`（＋本文の `payload`）。
@@ -190,8 +190,27 @@ UI の Custom Connectors はリモートの URL を Anthropic 側から取りに
 `--allow-http` は暗号化されない loopback 接続を許すための指定で、外に出る経路では使わない。
 
 橋渡し自体の動作は確認済み：`mcp-remote@0.14.2`（Node v24.13.1）を stdio で起動して MCP クライアントからつなぐと、
-ツール7件・resources 12件・prompts 6件が見え、`list_papers` は `ok` を返した。Claude Desktop 本体での確認は
-利用者が行い、`docs/acceptance/` に記録する。
+ツール7件・resources 12件・**prompts 6件**（英語版を載せた後に取り直した）が見え、`list_papers` は `ok`、
+`four_modes_en` の文面も届いた。Claude Desktop 本体での確認は利用者が行い、`docs/acceptance/` に記録する。
+
+### 遮断している経路（Gradio が UI 無しでも登録するもの）
+
+| 経路 | 応答 |
+|---|---|
+| `…file=`・`…proxy=`（外部 URL の取得・プロキシ） | 403 |
+| `/gradio_api/upload` | 403 |
+| `/gradio_api/run-history/*` | 403 |
+| `/vibe*`（外部 LLM・書き込み） | 403 |
+| `/gradio_api/dev/reload` | 403 |
+| `/gradio_api/monitoring`・`/profiling` | 403 |
+| `/gradio_api/component_server` | 403 |
+| `/gradio_api/reset`・`/cancel` | 403 |
+| `/gradio_api/login`・`/logout` | 403 |
+| `/gradio_api/deep_link`・`/process_recording` | 403 |
+| 上の一覧にも下の許可にも無い経路（`/gradio_api/call/*`・`/queue/status`・`/openapi.json`・`/assets/*`・`/static/*`・`/theme.css`・`/manifest.json` など） | 404 |
+
+通しているのは `/`（標準のフロント HTML）・`/config`・`/gradio_api/info`・`/gradio_api/startup-events`・
+`/gradio_api/mcp*`・`/gradio_api/heartbeat/*` と、自己呼び出しの `/gradio_api/queue/join`・`/queue/data` だけ。
 
 ### 接続時に知っておくこと
 
@@ -242,7 +261,7 @@ D01〜D04（同梱データ）・T01〜T12 と R01（七ツールと再現性）
 - **制作工程と使用モデル**：方針（`SPEC.md`）→施工（Claude Code / Claude Opus 5）→独立検査（Codex。指摘と差分案のみ）→最終検査（Claude）→接続確認と公開判断（著者）。生成 AI を使って作った。<!-- 著者確認：独立検査・最終検査に使ったモデルの具体名 -->
 - **参照した型**：Paper2Agent（Miao et al., Nature 2026）から借りたのは型（資源・プロンプト・ツール・検証テスト・Spaces での公開）であって工程ではない。読解の対象は T1〜T5（題名・版・DOI は `data/CITATION.md`）。
 - **費用と休止**：ローカルで動かす分には追加の API 料金・ホスティング料金は要らない。公開（Spaces）での費用と休止からの復帰時間は、公開時に実測して記す。<!-- 配置段階二で記入 -->
-- **利用者入力の送信先と保存方針**：`verify_quote` と `check_compressions` の入力には未公開の情報が入りうる。実測では、起動から全ツール・全 resource・全 prompt の呼び出しまで loopback 以外への接続は0件、書き込みで開いたファイルも0件だった。サーバは入力をファイルに保存しない方針で、実測した範囲（外への接続と、書き込みで開いたファイル）では保存は確認されなかった。**標準出力・標準エラー、およびホスティング側のログに何が残るかは未実測**で、公開の前に実測して記す。
+- **利用者入力の送信先と保存方針**：`verify_quote` と `check_compressions` の入力には未公開の情報が入りうる。実測では、起動から全ツール・全 resource・全 prompt の呼び出しまで loopback 以外への接続は0件。**配信中**は書き込みで開いたファイルも0件で、`data/` には一切触れない。起動の途中では、依存ライブラリ（filelock）が作業ディレクトリに `probe-source`・`probe-link` を作って消し、Gradio が一時領域に書く（どちらも利用者の入力とは関係がない）。サーバは入力をファイルに保存しない方針で、実測した範囲（外への接続と、書き込みで開いたファイル）では保存は確認されなかった。**標準出力・標準エラー、およびホスティング側のログに何が残るかは未実測**で、公開の前に実測して記す。
 - **外向きの資料取得**：起動後に取得する資料は同梱データだけ。
 - **既知の制約**：
   1. T4 の英訳は ChatGPT で作成された派生の言語版で、著者レビューの認証はない。英訳由来の結果には作成経緯（`preparation`・`authority`）を必ず添える。
@@ -250,7 +269,7 @@ D01〜D04（同梱データ）・T01〜T12 と R01（七ツールと再現性）
   3. 同梱物は `data/LICENSE`（CC BY 4.0）に従う。論文本文中に別の表記（T1 の figshare 寄託データについての `CC BY-NC 4.0`）があっても、同梱物には及ばない。原文は改変しない。
   4. 日本語の問いは英語の論文に当たりにくい（語句の照合であるため）。該当ゼロは記述が無いことを意味しない。
   5. 未知の prompt 名は MCP のエラーとして返る（上流の実装の挙動。本文は §5 参照）。Spaces ではツール名に接頭辞が付く。
-  6. `/` に Gradio 標準のフロント HTML が返る。`resources/read` と `prompts/get` はサーバが自分自身に出す HTTP 要求で実行されるため、その経路（`/gradio_api/queue/join`・`/gradio_api/queue/data`）だけは通してある。外から同じ経路を叩くこともできるので、**同時数を8件に、待ち行列を16件に絞って受ける**（超えると HTTP 503）。実行されるのは登録済みの七ツール・resources・prompts だけで、どれも同じ実行枠（同時4）を使う。`/gradio_api/call/*` は塞いである（実測で、自己呼び出しには要らないことを確かめた）。
+  6. `/` に Gradio 標準のフロント HTML が返る。`resources/read` と `prompts/get` はサーバが自分自身に出す HTTP 要求で実行されるため、その経路（`/gradio_api/queue/join`・`/gradio_api/queue/data`）だけは通してある。外から同じ経路を叩くこともできるので、**受付8件・順番待ち64件まで**で受ける（超えると HTTP 503）。回収されない結果は件数64・4 MiB・120秒で捨てる。実行されるのは登録済みの七ツール・resources・prompts だけで、どれも同じ実行枠（同時4）を使う。`/gradio_api/call/*` は塞いである（実測で、自己呼び出しには要らないことを確かめた）。
   7. 起動時に `HF_HUB_DISABLE_TELEMETRY=1`・`HF_HUB_DISABLE_IMPLICIT_TOKEN=1`・`HF_HUB_OFFLINE=1`・`HF_TOKEN_PATH=/dev/null` を設定している（依存ライブラリの利用状況送信を止め、利用者のトークンファイルを開かせないため）。
-  8. ブラウザからは応答を読めない。`Origin` ヘッダの付いた要求には CORS の許可（`Access-Control-Allow-Origin` ほか）を一切返さない（`http://localhost:<ポート>` など同じ機械からの Origin も含む）。上流の既定では loopback の Origin に許可が出るため、差し替えてある。MCP のクライアントは `Origin` を送らないので接続には影響しない。
+  8. **別オリジンのページに CORS の許可ヘッダを返さない**。`Origin` の付いた要求には `Access-Control-Allow-Origin` ほかを一切返さない（`http://localhost:<ポート>` など同じ機械からの Origin も含む。上流の既定では loopback に許可が出る）。ブラウザからの**別オリジンの読み取り**を防ぐだけで、同一オリジンでの取得や、URL を直接開いて表示することを禁じるものではない。MCP のクライアントは `Origin` を送らないので接続には影響しない。
   9. 同梱データの照合は事故の検出までで、改竄への耐性は主張しない。

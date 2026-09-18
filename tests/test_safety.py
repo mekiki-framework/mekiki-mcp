@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import json
 import os
+import socket
 import sys
 import threading
+import time
 from pathlib import Path
 
 import pytest
@@ -196,6 +198,95 @@ def test_s01_blocked_routes_with_body(server):
     assert server.request("POST", "/gradio_api/mcp/", body=b"", headers=MCP_HEADERS)[0] == 400
 
 
+def test_s01_slow_body_is_cut(server):
+    """本文を少しずつ送り続けても、受信ループ全体の期限で切られる（Codex② 3）。"""
+    body = b'{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
+    head = (f"POST /gradio_api/mcp/ HTTP/1.1\r\nHost: 127.0.0.1:{server.port}\r\n"
+            f"Content-Type: application/json\r\nAccept: application/json, text/event-stream\r\n"
+            f"Content-Length: {len(body)}\r\nConnection: close\r\n\r\n").encode()
+    sock = socket.create_connection(("127.0.0.1", server.port), timeout=app.BODY_READ_SECONDS + 20)
+    started = time.monotonic()
+    try:
+        sock.sendall(head)
+        try:  # 1バイトずつ、期限より長くかけて送る
+            for byte in body:
+                sock.sendall(bytes([byte]))
+                time.sleep(app.BODY_READ_SECONDS / 8)
+        except OSError:
+            pass  # 期限で閉じられた
+        sock.settimeout(20)
+        try:
+            answer = sock.recv(200).decode("latin-1", "replace")
+        except OSError:
+            answer = ""
+    finally:
+        sock.close()
+    elapsed = time.monotonic() - started
+    assert elapsed < app.BODY_READ_SECONDS * 2.5, elapsed
+    assert answer == "" or " 408 " in answer, answer[:80]
+
+
+def test_s01_queue_waiting_is_capped(tmp_path):
+    """受付も待機も塞がっているときは、通信層で断る（status には混ぜない。Codex② 1）。"""
+    env = {"MEKIKI_TEST_QUEUE_INFLIGHT": "0", "MEKIKI_TEST_QUEUE_WAITING": "0"}
+    with Server(tmp_path / "audit.json", env_extra=env) as srv:
+        body = json.dumps({"data": [], "fn_index": 0, "session_hash": "capped",
+                           "trigger_id": None, "event_data": None}).encode()
+        codes = [srv.request("POST", "/gradio_api/queue/join", body=body,
+                             headers={"Content-Type": "application/json"})[0] for _ in range(6)]
+        assert codes == [503] * 6, codes
+        assert srv.request("GET", "/config")[0] == 200          # ほかの経路は生きている
+        assert MC.payload(MC.session(srv.mcp_url, lambda s: s.call_tool("list_papers", {})))["status"] == "ok"
+        audit = srv.stop()
+    assert audit["queue_state"]["rejected"] == 6
+    assert audit["guard_counts"].get("503") == 6 or audit["guard_counts"].get(503) == 6
+
+
+def test_s01_uncollected_results_are_dropped(tmp_path):
+    """結果を回収しない join を繰り返しても、溜め込まずに捨てる（Codex② 1）。"""
+    with Server(tmp_path / "audit.json", env_extra={"MEKIKI_TEST_SWEEP": "1"}) as srv:
+        body = json.dumps({"data": [], "fn_index": 0, "session_hash": "never-collected",
+                           "trigger_id": None, "event_data": None}).encode()
+        for _ in range(12):
+            status, _ = srv.request("POST", "/gradio_api/queue/join", body=body,
+                                    headers={"Content-Type": "application/json"})
+            assert status == 200, status
+        assert MC.payload(MC.session(srv.mcp_url, lambda s: s.call_tool("list_papers", {})))["status"] == "ok"
+        time.sleep(5)  # 掃除（この試験では1秒間隔）が回るのを待つ
+        audit = srv.stop()
+    assert audit["sweep"]["runs"] >= 1
+    assert audit["sweep"]["dropped"] >= 1, audit["sweep"]
+
+
+def test_sweep_results_drops_by_count_size_and_age():
+    """掃除の判定（件数・大きさ・期限）を、作り物の待ち行列で確かめる。"""
+    class Fake:
+        def __init__(self):
+            self.pending_messages_per_session = {}
+            self.pending_event_ids_session = {}
+            self.event_ids_to_events = {}
+
+    class Pending:
+        def __init__(self, items):
+            self._queue = list(items)
+
+    app._SWEEP["first_seen"] = {}
+    queue = Fake()
+    queue.pending_messages_per_session["fresh"] = Pending(["x"])
+    queue.pending_messages_per_session["many"] = Pending(["x"] * (app.RESULT_MESSAGES_MAX + 1))
+    queue.pending_messages_per_session["big"] = Pending(["y" * (app.RESULT_BYTES_MAX + 10)])
+    queue.pending_messages_per_session["old"] = Pending(["x"])
+    for session in queue.pending_messages_per_session:
+        queue.pending_event_ids_session[session] = {f"e-{session}"}
+        queue.event_ids_to_events[f"e-{session}"] = object()
+    assert app.sweep_results(queue, 0.0) == 2                     # many と big
+    app._SWEEP["first_seen"]["old"] = -(app.RESULT_TTL_SECONDS + 1)
+    assert app.sweep_results(queue, 0.0) == 1                     # old（期限）
+    assert list(queue.pending_messages_per_session) == ["fresh"]  # 新しいものは残る
+    assert list(queue.event_ids_to_events) == ["e-fresh"]
+    assert app.sweep_results(None, 0.0) == 0                      # 待ち行列が無くても落ちない
+
+
 def test_s01_host_variants(server):
     """Host の欠落・重複・IPv6（Codex① P1-2 の敵対的試験）。"""
     port = str(server.port).encode()
@@ -213,6 +304,7 @@ def test_s01_host_variants(server):
         (b"GET /config HTTP/1.1\r\nHost: localhost:99999\r\nConnection: close\r\n\r\n", (400,)),  # 範囲外
         (b"GET /config HTTP/1.1\r\nHost: localhost:abc\r\nConnection: close\r\n\r\n", (400,)),    # 数字でない
         (b"GET /config HTTP/1.1\r\nHost: localhost:\r\nConnection: close\r\n\r\n", (400,)),       # ポート空
+        (b"GET /config HTTP/1.1\r\nHost: [::1]x80\r\nConnection: close\r\n\r\n", (400,)),         # 括弧の後の接尾辞
     ]
     for request, want in cases:
         status, head = server.raw(request)
@@ -427,11 +519,15 @@ def test_s03_no_outbound_traffic(tmp_path, reader):
         assert host in ("127.0.0.1", "::1", "localhost", "0.0.0.0", ""), target
         if host in ("127.0.0.1", "::1") and port.isdigit():
             assert port == str(audit["port"]), target
-    # 陽性対照：フックが効いていること（外向きは止まり、自己接続は通る）。
-    assert audit["control"]["getaddrinfo"].startswith("blocked"), audit["control"]
-    assert audit["control"]["connect"].startswith("blocked"), audit["control"]
-    assert audit["control"]["self"] == "allowed", audit["control"]
-    assert {r[1] for r in audit["control_net"]} == {"mekiki-control.invalid:80", "203.0.113.1:80"}
+    # 陽性対照：フックが効いていること（外向き・子プロセス・sendmsg・別の IPv6・data/ への rename は止まり、
+    # 自己接続は通る）。検出漏れとして挙がった経路を一つずつ当てる（Codex② 4）。
+    control = audit["control"]
+    for key in ("getaddrinfo", "connect", "child_process", "sendmsg", "ipv6_other_port", "rename_into_data"):
+        assert control[key].startswith("blocked"), (key, control[key])
+    assert control["self"] == "allowed", control
+    assert control["rename_did_nothing"] == "True" and control["rename_target_recorded"] == "True", control
+    assert {r[1] for r in audit["control_net"]} == {"mekiki-control.invalid:80", "203.0.113.1:80",
+                                                    "203.0.113.2:9", "::1:9"}
     # 配信中に開くのは、遅延 import される Python 本体と site-packages のファイルだけ。
     # data/ を含むリポジトリのファイルは開かず、書き込みで開いたものも無い（Q12・SPEC §2.2）。
     prefixes = (sys.base_prefix, sys.prefix, str(REPO_ROOT / ".venv"), "/dev/")
@@ -446,8 +542,21 @@ def test_s03_no_outbound_traffic(tmp_path, reader):
     every_write = [r[0] for r in audit["opened"] if any(c in r[1] for c in "wax+") or _write_flags(r[2])]
     assert not [p for p in every_write if p.startswith(str(REPO_ROOT))], every_write[:5]
     # 子プロセス・open 以外の書き換え・記録の取りこぼしが無いこと（検算⑥・⑨）。
-    assert audit["process"] == [], audit["process"][:3]
-    assert not [m for m in audit["mutated"] if m[1].startswith(str(REPO_ROOT))], audit["mutated"][:3]
+    # 子プロセスは起こさない（陽性対照で自分から試した分だけが "stopping" に残る）。
+    assert [row for row in audit["process"] if row[2] != "stopping"] == [], audit["process"][:3]
+    # 書き換えの記録は [event, 元, 先, …, 段階]。data/ には一切触れず、配信中はリポジトリ配下を書き換えない。
+    def repo_paths(row):
+        return [str(p) for p in row[1:-1]
+                if str(p).startswith(str(REPO_ROOT)) and "__pycache__" not in str(p)]
+
+    while_serving = [m for m in audit["mutated"] if m[-1] == "serving" and repo_paths(m)]
+    assert while_serving == [], while_serving[:3]
+    touched_data = [m for m in audit["mutated"] if m[-1] != "stopping"
+                    and any(p.startswith(str(REPO_ROOT / "data")) for p in repo_paths(m))]
+    assert touched_data == [], touched_data[:3]
+    # 起動中に Gradio が作業ディレクトリへ一時ファイルを作って消すこと自体は記録に残る（README の既知の制約）。
+    at_import = {Path(p).name for m in audit["mutated"] if m[-1] == "import" for p in repo_paths(m)}
+    assert at_import <= {"probe-source", "probe-link"}, at_import
     assert audit["open_dropped"] == 0
     assert any(b[1].startswith("('127.0.0.1'") for b in audit["bound"]), audit["bound"]
     assert audit["mcp_server"] is True and audit["share"] is False and audit["run_history"] is False

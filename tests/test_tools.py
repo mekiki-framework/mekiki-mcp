@@ -55,7 +55,7 @@ def lims(env: dict, code: str) -> list[str]:
 
 
 def test_approved_tables_and_empty_start(reader):
-    assert PAT.PATTERNS_VERSION == "PATTERNS-0.1.1" and PAT.APPROVED_ON == "2026-09-18"
+    assert PAT.PATTERNS_VERSION == "PATTERNS-0.2.0" and PAT.APPROVED_ON == "2026-09-18"
     assert PAT.table_sha256() == PAT.PATTERNS_TABLE_SHA256 and TM.table_sha256() == TM.TERMS_TABLE_SHA256
     assert TM.TERMS_VERSION == "TERMS-0.1.1" and TM.APPROVED_ON == "2026-09-18"
     assert len(reader.patterns) == len(PAT.PATTERNS) and len(reader.terms.entries) == len(TM.TERMS)
@@ -344,15 +344,41 @@ def test_t04_partial_goes_to_candidates(reader):
 
 
 def test_t04_word_boundary(reader):
+    """語境界は `[a-z0-9']`（SEARCH-1.1.0。ハイフンは境界）。"""
     env = rt(T.search_passages(reader, "play", k=20))
     assert env["status"] == "ok"
     for r in env["results"]:
         line = _CORPUS.lines[r["source_path"]][r["locator"]["line_start"] - 1].lower()
-        assert re.search(r"(?<![a-z0-9'-])play(?![a-z0-9'-])", line)
+        assert re.search(r"(?<![a-z0-9'])play(?![a-z0-9'])", line)
+        assert not re.fullmatch(r".*\bplays?ful.*", line[r["locator"]["char_start"]:r["locator"]["char_end"]])
     hyph = rt(T.search_passages(reader, "transferability", k=20))
+    lines = []
     for r in hyph["results"]:
         line = _CORPUS.lines[r["source_path"]][r["locator"]["line_start"] - 1].lower()
-        assert re.search(r"(?<![a-z0-9'-])transferability", line)
+        assert re.search(r"(?<![a-z0-9'])transferability", line)
+        lines.append(line)
+    assert any("non-transferability" in line for line in lines)  # 1.1.0 から当たる
+
+
+def test_t04_hyphen_is_a_word_boundary(reader):
+    """SEARCH-1.1.0：`ablation` は `domain-ablation` の中にも当たり、ハイフン付きの語句そのものも当たる。"""
+    lines = _CORPUS.lines["papers/T1.md"]
+    compound = {no for no, text in enumerate(lines, 1) if "domain-ablation" in text.lower()}
+    alone = {no for no, text in enumerate(lines, 1)
+             if "ablation" in text.lower() and "domain-ablation" not in text.lower()}
+    assert compound and alone
+    part = rt(T.search_passages(reader, "ablation", paper_id="T1", k=20))
+    hit = {r["locator"]["line_start"] for r in part["results"]}
+    assert hit & compound, "domain-ablation の行に当たること"
+    assert hit & alone
+    whole = rt(T.search_passages(reader, "domain-ablation", paper_id="T1", k=20))
+    assert whole["status"] == "ok"
+    assert {r["locator"]["line_start"] for r in whole["results"]} == compound
+    for r in whole["results"]:  # 一致位置はハイフン付きの語句全体を指す
+        line = lines[r["locator"]["line_start"] - 1]
+        assert line[r["locator"]["char_start"]:r["locator"]["char_end"]].lower() == "domain-ablation"
+    # 照合（PATTERNS-MATCH-1.0.0）はハイフンを語の一部とする境界のまま（SEARCH の改版に巻き込まない）。
+    assert T._occurrences("role-play", "play") == [] and T._occurrences("role-play", "play", T._SEARCH_WORD_CHARS) == [5]
 
 
 def test_t04_input_limits(reader):
@@ -374,7 +400,7 @@ def test_t04_term_map_via_fixture(reader):
     assert env["status"] == "ok"
     assert all(r["payload"]["match_via"] == ["term_map:M90"] for r in env["results"])
     assert {r["paper_id"] for r in env["results"]} >= {"T5"}
-    assert "RULES: SEARCH-1.0.0 NORM-1.0.0 TERMS-TEST LIMITS-1.0.0 LINES-1.0.0" in env["limitations"]
+    assert "RULES: SEARCH-1.1.0 NORM-1.1.0 TERMS-TEST LIMITS-1.0.0 LINES-1.0.0" in env["limitations"]
     direct = rt(T.search_passages(tr, "dignity", k=20))
     assert all("query" in r["payload"]["match_via"] for r in direct["results"])
     multi = rt(T.search_passages(tr, "Spec. cost", paper_id="T1", k=20))
@@ -494,7 +520,7 @@ def test_t08_normalized(reader, v):
         assert r["payload"]["normalization_applied"]
         for d in r["payload"]["diffs"]:
             assert d["source"] == line[d["source_char_start"]:d["source_char_start"] + len(d["source"])]
-    assert lims(env, "NORMALIZED") and "RULES: NORM-1.0.0 LIMITS-1.0.0 LINES-1.0.0" in env["limitations"]
+    assert lims(env, "NORMALIZED") and "RULES: NORM-1.1.0 LIMITS-1.0.0 LINES-1.0.0" in env["limitations"]
 
 
 def test_t08_rule_details():
@@ -555,6 +581,35 @@ def test_t10_ambiguous(reader):
     assert env["status"] == "ok" and env["match"] == "exact"
     assert [r["locator"]["line_start"] for r in env["results"]] == [78, 80]
     assert "AMBIGUOUS: total=2（同じ文字列が複数箇所にある）" in env["limitations"]
+
+
+def test_t08_quote_without_emphasis_marks(reader):
+    """強調記号を外した引用は normalized で一致し、差分に MARK-EMPH が残る（NORM-1.1.0）。"""
+    line = _CORPUS.lines["papers/T1.md"][53]
+    assert line.startswith("**Specification cost** denotes")
+    plain = "Specification cost denotes the barrier arising from the domain expertise"
+    env = rt(T.verify_quote(reader, plain))
+    assert env["status"] == "ok" and env["match"] == "normalized"
+    assert env["normalization_applied"] == ["MARK-EMPH"]
+    res = env["results"][0]
+    assert (res["locator"]["path"], res["locator"]["line_start"]) == ("papers/T1.md", 54)
+    loc = res["locator"]
+    assert line[loc["char_start"]:loc["char_end"]] == res["payload"]["matched_text"]
+    assert "**" in res["payload"]["matched_text"]  # 原文の表記は記号つきのまま返す
+    assert [d["rules"] for d in res["payload"]["diffs"]] == [["MARK-EMPH"]]
+    assert res["payload"]["diffs"][0]["source"] == "**" and res["payload"]["diffs"][0]["input"] == ""
+    # 記号つきの引用は従来どおり exact（正規化は完全一致を探した後にだけ使う）。
+    assert rt(T.verify_quote(reader, "**Specification cost** denotes the barrier"))["match"] == "exact"
+    # 片側の記号だけを外した形・斜体の記号でも同じ。
+    half = rt(T.verify_quote(reader, "Specification cost** denotes the barrier arising"))
+    assert half["status"] == "ok" and half["match"] in ("exact", "normalized")
+
+
+def test_t10_emphasis_only_input_is_invalid(reader):
+    """記号だけの入力は、記号を落とすと空になるので invalid_input（NORM-1.1.0）。"""
+    for text in ("**********", "__________", "*_*_*_*_*_*", "＊＊＊＊＊＊＊＊＊＊"):
+        env = rt(T.verify_quote(reader, text))
+        assert env["status"] == "invalid_input", (text, env["status"])
 
 
 def test_t10_result_limit_boundary(reader):
@@ -690,10 +745,10 @@ def test_t11_zero_patterns(reader):
 
 
 def test_t11_approved_patterns(reader):
-    """実表（PATTERNS-0.1.1）で該当が出て、関連原文の locator と抜粋が一致する。"""
+    """実表（PATTERNS-0.2.0）で該当が出て、関連原文の locator と抜粋が一致する。"""
     env = rt(T.check_compressions(reader, "AIは遊べないし、遊びは人類最後の砦だ。"))
     assert env["status"] == "ok" and env["results"]
-    assert f"PATTERNS: 承認済みパターン {len(PAT.PATTERNS)} 件（PATTERNS-0.1.1）" in " ".join(env["limitations"])
+    assert f"PATTERNS: 承認済みパターン {len(PAT.PATTERNS)} 件（PATTERNS-0.2.0）" in " ".join(env["limitations"])
     for r in env["results"]:
         pid = r["payload"]["pattern_id"]
         assert pid in {p.id for p in PAT.PATTERNS}
@@ -732,6 +787,37 @@ def test_t11_adversarial_forms(reader):
     # 語形をまたぐ改行・語形の一部だけでは当たらない。
     assert rt(T.check_compressions(reader, "AIは\n遊べない"))["results"] == []
     assert rt(T.check_compressions(reader, "AIは遊べ"))["results"] == []
+
+
+def test_t11_acceptance_sentences(reader):
+    """検収 E01 で取りこぼした R01・R08 の問いの文が、PATTERNS-0.2.0 で当たる。"""
+    raw = json.loads(_CORPUS.raw["tests/reading_cases.json"])
+    q = {c["id"]: c for c in raw["cases"]}
+
+    def ids(env):
+        return {r["payload"]["pattern_id"] for r in env["results"]}
+
+    r01_ja = rt(T.check_compressions(reader, q["R01"]["question_ja"]))
+    assert r01_ja["status"] == "ok" and {"P31", "P39"} <= ids(r01_ja)
+    forms = {m["form"] for r in r01_ja["results"] for m in r["payload"]["matched"]}
+    assert {"代替できない", "があると証明", "代替できない能力"} <= forms
+    r01_en = rt(T.check_compressions(reader, q["R01"]["question_en"]))
+    assert "P31" in ids(r01_en)
+    r08_ja = rt(T.check_compressions(reader, q["R08"]["question_ja"]))
+    assert ids(r08_ja) == {"P54"}
+    hit = next(r for r in r08_ja["results"] if r["payload"]["pattern_id"] == "P54")
+    loc = hit["locator"]
+    assert (loc["path"], loc["line_start"], hit["section_anchor"]) == ("papers/T5.md", 193, "t5-4-6")
+    line = _CORPUS.lines["papers/T5.md"][192]
+    assert hit["payload"]["source_excerpt"] == line[loc["char_start"]:loc["char_end"]]
+    assert hit["payload"]["source_excerpt"].startswith("A boundary condition on application:")
+    assert hit["payload"]["needs_context_review"] is True
+    # 英語の R08（preserving obstacles）は 0.2.0 の語形に無い。取りこぼしとして記録に残す（DECISIONS）。
+    r08_en = rt(T.check_compressions(reader, q["R08"]["question_en"]))
+    assert "P54" not in ids(r08_en)
+    # 語形は文の形を問わず拾う（否定の文でも当たる。判定はしない）。
+    denial = rt(T.check_compressions(reader, "T5 は医療の仕事で障害を残すべきだとは言っていない。"))
+    assert "P54" in ids(denial)
 
 
 def test_t11_invalid_pattern_rejected():

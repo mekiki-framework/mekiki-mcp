@@ -1,4 +1,4 @@
-"""引用照合と語句検索のための正規化（NORM-1.0.0・docs/rules/NORM.md）。
+"""引用照合と語句検索のための正規化（NORM-1.1.0・docs/rules/NORM.md）。
 
 明示の対応表だけを使い、NFKC は使わない。`unicodedata.normalize` は入力側の NFC 合成（NFC-IN）だけに使う
 （明示の例外。正準等価の合成で互換変換ではなく、同梱データは全ファイル NFC 済み）。
@@ -13,8 +13,8 @@ import json
 import unicodedata
 from dataclasses import dataclass
 
-NORM_VERSION = "NORM-1.0.0"
-SEARCH_FOLD_VERSION = "SEARCH-1.0.0"  # 検索用の畳み込み（SEARCH 規則の一部）
+NORM_VERSION = "NORM-1.1.0"
+SEARCH_FOLD_VERSION = "SEARCH-1.1.0"  # 検索用の畳み込み（SEARCH 規則の一部。畳み込み自体は 1.0.0 と同じ）
 
 WHITESPACE = frozenset(map(chr, (0x09, 0x0A, 0x0D, 0x20, 0xA0, 0x202F, 0x205F, 0x3000, *range(0x2000, 0x200B))))
 ZERO_WIDTH = frozenset(map(chr, (0x200B, 0x2060, 0xFEFF)))
@@ -37,6 +37,9 @@ PERIOD_REP = chr(0x3002)  # 。
 PERIOD_LEADING_DIGIT_PROTECTED = frozenset(map(chr, (0x2E, 0xFF0E)))  # 直後が数字なら写像しない
 QUOTE_MAP = {chr(0x2018): "'", chr(0x2019): "'", chr(0x201C): '"', chr(0x201D): '"'}  # ‘’“”
 MIDDOT_MAP = {chr(0xFF65): chr(0x30FB)}  # ･→・
+# 強調記号（Markdown の **…**・*…*・_…_）。引用照合（NORM）でだけ取り除く（NORM-1.1.0・検収の観察 c）。
+# 全角の＊・＿も同じ記号として扱う。検索の畳み込み（SEARCH）には使わない。
+EMPHASIS_MARKS = frozenset(map(chr, (0x2A, 0x5F, 0xFF0A, 0xFF3F)))  # * _ ＊ ＿
 _HALF = "ｦｧｨｩｪｫｬｭｮｯｰｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜﾝﾞﾟ｢｣"
 _FULL = "ヲァィゥェォャュョッーアイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワン゛゜「」"
 assert len(_HALF) == len(_FULL) == 60
@@ -47,7 +50,7 @@ VOICED = {**{c: chr(ord(c) + 1) for c in "カキクケコサシスセソタチ�
 SEMI_VOICED = {c: chr(ord(c) + 2) for c in "ハヒフヘホ"}
 
 RULE_IDS = ("NFC-IN", "WS-ZW", "WS-CJK", "WS-COLLAPSE", "WIDTH-ASCII", "WIDTH-KANA",
-            "PUNCT-COMMA", "PUNCT-PERIOD", "PUNCT-MIDDOT", "QUOTE-CURLY", "ASCII-LOWER")
+            "PUNCT-COMMA", "PUNCT-PERIOD", "PUNCT-MIDDOT", "QUOTE-CURLY", "ASCII-LOWER", "MARK-EMPH")
 
 
 def _table() -> dict:
@@ -67,6 +70,7 @@ def _table() -> dict:
         "period_leading_digit_protected": sorted(ord(c) for c in PERIOD_LEADING_DIGIT_PROTECTED),
         "quote_map": sorted([ord(k), ord(v)] for k, v in QUOTE_MAP.items()),
         "middot_map": sorted([ord(k), ord(v)] for k, v in MIDDOT_MAP.items()),
+        "emphasis_marks": sorted(ord(c) for c in EMPHASIS_MARKS),
         "kana_map": sorted([ord(k), ord(v)] for k, v in KANA_MAP.items()),
         "voiced": sorted([ord(k), ord(v)] for k, v in VOICED.items()),
         "semi_voiced": sorted([ord(k), ord(v)] for k, v in SEMI_VOICED.items()),
@@ -79,7 +83,7 @@ def table_sha256() -> str:
 
 
 # 表の正準 JSON の SHA-256（Q49）。表を変えたら版を上げ、この値と docs/rules/NORM.md を更新する。
-NORM_TABLE_SHA256 = "a9b1cf1768a6f3c656d137d8040567322c79cc7532c95ca2e94ca4d77cebecc7"
+NORM_TABLE_SHA256 = "7fffde88fe1477b5e36819f16942d742b435bf4ffc336e46c59209b04b1d055b"
 if table_sha256() != NORM_TABLE_SHA256:  # pragma: no cover - 表と定数の食い違いは import 時に止める
     raise RuntimeError(f"NORM table hash mismatch: {table_sha256()}")
 
@@ -122,7 +126,7 @@ class Normalized:
     nfc_applied: bool
 
 
-def _normalize(s: str, *, nfc: bool, ws_cjk: bool, punct: bool, lower: bool) -> Normalized:
+def _normalize(s: str, *, nfc: bool, ws_cjk: bool, punct: bool, lower: bool, emph: bool = False) -> Normalized:
     src = unicodedata.normalize("NFC", s) if nfc else s
     nfc_applied = nfc and src != s
     n = len(src)
@@ -132,7 +136,8 @@ def _normalize(s: str, *, nfc: bool, ws_cjk: bool, punct: bool, lower: bool) -> 
     drops: list[tuple[int, int, int, str]] = []
 
     def significant(k: int) -> bool:
-        return src[k] not in WHITESPACE and src[k] not in ZERO_WIDTH
+        return (src[k] not in WHITESPACE and src[k] not in ZERO_WIDTH
+                and not (emph and src[k] in EMPHASIS_MARKS))
 
     def is_digit_at(k: int) -> bool:
         return 0 <= k < n and src[k] in DIGITS
@@ -161,6 +166,10 @@ def _normalize(s: str, *, nfc: bool, ws_cjk: bool, punct: bool, lower: bool) -> 
             continue
         if ch in ZERO_WIDTH:
             drops.append((len(out), i, i + 1, "WS-ZW"))
+            i += 1
+            continue
+        if emph and ch in EMPHASIS_MARKS:  # MARK-EMPH：強調記号を落とす（差分として記録される）
+            drops.append((len(out), i, i + 1, "MARK-EMPH"))
             i += 1
             continue
         if ch in KANA_MAP and i + 1 < n and src[i + 1] in (VOICED_MARK, SEMI_VOICED_MARK):
@@ -203,12 +212,12 @@ def _normalize(s: str, *, nfc: bool, ws_cjk: bool, punct: bool, lower: bool) -> 
 
 
 def normalize_quote(s: str, *, is_input: bool) -> Normalized:
-    """NORM-1.0.0（verify_quote）。入力側だけ NFC-IN を先にかける。"""
-    return _normalize(s, nfc=is_input, ws_cjk=True, punct=True, lower=False)
+    """NORM-1.1.0（verify_quote）。入力側だけ NFC-IN を先にかける。強調記号は両側で落とす（MARK-EMPH）。"""
+    return _normalize(s, nfc=is_input, ws_cjk=True, punct=True, lower=False, emph=True)
 
 
 def fold_search(s: str, *, is_input: bool) -> Normalized:
-    """SEARCH-1.0.0 の畳み込み：WS-ZW・WS-COLLAPSE・WIDTH・QUOTE-CURLY・ASCII 小文字化（WS-CJK と PUNCT は使わない）。"""
+    """SEARCH の畳み込み（1.0.0 から不変・現行 SEARCH-1.1.0）：WS-ZW・WS-COLLAPSE・WIDTH・QUOTE-CURLY・ASCII 小文字化（WS-CJK と PUNCT は使わない）。"""
     return _normalize(s, nfc=is_input, ws_cjk=False, punct=False, lower=True)
 
 

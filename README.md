@@ -78,7 +78,7 @@ Mekiki Framework の論文 T1〜T5 を、**固定した版から・出典つき�
 | `search_passages(query, paper_id="", k=5)` | 語句検索（モデルなし・行単位）。全語一致を `results`、一部一致を `candidates`。一致位置・±100字の抜粋・`match_via`・節への経路 | `ok` / `no_lexical_match` / `unknown_id` / `invalid_input` | query は生1000字・畳み込み後200字・断片8個、`k` は1〜20（既定5） |
 | `get_claim_record(claim_id="", query="")` | `claims/t5.json` の記録を逐語（台帳の `status`〔位置づけのラベル〕・`source_quote`・`not_claimed` ほか）。未記録欄は `null` | （応答の状態）`ok` / `unknown_id` / `ledger_not_available`（T1〜T4）/ `no_lexical_match` / `invalid_input` | `query` 経路の候補は5件。`unknown_id` では台帳の全項目、`ledger_not_available` ではその論文の全節を候補に出す |
 | `verify_quote(text, paper_id="", language="")` | 引用が原文にあるかの照合（`exact` / `normalized` / `none`）と、位置・差分・近接候補 | `ok` / `quote_not_found` / `unknown_id` / `invalid_input` | text 2000字、最小長は仮名・漢字を含めば5字・それ以外10字、一致20件 |
-| `check_compressions(text)` | 著者が承認した語形に当たった箇所と、その関連原文の抜粋 | `ok`（該当ゼロでも ok）/ `invalid_input` | text 2000字、抜粋1000字、**一致位置は1結果につき20件**（結果の数はパターンの関連原文の数だけ出る。最悪99件・約183 KiB） |
+| `check_compressions(text)` | 著者が承認した語形に当たった箇所と、その関連原文の抜粋 | `ok`（該当ゼロでも ok）/ `invalid_input` | text 2000字、抜粋1000字、**一致位置は1結果につき20件**（結果の数はパターンの関連原文の数だけ出る。最悪100件・約184 KiB） |
 | `get_reading_guide(part="all")` | `FOR_AI_READERS.md` の該当部分と、読み方の雛形（`templates`） | `ok` / `invalid_input` | `part` は11個の固定列挙 |
 
 `status` は六値（`ok` / `unknown_id` / `quote_not_found` / `no_lexical_match` / `invalid_input` / `ledger_not_available`）で、混ぜない。
@@ -112,9 +112,9 @@ Mekiki Framework の論文 T1〜T5 を、**固定した版から・出典つき�
 
 ### 規則の版
 
-`SCHEMA-1.0.0`・`JSON-1.0.0`・`NORM-1.0.0`・`SEARCH-1.0.0`・`CAND-1.0.0`・`NEAR-1.0.0`・`GUIDE-1.0.0`・`LIMITS-1.0.0`・
+`SCHEMA-1.0.0`・`JSON-1.0.0`・`NORM-1.1.0`・`SEARCH-1.1.0`・`CAND-1.0.0`・`NEAR-1.0.0`・`GUIDE-1.0.0`・`LIMITS-1.0.0`・
 `LINES-1.0.0`・`LANG-1.0.0`・`SECTION-1.0.0`・`T4MAP-1.0.0`・`BUNDLE-1.0.0`・`TERMS-0.1.1`（30項目）・
-`PATTERNS-0.1.1`（49件）＋`PATTERNS-MATCH-1.0.0`・`PROMPTS-0.1.0`（6件）。本文は [docs/rules/](docs/rules/)。
+`PATTERNS-0.2.0`（50件）＋`PATTERNS-MATCH-1.0.0`・`PROMPTS-0.1.0`（6件）。本文は [docs/rules/](docs/rules/)。
 
 ## 5. 準備と起動
 
@@ -217,6 +217,8 @@ UI の Custom Connectors はリモートの URL を Anthropic 側から取りに
 - **未知の prompt 名**は雛形を返さず、MCP のエラー（`McpError: 'data'`）として返る。引数を付けて呼んだときは、上流 Gradio の `Parameter … is not a valid key-word argument` という英文が返る。要求された名前は上流の実装からサーバ側の関数に渡らないため、エラー文に名前を入れられない。登録してある名前は `read_with_guards`・`four_modes`・`answer_format` と、その英語版 `…_en` の六つだけ。
 - Hugging Face Spaces に置いた場合、ツール名に Space 名の接頭辞が付く（`<Space名>_list_papers`）。
 - `http://127.0.0.1:7860/` をブラウザで開くと Gradio 標準のフロント HTML が返る（UI は無く、静的資産は遮断してあるので画面は組み上がらない）。
+- Claude Code の Code タブでは、**prompts の一覧は一度サーバに触れてから現れる**（最初のツール呼び出しの前は空に見える）。
+- 原文の強調記号（`**…**`・`*…*`・`_…_`）を外して引用しても、NORM-1.1.0 からは `normalized` で一致する（それより前の版では `quote_not_found` になっていた。検収で観察）。
 - 旧 SSE の経路 `/gradio_api/mcp/sse` は予備。通常は Streamable HTTP を使う。
 - ChatGPT の開発者モードからの接続は、公開（Spaces）の段階で確かめる。ローカルの loopback には外から届かない。
 - 接続先ごとの確認の記録は [docs/acceptance/](docs/acceptance/) に置く。

@@ -6,8 +6,8 @@
 ## 必須記録項目（SPEC §2.5・§3・§10）
 - [x] コーパス Git参照 `v3.5.0` → 解決したコミットSHA（`git ls-remote` 等の出力）
 - [x] 採用 Gradio 版・Python 版（検証結果と `requirements.txt` の数値）（gradio[mcp]==6.27.0・Python 3.13.15・ハッシュ固定 66 パッケージ）
-- [x] 正規化規則の版（`normalize.py`・対応表）（NORM-1.0.0・対応表 sha256 a9b1cf17…）
-- [x] パターン一覧の版（`patterns.py`）と著者承認日（PATTERNS-0.1.1・49件・2026-09-18。0.1.0＝47件は撤回）
+- [x] 正規化規則の版（`normalize.py`・対応表）（NORM-1.1.0・対応表 sha256 7fffde88…）
+- [x] パターン一覧の版（`patterns.py`）と著者承認日（PATTERNS-0.2.0・50件・2026-09-18。0.1.0＝47件は撤回、0.1.1＝49件）
 - [x] `translations/T4.en.manifest.json` の扱い（v3.5.0 に存在するか／Reader側で作るか）と理由
 - [x] 接続URL（実際の起動表示）：`http://127.0.0.1:7860/gradio_api/mcp/`（接続先ごとの検収は施工段階4）
 - [ ] 費用と休止復帰時間の実測値（段階二）
@@ -198,6 +198,12 @@
 | 2026-09-18 | 4 | 監査フックの宛先（http.client） | `http.client.connect` の宛先が object の repr になり、自己接続まで遮断していた（CORS の自己確認を入れて発覚）。`HTTPConnection` の host・port から `127.0.0.1:<port>` を作るよう直した | 施工判断（検算⑨の指摘と同じ箇所） | 監査記録の `http.client.connect` が `127.0.0.1:7909`・`outbound` は空 | 提案 |
 | 2026-09-18 | 4 | SPEC v2.2 の PATTERNS 表記 | SPEC v2.2 §5.6・§12 の「PATTERNS-0.1.0（49件・語形293）」は旧値。現物は **PATTERNS-0.1.1・49件・語形313**（P22・P39 を載せた後）。**v2.3 で訂正する**（SPEC の改版は著者判断のため施工側では直さない） | 著者の指示 | `len(PAT.PATTERNS)`＝49・語形の総数313・`PATTERNS_VERSION`＝PATTERNS-0.1.1 | 提案 |
 | 2026-09-18 | 4 | 検収記録（Claude Code）の作成 | `docs/acceptance/2026-09-18-claude-code.md` を作った（コミット `dd57448`）：Claude Code（Desktop アプリの Code タブ・Opus 5）から `.mcp.json`（`type=http`）で `http://127.0.0.1:7860/gradio_api/mcp/` に直結し、`list_papers` を一回呼んだ → `ok`・5本。生の応答（33,380 バイト・SHA-256 `27fea98e…`）を整形せず全文載せ、作業ツリー `e73e2f0` で同じ関数を呼んだ出力とバイト一致を確かめた。起動表示の3行は著者が写した実物（`prompts 6`・消した環境変数なし）。他のツール・resources・prompts・不正な入力・E01・E02 は未実施。あわせて `docs/acceptance/TEMPLATE.md` の prompts の想定件数を 3 → 6（日本語3・英語3）に直した（英語版を載せた後の現行に合わせる） | 施工段階4の完了条件（接続先ごとの検収記録）のうち、Claude Code 分の一部 | 記録そのもの・`pytest -q` → 398 passed | 提案 |
+| 2026-09-18 | 配置段階一 | E01・E02 の検収完了 | 著者が Claude Code（Code タブ・Opus 5）で13本を実施し、**全13本合格**（E01：R01・R08・R13・R14・R15 × ガイド条件なし／read_with_guards の10本＋英語 read_with_guards_en の2本〔R01・R14〕、E02：なし1本）。記録は `docs/acceptance/e01/`（13ファイル・受け取ったまま）、総括は `docs/acceptance/2026-09-18-e01-e02.md` | SPEC §7 E01・E02。判定は SPEC §7 の文言に限る | `docs/acceptance/2026-09-18-e01-e02.md` | 確定 |
+| 2026-09-18 | 配置段階一 | 検収の観察事項 | (a) check_compressions の該当は全て否定文か資料内の語で、モデルは返却原文と比べて読みを保持（P30・P01・P02・P04・P22）。(b) 取りこぼし：R01「AIでは代替できない…証明している」日英とも0件、R08「障害を残す」0件。(c) 強調記号を外した引用が quote_not_found（R14 ja/en・計7回）。(d) 「ablation」が「domain-ablation」に当たらない（R13）。(e) 「specification cost」上位20件が全て T1、T2 はガイド経由（R14。順位の規則どおり）。(f) T1 §3.1 L115 と §4.2 L191／表2 の記述の食い違いを二セッションが独立に検出（**著者の在庫**。原文は改変しない）。(g) Code タブでは prompts 一覧が一度サーバに触れてから現れる。(c)(g) は README の「接続時に知っておくこと」に一行ずつ | 著者の検収 | `docs/acceptance/e01/`・総括 | 確定 |
+| 2026-09-18 | 配置段階一 | NORM-1.1.0（著者承認） | 強調記号 `*`・`_`（全角の `＊`・`＿` を含む）を落とす規則 **MARK-EMPH** を追加。引用照合（`normalize_quote`）でだけかけ、検索の畳み込みにはかけない。落とした記号は `payload.diffs` に規則 MARK-EMPH として残り、`normalization_applied` にも出る。記号つきの引用は従来どおり exact。空白の文脈判定では記号を「意味のある文字」に数えない。表の SHA-256 は `7fffde88fe1477b5e36819f16942d742b435bf4ffc336e46c59209b04b1d055b`。limitations の HTML 注記を「強調記号は吸収、脚注番号は対象外」に改めた | 観察 (c) | `test_t08_quote_without_emphasis_marks`（T1 L54 `**Specification cost**` を記号なしで引いて normalized・MARK-EMPH）・`test_t10_emphasis_only_input_is_invalid` | 確定 |
+| 2026-09-18 | 配置段階一 | SEARCH-1.1.0（著者承認） | 検索の語境界を `[a-z0-9'-]` から `[a-z0-9']` に（**ハイフンは語境界**）。`ablation` は `domain-ablation` の行にも当たり（T1 で 10件→20件）、`domain-ablation` そのものも従来どおり12行に当たる。畳み込みと区切り文字は 1.0.0 から不変。**check_compressions の照合（PATTERNS-MATCH-1.0.0）は巻き込まず**、ハイフンを語の一部とする境界のまま（施工判断。改版の承認範囲が SEARCH だけのため） | 観察 (d) | `test_t04_hyphen_is_a_word_boundary`・`test_t04_word_boundary`（1.1.0 の境界に更新） | 確定 |
+| 2026-09-18 | 配置段階一 | PATTERNS-0.2.0（著者承認） | P31 に「代替できない」「があると証明」「AI cannot replace」「irreplaceable」、P39 に「代替できない能力」、新規 **P54**「障害を残す」「制約を残す」「retain obstacles」（関連原文 `papers/T5.md:193`・t5-4-6 の脚注 1154–1352字）。50件・語形321・関連原文100。表の SHA-256 は `9800121f059f936e37f21fb04d70a167e8e292328a7ee2319334936d7f125ab3`。「〜があると証明」は、先頭の「〜」を任意の語とみなして**「があると証明」を語形とした**（施工判断）。**残る取りこぼし**：R08 の英語の問い（`preserving obstacles`）は承認された語形（`retain obstacles`）に当たらない（要判断）。check_compressions の最悪ケースは 100 結果・184 KiB に（LIMITS に再計測） | 観察 (b) | `test_t11_acceptance_sentences`（R01 ja → P31・P39、R01 en → P31、R08 ja → P54 と脚注の抜粋、R08 en は当たらないことを記録） | 確定（R08 英語は要判断） |
+| 2026-09-18 | 配置段階一 | 改版後の試験 | `pytest -q` → **402 passed**（398＋4：記号なし引用・記号だけの入力・ハイフン境界・検収の文） | — | pytest の出力 | 確定 |
 
 ## Codex①（独立検査・対象 `6b8dcaa`・2026-09-18）
 

@@ -2,8 +2,8 @@
 
 | 項目 | 値 |
 |---|---|
-| 規則ID・版 | 一覧 PATTERNS-0.1.1（49件）・照合 PATTERNS-MATCH-1.0.0 |
-| 表の SHA-256 | `92666827a79b31b55c0fa1b424f7be9e4891b97fab044d316b2622ec1a3a304b`（`patterns.table_sha256()` が import 時に照合。Q49） |
+| 規則ID・版 | 一覧 PATTERNS-0.2.0（50件）・照合 PATTERNS-MATCH-1.0.0 |
+| 表の SHA-256 | `9800121f059f936e37f21fb04d70a167e8e292328a7ee2319334936d7f125ab3`（`patterns.table_sha256()` が import 時に照合。Q49） |
 | 状態 | 確定（著者承認 2026-09-18。起草＝検査室・SPEC §10） |
 | 実装 | `mekiki_reader/patterns.py`・`mekiki_reader/tools.py`（`_check_compressions`） |
 | 候補・解決 | `docs/candidates/patterns_candidates_v0.md`・`scripts/build_patterns.py`（PATTERNS-SRC-1.0.0） |
@@ -20,7 +20,7 @@
 
 論文の節は source_manifest の節 id と行範囲に、主張IDは claims/t5.json の source_locator に、`FR Lnn` は FOR_AI_READERS.md の行に、THEORY_MAP の「見出し」はその節（見出しが無ければ太字の項目行・本文の行）に解決する。`：原文 "…"` が添えられた参照は、その文が一度だけ現れる行と文字位置に解決する。
 
-## 一覧（PATTERNS-0.1.1・承認 2026-09-18）
+## 一覧（PATTERNS-0.2.0・承認 2026-09-18）
 
 | ID | 型（保ちたい区別） | 登録語形 | 関連原文（解決後の locator） |
 |---|---|---|---|
@@ -51,7 +51,7 @@
 | P28 | T4の相互性＝役割の同一化（対等・同じ義務） | 対等 / フラットな組織 / 同じ義務を負う / identical roles / 上下関係をなくす | papers/T4.md:128-145（t4-4-3）・FOR_AI_READERS.md:67 |
 | P29 | Spec.cost＝工数／Ext.cost＝価格・人件費（会計費用への読み替え） | Spec.costは工数 / 仕様化費用＝工数 / 仕様化費用は人月 / Ext.cost＝価格 / 外化費用＝価格 / 外化費用＝人件費 / Spec.cost is hours / Ext.cost is price | papers/T1.md:48-63（t1-2-1） |
 | P30 | T5＝AIは遊べない | AIは遊べない / AIには遊べない / AIに遊びはできない / AI cannot play / AI can't play / AI can never play | papers/T5.md:77-88（t5-3-1）・papers/T5.md:107-120（t5-3-4）・papers/T5.md:79（t5-3-1） |
-| P31 | 非移転性定理＝尊厳の証明 | 尊厳を証明 / 尊厳が導かれる / 代替不可能だから尊厳 / 置き換えられないから尊厳 / establishes dignity / proves dignity / dignity follows / non-substitutable therefore dignified | papers/T5.md:107-120（t5-3-4）・papers/T5.md:165-182（t5-4-4）・papers/T5.md:79（t5-3-1）・papers/T5.md:171（t5-4-4） |
+| P31 | 非移転性定理＝尊厳の証明 | 尊厳を証明 / 尊厳が導かれる / 代替不可能だから尊厳 / 置き換えられないから尊厳 / establishes dignity / proves dignity / dignity follows / non-substitutable therefore dignified / 代替できない / があると証明 / AI cannot replace / irreplaceable | papers/T5.md:107-120（t5-3-4）・papers/T5.md:165-182（t5-4-4）・papers/T5.md:79（t5-3-1）・papers/T5.md:171（t5-4-4） |
 | P32 | 機能的等価＝カント的価値の等価／置換テスト＝カントの基準 | 置換テスト / substitution test / 置換基準 / カントの基準 / Kant's criterion / 価値の等価 | papers/T5.md:165-182（t5-4-4）・papers/T5.md:171（t5-4-4） |
 | P33 | 尊厳＝立場＝顔＝評価的尊敬／公的名声＝技術的立場 | 尊厳＝立場 / 顔を立てる / face / 評価的尊敬 / appraisal respect / 尊敬されるから尊厳 / 評価が高いから尊厳 / public stature / 名声 | papers/T5.md:165-182（t5-4-4）・THEORY_MAP.md:192-204・papers/T5.md:175（t5-4-4） |
 | P34 | 遊ぶ席＝答える席（参加＝答責） | 遊ぶ席 / 答える席 / playing seat / answering seat / 参加すれば答責 / 参加＝責任 / 答責は参加 | THEORY_MAP.md:220-231・FOR_AI_READERS.md:25 |
@@ -59,7 +59,7 @@
 | P36 | 成績スコア＝参加者の立場／評価・採点の禁止 | 評価してはいけない / 採点は禁止 / 評価は許されない / scores are prohibited / must not be assessed / スコアが立場を / 成績で立場を | THEORY_MAP.md:227・papers/T5.md:175（t5-4-4）・papers/T5.md:175（t5-4-4）・FOR_AI_READERS.md:26・FOR_AI_READERS.md:60 |
 | P37 | 尊厳装置＝マネジメント手法（エンゲージメント測定・楽しめと命じる・ゲーミフィケーション） | ゲーミフィケーション / gamification / エンゲージメント測定 / engagement score / 楽しませる仕組み / モチベーション施策 / forced enjoyment / 楽しむことを義務 | THEORY_MAP.md:229・papers/T5.md:181（t5-4-4）・FOR_AI_READERS.md:60 |
 | P38 | T5＝置換説（遊びが仕事・ケア・意味の代わり） | 仕事の代わりに遊び / 遊びが意味の源泉 / games replace work / 遊びに逃げる / 働かなくてよい / 余暇社会 | papers/T5.md:191-194（t5-4-6）・papers/T5.md:179（t5-4-4） |
-| P39 | シリーズ＝「遊びは人類最後の砦」／人間にしかできない領域 | 最後の砦 / last stronghold / last bastion / 唯一の防波堤 / 人間にしかできない / only humans can / 人間に残る / remain human / left to humans / AIにできないこと / 人間の領域 / human domain / 人間だけの | THEORY_MAP.md:269・papers/T5.md:107-120（t5-3-4） |
+| P39 | シリーズ＝「遊びは人類最後の砦」／人間にしかできない領域 | 最後の砦 / last stronghold / last bastion / 唯一の防波堤 / 人間にしかできない / only humans can / 人間に残る / remain human / left to humans / AIにできないこと / 人間の領域 / human domain / 人間だけの / 代替できない能力 | THEORY_MAP.md:269・papers/T5.md:107-120（t5-3-4） |
 | P40 | 知好楽の「楽」＝快い気分＝尊厳 | 楽しいから尊厳 / 楽しければ尊厳 / 快楽 / 楽しさ＝尊厳 / pleasant mood / enjoyment establishes / fun therefore | papers/T5.md:149-164（t5-4-3）・papers/T5.md:165-182（t5-4-4）・THEORY_MAP.md:232-244 |
 | P41 | 趣味＝ホビー・余暇・嗜好のみ | 趣味（ホビー） / hobby / 趣味＝余暇 / 趣味とは好きなこと / taste | papers/T5.md:149-164（t5-4-3）・THEORY_MAP.md:232-244 |
 | P42 | 遊び＝標本→すべての活動はゲーム／仕事はすべて遊び | すべてはゲーム / 人生はゲーム / 仕事も遊び / 仕事を遊びに / all activities are games / everything is a game / work should be play / all work as play | papers/T5.md:121-126（t5-3-5）・papers/T5.md:191-194（t5-4-6）・papers/T5.md:179（t5-4-4） |
@@ -73,6 +73,7 @@
 | P51 | 非移転性＝参加の義務（参加し続けるべき／楽しむべき） | 参加すべき / 続けるべき / 楽しむべき / must participate / should keep playing / must enjoy | FOR_AI_READERS.md:68・papers/T5.md:191-194（t5-4-6） |
 | P52 | 凍結文①の反転・改変（AIは参加を届けられる／事態を届けられない） | AIは参加を届けられる / AIは参加という事実を届け / AI can deliver participation / AI cannot deliver the state of affairs | papers/T5.md:13（616-697字）（t5-abstract）・papers/T5.md:77-88（t5-3-1） |
 | P53 | 凍結文②の反転・改変（AIは遊びを支援できない／代われる） | AIは遊びを支援できない / AI cannot assist play / AIが代われる / take one's place in it | papers/T5.md:223（0-53字）（t5-5-4） |
+| P54 | 定理＝医療・安全の仕事でも参加のために障害を残すべき（適用範囲の取り違え） | 障害を残す / 制約を残す / retain obstacles | papers/T5.md:193（1154-1352字）（t5-4-6） |
 
 ## 載せなかった行
 

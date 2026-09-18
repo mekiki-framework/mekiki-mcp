@@ -91,10 +91,19 @@ MAX_BODY_BYTES = 64 * 1024
 BLOCKED_MARKS = ("file=", "proxy=", "/upload", "/run-history", "/vibe", "/dev/reload",
                  "/monitoring", "/profiling", "/component_server", "/reset", "/cancel",
                  "/login", "/logout", "/deep_link", "/process_recording")
-# 通す経路。MCP 本体と、resources/read・prompts/get が自分自身に出す要求（gradio_client）。
-ALLOWED_EXACT = frozenset({"/", "/config", "/config/", "/gradio_api/info", "/gradio_api/info/",
-                           "/gradio_api/startup-events",
-                           # resources/read と prompts/get は、サーバが自分自身に出す要求で実行される。
+# 通す経路は、実測で要ると分かったものだけ（SPEC v2.3 との照合・2026-09-18〜19）。
+#   /                           Gradio が起動時に到達を確かめる（HEAD /。塞ぐと起動しない）。
+#                               自己呼び出しの内部クライアントは /config が 404 だと GET / の HTML に
+#                               埋め込まれた設定（window.gradio_config）を読む（塞ぐと resources/prompts が失敗）
+#   /gradio_api/startup-events  起動時の確認（塞ぐと起動しない）
+#   /gradio_api/info（と末尾 / 付き）  自己呼び出しが読む（塞ぐと McpError）
+#   /gradio_api/queue/join・/queue/data  同じく自己呼び出しの実行と結果の受け取り
+#   /gradio_api/mcp で始まる経路  MCP 本体 /gradio_api/mcp/（Streamable HTTP）と、上流が同じ下に置く
+#                               /gradio_api/mcp/sse・/messages/（旧 SSE の予備経路）・/schema（ツールの JSON）
+#   /gradio_api/heartbeat/*     自己呼び出しの内部クライアントが送り続ける。塞ぐと 404 を受けて
+#                               毎秒約1,000回の再試行に入り、一時ポートを使い果たす（実測・2026-09-18）
+# /config は塞いでも三機能が動き、再試行も起きないことを確かめたので塞いだ（設定は上のとおり / から出る）。
+ALLOWED_EXACT = frozenset({"/", "/gradio_api/info", "/gradio_api/info/", "/gradio_api/startup-events",
                            "/gradio_api/queue/join", "/gradio_api/queue/data"})
 ALLOWED_PREFIXES = ("/gradio_api/mcp", "/gradio_api/heartbeat/")
 # 自分自身への呼び出しでだけ使う経路。外から来た分も含めて同時数を絞る（Codex① P2-4）。
@@ -240,7 +249,7 @@ def check_cors(port: int) -> list[str]:
     """Origin 付きの要求に CORS の許可ヘッダが付かないことを、自分自身に当てて確かめる。"""
     conn = http.client.HTTPConnection(SERVER_NAME, port, timeout=5)
     try:
-        conn.request("GET", "/config", headers={"Origin": "http://localhost:1"})
+        conn.request("GET", "/gradio_api/info", headers={"Origin": "http://localhost:1"})  # 開いている経路で確かめる
         response = conn.getresponse()
         response.read()
         allowed = sorted({k.lower() for k, _ in response.getheaders() if k.lower().startswith("access-control")})

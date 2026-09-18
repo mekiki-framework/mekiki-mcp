@@ -112,7 +112,7 @@ Mekiki Framework の論文 T1〜T5 を、**固定した版から・出典つき�
 
 ### 規則の版
 
-`SCHEMA-1.0.0`・`JSON-1.0.0`・`NORM-1.1.0`・`SEARCH-1.1.0`・`CAND-1.0.0`・`NEAR-1.0.0`・`GUIDE-1.0.0`・`LIMITS-1.0.0`・
+`SCHEMA-1.0.0`・`JSON-1.0.0`・`NORM-1.1.0`・`SEARCH-1.1.0`・`CAND-1.0.0`・`NEAR-1.0.0`・`GUIDE-1.0.0`・`LIMITS-1.1.0`・
 `LINES-1.0.0`・`LANG-1.0.0`・`SECTION-1.0.0`・`T4MAP-1.0.0`・`BUNDLE-1.0.0`・`TERMS-0.1.1`（30項目）・
 `PATTERNS-0.2.1`（50件）＋`PATTERNS-MATCH-1.1.0`・`PROMPTS-0.1.0`（6件）。本文は [docs/rules/](docs/rules/)。
 
@@ -207,10 +207,20 @@ UI の Custom Connectors はリモートの URL を Anthropic 側から取りに
 | `/gradio_api/reset`・`/cancel` | 403 |
 | `/gradio_api/login`・`/logout` | 403 |
 | `/gradio_api/deep_link`・`/process_recording` | 403 |
-| 上の一覧にも下の許可にも無い経路（`/gradio_api/call/*`・`/queue/status`・`/openapi.json`・`/assets/*`・`/static/*`・`/theme.css`・`/manifest.json` など） | 404 |
+| 上の一覧にも下の許可にも無い経路（`/config`・`/gradio_api/call/*`・`/queue/status`・`/openapi.json`・`/assets/*`・`/static/*`・`/theme.css`・`/manifest.json` など） | 404 |
 
-通しているのは `/`（標準のフロント HTML）・`/config`・`/gradio_api/info`・`/gradio_api/startup-events`・
-`/gradio_api/mcp*`・`/gradio_api/heartbeat/*` と、自己呼び出しの `/gradio_api/queue/join`・`/queue/data` だけ。
+通しているのは次の経路だけ（どれも実測で要ると分かったもの。`/config` は要らないことを確かめて塞いだ）。
+一覧は `app.py` の `ALLOWED_EXACT`・`ALLOWED_PREFIXES` と一致させてあり、試験が固定している。
+
+| 経路 | 通す理由 |
+|---|---|
+| `/` | Gradio が起動時に到達を確かめる（`HEAD /`。塞ぐと起動しない）。また自己呼び出しの内部クライアントは、`/config` が 404 のとき `GET /` の HTML に埋め込まれた設定（`window.gradio_config`）を読む（塞ぐと `resources/read`・`prompts/get` が失敗する）。つまり**設定は `/` から loopback 内で引き続き出ている**。静的資産は塞いであるので画面は組み上がらない |
+| `/gradio_api/startup-events` | 起動時の確認（塞ぐと起動しない） |
+| `/gradio_api/info`（末尾 `/` 付きも） | `resources/read`・`prompts/get` の自己呼び出しが読む（塞ぐと McpError） |
+| `/gradio_api/queue/join` | 同じく自己呼び出しの実行（受付8・待機64） |
+| `/gradio_api/queue/data` | 同じく自己呼び出しの結果の受け取り |
+| `/gradio_api/heartbeat/*` | 自己呼び出しの内部クライアントが送り続ける。塞ぐと 404 を受けて毎秒約1,000回の再試行に入り、一時ポートを使い果たす（実測） |
+| `/gradio_api/mcp` で始まる経路 | MCP 本体 `/gradio_api/mcp/`（Streamable HTTP）。上流が同じ下に置く `/gradio_api/mcp/sse`・`/gradio_api/mcp/messages/`（旧 SSE の予備経路）と `/gradio_api/mcp/schema`（ツールの JSON スキーマ）も通る。`/gradio_api/mcp` は `/gradio_api/mcp/` へ 307 |
 
 ### 接続時に知っておくこと
 

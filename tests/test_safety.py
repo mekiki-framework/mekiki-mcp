@@ -53,8 +53,11 @@ BLOCKED_ROUTES = (
     ("GET", "/theme.css", 404),
     ("GET", "/manifest.json", 404),
     ("GET", "/gradio_api/../etc/passwd", 404),
+    ("GET", "/config", 404),                      # 塞いだ（SPEC v2.3 との照合。要らないと実測）
+    ("GET", "/config/", 404),
 )
-OPEN_ROUTES = (("GET", "/", 200), ("GET", "/config", 200), ("GET", "/gradio_api/info", 200))
+OPEN_ROUTES = (("GET", "/", 200), ("GET", "/gradio_api/info", 200), ("GET", "/gradio_api/info/", 200),
+               ("GET", "/gradio_api/startup-events", 200), ("GET", "/gradio_api/mcp/schema", 200))
 
 CALL_BODY = json.dumps({"jsonrpc": "2.0", "id": 1, "method": "tools/call",
                         "params": {"name": "list_papers", "arguments": {}}}).encode("utf-8")
@@ -89,6 +92,51 @@ def test_s01_pathlike_ids_are_invalid(reader):
             assert env["results"] == [] and env["candidates"] == []
             text = S.to_json(env)
             assert bad not in text and bad.replace("\\", "\\\\") not in text
+
+
+LONE = "dign" + chr(0xD800) + "ity"  # 孤立サロゲート（JSON の "\\ud800" から入りうる）
+SURROGATE_CALLS = (
+    ("get_section", {"paper_id": "T4", "anchor": "t4-2" + chr(0xDC00)}),
+    ("search_passages", {"query": LONE}),
+    ("get_claim_record", {"query": LONE}),
+    ("verify_quote", {"text": LONE * 3}),
+    ("check_compressions", {"text": LONE}),
+    ("get_reading_guide", {"part": "modes" + chr(0xDBFF)}),  # これは part の許可一覧（11個）で弾かれる
+)
+
+
+@pytest.mark.parametrize("name,args", SURROGATE_CALLS, ids=[c[0] for c in SURROGATE_CALLS])
+def test_s01_lone_surrogates_are_invalid(reader, name, args):
+    """孤立サロゲートを含む入力は invalid_input で、応答は UTF-8 に直せる（関数の層・6ツール）。"""
+    env = getattr(T, name)(reader, **args)
+    assert env["status"] == "invalid_input" and env["results"] == [] and env["candidates"] == []
+    S.to_json(env).encode("utf-8")  # 直列化と UTF-8 化で落ちない
+    assert not any(0xD800 <= ord(ch) <= 0xDFFF for ch in S.to_json(env))  # 応答に写し返さない
+
+
+def test_s01_lone_surrogates_over_mcp(server):
+    """同じ入力を JSON の \\ud800 形式で MCP に送っても、通信は切れず invalid_input が返る（通信の層）。"""
+    problems = []
+    for name, args in SURROGATE_CALLS:
+        payload = json.dumps({"jsonrpc": "2.0", "id": 1, "method": "tools/call",
+                              "params": {"name": name, "arguments": args}})  # ensure_ascii で \\udXXX になる
+        assert any(mark in payload.lower() for mark in ("\\ud8", "\\udb", "\\udc"))
+        status, raw = server.request("POST", "/gradio_api/mcp/", body=payload.encode("ascii"),
+                                     headers=MCP_HEADERS, timeout=60, limit=None)
+        if status != 200:
+            problems.append((name, "http", status))
+            continue
+        if any(mark in raw.lower() for mark in ("\\ud8", "\\udb", "\\udc")):
+            problems.append((name, "echoed", raw[:80]))  # 応答にサロゲートを写し返さない
+        result = _sse_json(raw)["result"]
+        if result.get("isError") is not False:
+            problems.append((name, "isError", result))
+            continue
+        status_value = json.loads(result["content"][0]["text"])["status"]
+        if status_value != "invalid_input":
+            problems.append((name, "status", status_value))
+    assert problems == []  # 最初の失敗で止めず、全ツールの結果をまとめて見る
+    assert MC.payload(MC.session(server.mcp_url, lambda s: s.call_tool("list_papers", {})))["status"] == "ok"
 
 
 def test_s01_huge_inputs_are_bounded(reader):
@@ -130,6 +178,18 @@ def test_s01_port_env_is_checked():
 # ---------------------------------------------------------------- S01（HTTP の層）
 
 
+def test_s01_allowlist_is_pinned():
+    """通す経路の一覧を固定する（README・LIMITS の一覧と同じ。変えるときは文書と一緒に変える）。"""
+    assert app.ALLOWED_EXACT == frozenset({"/", "/gradio_api/info", "/gradio_api/info/", "/gradio_api/startup-events",
+                                           "/gradio_api/queue/join", "/gradio_api/queue/data"})
+    assert app.ALLOWED_PREFIXES == ("/gradio_api/mcp", "/gradio_api/heartbeat/")
+    readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
+    limits = (REPO_ROOT / "docs" / "rules" / "LIMITS.md").read_text(encoding="utf-8")
+    for route in ("/gradio_api/startup-events", "/gradio_api/info", "/gradio_api/queue/join", "/gradio_api/queue/data",
+                  "/gradio_api/heartbeat/*", "/gradio_api/mcp/sse", "/gradio_api/mcp/schema"):
+        assert route in readme and route in limits, route
+
+
 def test_s01_standard_routes_are_blocked(server):
     seen = []
     for method, path, want in BLOCKED_ROUTES + OPEN_ROUTES:
@@ -140,10 +200,10 @@ def test_s01_standard_routes_are_blocked(server):
 
 
 def test_s01_host_and_body_limits(server):
-    assert server.request("GET", "/config", headers={"Host": "evil.example.com"})[0] == 400
-    assert server.request("GET", "/config", headers={"Host": "127.0.0.1.evil.com"})[0] == 400
-    assert server.request("GET", "/config", headers={"Host": f"127.0.0.1:{server.port}"})[0] == 200
-    assert server.request("GET", "/config", headers={"Host": f"localhost:{server.port}"})[0] == 200
+    assert server.request("GET", "/gradio_api/info", headers={"Host": "evil.example.com"})[0] == 400
+    assert server.request("GET", "/gradio_api/info", headers={"Host": "127.0.0.1.evil.com"})[0] == 400
+    assert server.request("GET", "/gradio_api/info", headers={"Host": f"127.0.0.1:{server.port}"})[0] == 200
+    assert server.request("GET", "/gradio_api/info", headers={"Host": f"localhost:{server.port}"})[0] == 200
     big = b"x" * (app.MAX_BODY_BYTES + 1)
     status, _ = server.request("POST", "/gradio_api/mcp/", body=big, headers=MCP_HEADERS)
     assert status == 413
@@ -192,7 +252,7 @@ def test_s01_blocked_routes_with_body(server):
     heavy = {"Content-Type": "application/octet-stream"}
     assert server.request("POST", "/gradio_api/upload", body=payload, headers=heavy)[0] == 403
     assert server.request("POST", "/gradio_api/queue/status", body=payload, headers=heavy)[0] == 404
-    for method, path, want in (("HEAD", "/", 200), ("OPTIONS", "/config", 405), ("DELETE", "/config", 405)):
+    for method, path, want in (("HEAD", "/", 200), ("OPTIONS", "/gradio_api/info", 405), ("DELETE", "/gradio_api/info", 405)):
         assert server.request(method, path)[0] == want, (method, path)
     # 本文なしの POST も、先読みの待ちに入らない（MCP は 400 を返す）。
     assert server.request("POST", "/gradio_api/mcp/", body=b"", headers=MCP_HEADERS)[0] == 400
@@ -235,7 +295,7 @@ def test_s01_queue_waiting_is_capped(tmp_path):
         codes = [srv.request("POST", "/gradio_api/queue/join", body=body,
                              headers={"Content-Type": "application/json"})[0] for _ in range(6)]
         assert codes == [503] * 6, codes
-        assert srv.request("GET", "/config")[0] == 200          # ほかの経路は生きている
+        assert srv.request("GET", "/gradio_api/info")[0] == 200  # ほかの経路は生きている
         assert MC.payload(MC.session(srv.mcp_url, lambda s: s.call_tool("list_papers", {})))["status"] == "ok"
         audit = srv.stop()
     assert audit["queue_state"]["rejected"] == 6
@@ -291,20 +351,20 @@ def test_s01_host_variants(server):
     """Host の欠落・重複・IPv6（Codex① P1-2 の敵対的試験）。"""
     port = str(server.port).encode()
     cases = [
-        (b"GET /config HTTP/1.1\r\nConnection: close\r\n\r\n", (400,)),                        # 欠落
-        (b"GET /config HTTP/1.1\r\nHost: 127.0.0.1\r\nHost: evil.example\r\nConnection: close\r\n\r\n",
+        (b"GET /gradio_api/info HTTP/1.1\r\nConnection: close\r\n\r\n", (400,)),                        # 欠落
+        (b"GET /gradio_api/info HTTP/1.1\r\nHost: 127.0.0.1\r\nHost: evil.example\r\nConnection: close\r\n\r\n",
          (400,)),                                                                                # 重複
-        (b"GET /config HTTP/1.1\r\nHost: [::1]:" + port + b"\r\nConnection: close\r\n\r\n", (200,)),  # IPv6
-        (b"GET /config HTTP/1.1\r\nHost: [::1]\r\nConnection: close\r\n\r\n", (200,)),          # IPv6・ポートなし
-        (b"GET /config HTTP/1.1\r\nHost: 127.0.0.1.evil.example\r\nConnection: close\r\n\r\n", (400,)),
-        (b"GET /config HTTP/1.1\r\nHost: \r\nConnection: close\r\n\r\n", (400,)),               # 空
-        (b"GET /config HTTP/1.1\r\nHost: LocalHost:" + port + b"\r\nConnection: close\r\n\r\n", (200,)),  # 大小
-        (b"GET /config HTTP/1.1\r\nHost: 127.0.0.1.\r\nConnection: close\r\n\r\n", (400,)),       # 末尾の点
-        (b"GET /config HTTP/1.1\r\nHost: localhost:0\r\nConnection: close\r\n\r\n", (400,)),      # ポート0
-        (b"GET /config HTTP/1.1\r\nHost: localhost:99999\r\nConnection: close\r\n\r\n", (400,)),  # 範囲外
-        (b"GET /config HTTP/1.1\r\nHost: localhost:abc\r\nConnection: close\r\n\r\n", (400,)),    # 数字でない
-        (b"GET /config HTTP/1.1\r\nHost: localhost:\r\nConnection: close\r\n\r\n", (400,)),       # ポート空
-        (b"GET /config HTTP/1.1\r\nHost: [::1]x80\r\nConnection: close\r\n\r\n", (400,)),         # 括弧の後の接尾辞
+        (b"GET /gradio_api/info HTTP/1.1\r\nHost: [::1]:" + port + b"\r\nConnection: close\r\n\r\n", (200,)),  # IPv6
+        (b"GET /gradio_api/info HTTP/1.1\r\nHost: [::1]\r\nConnection: close\r\n\r\n", (200,)),          # IPv6・ポートなし
+        (b"GET /gradio_api/info HTTP/1.1\r\nHost: 127.0.0.1.evil.example\r\nConnection: close\r\n\r\n", (400,)),
+        (b"GET /gradio_api/info HTTP/1.1\r\nHost: \r\nConnection: close\r\n\r\n", (400,)),               # 空
+        (b"GET /gradio_api/info HTTP/1.1\r\nHost: LocalHost:" + port + b"\r\nConnection: close\r\n\r\n", (200,)),  # 大小
+        (b"GET /gradio_api/info HTTP/1.1\r\nHost: 127.0.0.1.\r\nConnection: close\r\n\r\n", (400,)),       # 末尾の点
+        (b"GET /gradio_api/info HTTP/1.1\r\nHost: localhost:0\r\nConnection: close\r\n\r\n", (400,)),      # ポート0
+        (b"GET /gradio_api/info HTTP/1.1\r\nHost: localhost:99999\r\nConnection: close\r\n\r\n", (400,)),  # 範囲外
+        (b"GET /gradio_api/info HTTP/1.1\r\nHost: localhost:abc\r\nConnection: close\r\n\r\n", (400,)),    # 数字でない
+        (b"GET /gradio_api/info HTTP/1.1\r\nHost: localhost:\r\nConnection: close\r\n\r\n", (400,)),       # ポート空
+        (b"GET /gradio_api/info HTTP/1.1\r\nHost: [::1]x80\r\nConnection: close\r\n\r\n", (400,)),         # 括弧の後の接尾辞
     ]
     for request, want in cases:
         status, head = server.raw(request)
@@ -316,7 +376,7 @@ def test_s01_no_cors_for_origin_requests(server):
     origins = ("http://localhost:3000", "http://127.0.0.1:1234", "https://evil.example", "null",
                f"http://localhost:{server.port}")
     for origin in origins:
-        for method, path in (("GET", "/config"), ("GET", "/gradio_api/info"), ("POST", "/gradio_api/mcp/")):
+        for method, path in (("GET", "/"), ("GET", "/gradio_api/info"), ("POST", "/gradio_api/mcp/")):
             body = b'{"jsonrpc":"2.0","id":1,"method":"tools/list"}' if method == "POST" else None
             headers = {"Origin": origin}
             if body:
@@ -330,7 +390,7 @@ def test_s01_no_cors_for_origin_requests(server):
     status, text = server.raw(head)
     assert "access-control" not in text.lower(), text[:200]
     # Origin が無い要求は普通に通る（MCP クライアントは Origin を送らない）。
-    assert server.request("GET", "/config")[0] == 200
+    assert server.request("GET", "/gradio_api/info")[0] == 200
 
 
 def _request(method: str, path: str, port: int, headers: dict, body: bytes | None = None) -> bytes:
@@ -430,7 +490,7 @@ def test_s01_env_vars_do_not_change_binding(tmp_path):
                "MEKIKI_DATA_DIR": "/tmp", "MEKIKI_READER_DATA": "/tmp"}
     with Server(tmp_path / "audit.json", env_extra=hostile) as srv:
         assert srv.ready_line and f"127.0.0.1:{srv.port}" in srv.ready_line
-        status, _ = srv.request("GET", "/config")
+        status, _ = srv.request("GET", "/gradio_api/info")
         assert status == 200
         env = MC.session(srv.mcp_url, lambda s: s.call_tool("list_papers", {}))
         assert MC.payload(env)["bundle_hash"] == C.EXPECTED_BUNDLE_SHA256  # データ根は固定（Q12）
@@ -559,6 +619,9 @@ def test_s03_no_outbound_traffic(tmp_path, reader):
     assert at_import <= {"probe-source", "probe-link"}, at_import
     assert audit["open_dropped"] == 0
     assert any(b[1].startswith("('127.0.0.1'") for b in audit["bound"]), audit["bound"]
+    # 自己呼び出しの内部クライアントが、塞いだ経路に再試行を繰り返していないこと（heartbeat を塞ぐと
+    # 毎秒約1,000回の 404 になり一時ポートを使い果たした。2026-09-18 の実測）。
+    assert sum(int(v) for v in audit["guard_counts"].values()) < 20, (audit["guard_counts"], audit["guard"][:5])
     assert audit["mcp_server"] is True and audit["share"] is False and audit["run_history"] is False
     assert audit["queue_max_size"] == app.QUEUE_MAX_SIZE and audit["queue_concurrency"] == app.MAX_CONCURRENCY
     # 番兵は endpoint 一覧の最後（prompts/get の取りこぼしを受け止める位置。Q64）。

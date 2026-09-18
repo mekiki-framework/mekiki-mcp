@@ -252,4 +252,5 @@ D01〜D04（同梱データ）・T01〜T12 と R01（七ツールと再現性）
   5. 未知の prompt 名は MCP のエラーとして返る（上流の実装の挙動。本文は §5 参照）。Spaces ではツール名に接頭辞が付く。
   6. `/` に Gradio 標準のフロント HTML が返る。`resources/read` と `prompts/get` はサーバが自分自身に出す HTTP 要求で実行されるため、その経路（`/gradio_api/queue/join`・`/gradio_api/queue/data`）だけは通してある。外から同じ経路を叩くこともできるので、**同時数を8件に、待ち行列を16件に絞って受ける**（超えると HTTP 503）。実行されるのは登録済みの七ツール・resources・prompts だけで、どれも同じ実行枠（同時4）を使う。`/gradio_api/call/*` は塞いである（実測で、自己呼び出しには要らないことを確かめた）。
   7. 起動時に `HF_HUB_DISABLE_TELEMETRY=1`・`HF_HUB_DISABLE_IMPLICIT_TOKEN=1`・`HF_HUB_OFFLINE=1`・`HF_TOKEN_PATH=/dev/null` を設定している（依存ライブラリの利用状況送信を止め、利用者のトークンファイルを開かせないため）。
-  8. 同梱データの照合は事故の検出までで、改竄への耐性は主張しない。
+  8. ブラウザからは応答を読めない。`Origin` ヘッダの付いた要求には CORS の許可（`Access-Control-Allow-Origin` ほか）を一切返さない（`http://localhost:<ポート>` など同じ機械からの Origin も含む）。上流の既定では loopback の Origin に許可が出るため、差し替えてある。MCP のクライアントは `Origin` を送らないので接続には影響しない。
+  9. 同梱データの照合は事故の検出までで、改竄への耐性は主張しない。

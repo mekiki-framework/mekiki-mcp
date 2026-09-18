@@ -6,6 +6,7 @@
 """
 
 import asyncio
+import http.client
 import os
 import re
 import sys
@@ -40,6 +41,7 @@ def sanitize_environ(env=None) -> list[str]:
 REMOVED_GRADIO_ENV = sanitize_environ()
 
 import gradio as gr  # noqa: E402  （環境を整えた後に読み込む）
+import gradio.routes  # noqa: E402
 from starlette.middleware import Middleware  # noqa: E402
 
 from mekiki_reader import corpus as C  # noqa: E402
@@ -94,6 +96,15 @@ ALLOWED_PREFIXES = ("/gradio_api/mcp", "/gradio_api/heartbeat/")
 SELF_CALL_PATHS = frozenset({"/gradio_api/queue/join"})
 # 本文を読み切ってから渡す経路。ここ以外は本文に触れない（触ると送り切らない要求で待たされる）。
 PRE_READ_PREFIXES = ("/gradio_api/mcp", "/gradio_api/queue/join")
+# ブラウザからの読み取りを許さない（Codex① の反映後の点検で見つかった面）。
+# Gradio は http://localhost:<任意のポート> などの Origin に Access-Control-Allow-Origin を返すため、
+# 同じ機械の別のローカルサーバが配ったページから応答を読めてしまう。Origin 付きの要求には
+# CORS の許可ヘッダを一切返さない（loopback 由来も含む）。接続先の MCP クライアントは Origin を送らない。
+CORS_RESPONSE_HEADERS = frozenset({
+    b"access-control-allow-origin", b"access-control-allow-credentials", b"access-control-allow-methods",
+    b"access-control-allow-headers", b"access-control-expose-headers", b"access-control-max-age",
+    b"access-control-allow-private-network", b"timing-allow-origin",
+})
 GUARD_LOG: "deque[tuple[int, str]]" = deque(maxlen=GUARD_LOG_MAX)  # 遮断の記録（固定長・S01 の証跡）
 GUARD_COUNTS: dict[int, int] = {}  # 応答コードごとの総数（記録が溢れても件数は残す）
 
@@ -148,6 +159,53 @@ def _host_name(value: str) -> str:
     return host
 
 
+class _PassThroughCORS:
+    """Gradio の CORS 中間層の差し替え（このサーバはブラウザに応答を読ませない）。
+
+    上流の `CustomCORSMiddleware` は `http://localhost:<任意のポート>`・`http://127.0.0.1:<任意のポート>` の
+    Origin に `Access-Control-Allow-Origin` と `allow-credentials: true` を返す。それを使うと、同じ機械の
+    別のローカルサーバが配ったページから、この読み手の応答を読めてしまう（実測）。UI を持たないサーバなので
+    CORS の許可は一切出さない。差し替えが効いているかは `check_cors()` が起動後に自分自身へ当てて確かめる。
+    """
+
+    def __init__(self, app, *args, **kwargs) -> None:
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        await self.app(scope, receive, send)
+
+
+gradio.routes.CustomCORSMiddleware = _PassThroughCORS  # create_app が add_middleware に使う名前
+
+
+def check_cors(port: int) -> list[str]:
+    """Origin 付きの要求に CORS の許可ヘッダが付かないことを、自分自身に当てて確かめる。"""
+    conn = http.client.HTTPConnection(SERVER_NAME, port, timeout=5)
+    try:
+        conn.request("GET", "/config", headers={"Origin": "http://localhost:1"})
+        response = conn.getresponse()
+        response.read()
+        allowed = sorted({k.lower() for k, _ in response.getheaders() if k.lower().startswith("access-control")})
+        return [f"cors={'・'.join(allowed)}"] if allowed else []
+    except OSError as exc:
+        return [f"cors-check-failed={type(exc).__name__}"]
+    finally:
+        conn.close()
+
+
+def _no_cors(send):
+    """応答から CORS の許可ヘッダを落とす（Origin 付きの要求にだけ使う）。"""
+
+    async def wrapped(message):
+        if message.get("type") == "http.response.start":
+            message = dict(message)
+            message["headers"] = [(k, v) for k, v in message.get("headers", [])
+                                  if k.lower() not in CORS_RESPONSE_HEADERS]
+        await send(message)
+
+    return wrapped
+
+
 def _replayer(body: bytes, receive):
     """読み終えた本文を後段のアプリに一度だけ渡し、その後は本物の receive に戻す。
 
@@ -188,6 +246,8 @@ def _guard_middleware():
                 return  # websocket などは受け付けない
             path = scope.get("path", "")
             raw = scope.get("headers", [])
+            if any(k.lower() == b"origin" for k, v in raw):  # ブラウザからの読み取りを許さない
+                send = _no_cors(send)
             hosts = [v.decode("latin-1", "replace") for k, v in raw if k.lower() == b"host"]
             if len(hosts) != 1 or _host_name(hosts[0]) not in ALLOWED_HOSTS:
                 return await _reply(send, 400, "bad host", path)
@@ -457,6 +517,8 @@ def verify_blocks(demo, launched: bool = False, port: int | None = None) -> list
         url = getattr(demo, "local_url", "") or ""
         if not url.startswith(f"http://{SERVER_NAME}:"):
             problems.append(f"local_url={url!r}")
+        if port is not None:
+            problems += check_cors(port)
     return problems
 
 

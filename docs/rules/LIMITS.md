@@ -2,8 +2,8 @@
 
 | 項目 | 値 |
 |---|---|
-| 規則ID・版 | LIMITS-1.1.0（1.0.0 の値は変えずに、関連原文の抜粋・check_compressions の結果数・通信層・開放経路の項目を足した。2026-09-18 著者承認） |
-| 状態 | 確定（LIMITS-1.1.0・2026-09-18 著者承認。値は施工段階2以降に実測。Codex① P1-2・P2-4 と Codex② の反映を含む） |
+| 規則ID・版 | LIMITS-2.0.0（2026-09-19。「開放経路」の値を変えた＝旧 SSE の `/gradio_api/mcp/sse`・`/gradio_api/mcp/messages/` と Streamable HTTP の別名 `/gradio_api/mcp/http` を閉じたので MAJOR。あわせて「長時間接続」の項目を足した）。1.1.0（2026-09-18 著者承認）は 1.0.0 の値を変えずに、関連原文の抜粋・check_compressions の結果数・通信層・開放経路の項目を足した版 |
+| 状態 | 確定（LIMITS-1.1.0・2026-09-18 著者承認。値は施工段階2以降に実測。Codex① P1-2・P2-4 と Codex② の反映を含む）。2.0.0 は提案（旧 SSE を閉じたのは著者の指示＝確定。版の付け方と「長時間接続」の値は施工判断で、値は実測） |
 | 実装 | `mekiki_reader/tools.py` の定数 |
 
 | 対象 | 上限 | 超えたとき |
@@ -33,7 +33,8 @@
 | 自己呼び出しの経路（`/gradio_api/queue/join`） | 受付 8（＝同時実行4＋4）。順番待ちに並べるのは 64 まで・待ち時間は20秒まで。Gradio の待ち行列は 72（＝8＋64。断るのはこちらの層にする） | 待機が 64 を超える／20秒を超える＝HTTP 503 |
 | 回収されない結果 | 同じセッションにつき 64 件・4 MiB・120 秒。5秒ごとに掃除する | 期限や上限を超えた分は捨てる（`/queue/data` で取りに来なかった結果） |
 | アップロードの大きさ | `max_file_size="1kb"`（経路自体は 403 で遮断） | HTTP 403 |
-| 開放経路 | `/`（起動時の到達確認と、`/config` を塞いだときに自己呼び出しが設定を読む先）・`/gradio_api/startup-events`（起動時の確認）・`/gradio_api/info`（末尾 `/` 付きも）・`/gradio_api/queue/join`・`/gradio_api/queue/data`・`/gradio_api/heartbeat/*`（自己呼び出し）・`/gradio_api/mcp` で始まる経路（本体 `/gradio_api/mcp/` と、上流が同じ下に置く旧 SSE の `/gradio_api/mcp/sse`・`/gradio_api/mcp/messages/` とツールの `/gradio_api/mcp/schema`）。`/config` は塞いでも動き再試行も起きないので塞いだ。heartbeat は塞ぐと内部クライアントが毎秒約1,000回の再試行に入り一時ポートを使い果たすので開けておく（2026-09-18〜19 実測） | ほかは 403（明示の遮断）か 404 |
+| 開放経路 | `/`（起動時の到達確認と、`/config` を塞いだときに自己呼び出しが設定を読む先）・`/gradio_api/startup-events`（起動時の確認）・`/gradio_api/info`（末尾 `/` 付きも）・`/gradio_api/queue/join`・`/gradio_api/queue/data`・`/gradio_api/heartbeat/*`（自己呼び出し）・`/gradio_api/mcp/`（MCP 本体。`/gradio_api/mcp` は 307 で `/` 付きへ）・`/gradio_api/mcp/schema`（ツールの JSON スキーマ）。`/config` は塞いでも動き再試行も起きないので塞いだ。heartbeat は塞ぐと内部クライアントが毎秒約1,000回の再試行に入り一時ポートを使い果たすので開けておく（2026-09-18〜19 実測）。**2.0.0 で `/gradio_api/mcp/sse`・`/gradio_api/mcp/messages/`・`/gradio_api/mcp/http`（旧 SSE の予備経路と、Streamable HTTP の別名。/ 付きも）を閉じた**（閉じても M01〜M03・SDK 検収・`mcp-remote@0.14.2 --transport http-only` が動くことを実測・2026-09-19）。`/gradio_api/mcp/schema` は三機能には要らないが著者の指示で開けている | ほかは 403（明示の遮断）か 404 |
+| 長時間接続（塞げない GET の流れ） | 種類ごとの同時数：`/gradio_api/heartbeat/*` 8・`/gradio_api/queue/data` 8・`GET /gradio_api/mcp/` 32。実測（2026-09-19）：内部クライアントは heartbeat 1本・queue/data 最大1本（resources/read 同時80本・8セッション混在でも同じ）。`GET /gradio_api/mcp/` は mcp SDK（Python）が0本、`mcp-remote@0.14.2` が1クライアントあたり最大4本（呼び出しを重ねても増えず、落ち着くと2本）。上限は内部分（1）に余裕を足した8と、mcp-remote 8クライアント分の32。内部クライアントの分は数えるが断らない（heartbeat は 503 を受けると毎秒約1,100回の再試行に入る＝2秒で2,230回・実測。内部かどうかは名乗るセッションで見分ける）。内部クライアントは起動の直後に一つだけ作る（上流は最初の呼び出しのときに鍵なしで作り、同時16本で2〜16個でき、同時40本を超えると作成が失敗し続けた。起動時に作ると同時16・64・80・100本がすべて通り、内部クライアントは1つ） | HTTP 503（`too many open streams`）。GET を断られた mcp-remote も呼び出しは続けられる（実測） |
 | CORS | `Origin` 付きの要求には許可ヘッダを一切返さない（上流の CORS 中間層を通しに差し替え、起動後に自分自身へ当てて確認） | 許可を返さない（要求自体は通る） |
 | 待ち受け | 127.0.0.1 のみ・`max_threads=8` | — |
 

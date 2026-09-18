@@ -232,7 +232,7 @@ def _write_log() -> None:
         "process": PROCESS, "mutated": MUTATED, "bound": BOUND,
         "control": CONTROL, "control_net": CONTROL_NET,
         "guard": [list(x) for x in app.GUARD_LOG], "guard_counts": app.GUARD_COUNTS,
-        "queue_state": dict(app._QUEUE_STATE), "sweep": {k: v for k, v in app._SWEEP.items() if k != "task"},
+        "queue_state": dict(app._QUEUE_STATE), "streams": app._STREAMS, "sweep": {k: v for k, v in app._SWEEP.items() if k != "task"},
         "removed_env": app.REMOVED_GRADIO_ENV,
         "server_name": app.SERVER_NAME,
         "port": STATE["port"],
@@ -269,6 +269,9 @@ def main() -> int:
     inflight = os.environ.get("MEKIKI_TEST_QUEUE_INFLIGHT")  # 受付の数（同上）
     if inflight is not None:
         app.QUEUE_INFLIGHT_MAX = int(inflight)
+    streams = os.environ.get("MEKIKI_TEST_STREAMS")  # 長時間接続の同時数の上限（三種とも。S01）
+    if streams is not None:
+        app.STREAM_LIMITS = dict.fromkeys(app.STREAM_LIMITS, int(streams))
     sweep = os.environ.get("MEKIKI_TEST_SWEEP")  # 掃除の間隔と保持（同上）
     if sweep:
         app.RESULT_SWEEP_SECONDS = float(sweep)

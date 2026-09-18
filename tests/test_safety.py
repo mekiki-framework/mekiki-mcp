@@ -10,6 +10,7 @@ import threading
 import time
 from pathlib import Path
 
+import anyio
 import pytest
 
 import app
@@ -55,6 +56,12 @@ BLOCKED_ROUTES = (
     ("GET", "/gradio_api/../etc/passwd", 404),
     ("GET", "/config", 404),                      # 塞いだ（SPEC v2.3 との照合。要らないと実測）
     ("GET", "/config/", 404),
+    ("GET", "/gradio_api/mcp/sse", 404),          # 旧 SSE の予備経路を閉じた（Streamable HTTP だけで動くと実測）
+    ("POST", "/gradio_api/mcp/messages/", 404),
+    ("POST", "/gradio_api/mcp/messages/?session_id=0", 404),
+    ("GET", "/gradio_api/mcp/sse/", 404),
+    ("POST", "/gradio_api/mcp/http", 404),        # 上流の Streamable HTTP の別名（前方一致をやめて閉じた）
+    ("GET", "/gradio_api/mcp/http/", 404),
 )
 OPEN_ROUTES = (("GET", "/", 200), ("GET", "/gradio_api/info", 200), ("GET", "/gradio_api/info/", 200),
                ("GET", "/gradio_api/startup-events", 200), ("GET", "/gradio_api/mcp/schema", 200))
@@ -181,13 +188,35 @@ def test_s01_port_env_is_checked():
 def test_s01_allowlist_is_pinned():
     """通す経路の一覧を固定する（README・LIMITS の一覧と同じ。変えるときは文書と一緒に変える）。"""
     assert app.ALLOWED_EXACT == frozenset({"/", "/gradio_api/info", "/gradio_api/info/", "/gradio_api/startup-events",
-                                           "/gradio_api/queue/join", "/gradio_api/queue/data"})
-    assert app.ALLOWED_PREFIXES == ("/gradio_api/mcp", "/gradio_api/heartbeat/")
+                                           "/gradio_api/queue/join", "/gradio_api/queue/data",
+                                           "/gradio_api/mcp", "/gradio_api/mcp/", "/gradio_api/mcp/schema"})
+    assert app.ALLOWED_PREFIXES == ("/gradio_api/heartbeat/",)
+    assert app.STREAM_LIMITS == {"heartbeat": 8, "queue_data": 8, "mcp_get": 32}
     readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
     limits = (REPO_ROOT / "docs" / "rules" / "LIMITS.md").read_text(encoding="utf-8")
-    for route in ("/gradio_api/startup-events", "/gradio_api/info", "/gradio_api/queue/join", "/gradio_api/queue/data",
-                  "/gradio_api/heartbeat/*", "/gradio_api/mcp/sse", "/gradio_api/mcp/schema"):
-        assert route in readme and route in limits, route
+    for doc in (readme, limits):
+        assert "で始まる経路" not in doc  # 前方一致で MCP の下を通していた頃の書き方が残っていない
+    def table(header: str) -> list[str]:  # README の表（見出し行の次の区切り行より後、表が終わるまで）
+        lines = readme.splitlines()
+        start = lines.index(header) + 2
+        end = next(i for i in range(start, len(lines)) if not lines[i].startswith("|"))
+        return lines[start:end]
+
+    open_rows = {line.split("|")[1].strip() for line in table("| 経路 | 通す理由 |")}
+    assert open_rows == {"`/`", "`/gradio_api/startup-events`", "`/gradio_api/info`（末尾 `/` 付きも）",
+                         "`/gradio_api/queue/join`", "`/gradio_api/queue/data`", "`/gradio_api/heartbeat/*`",
+                         "`/gradio_api/mcp/`", "`/gradio_api/mcp/schema`"}, open_rows
+    closed = [line for line in table("| 経路 | 応答 |") if "`/gradio_api/mcp/sse`" in line]
+    assert len(closed) == 1 and closed[0].endswith("| 404 |") and "`/gradio_api/mcp/http`" in closed[0]
+    assert [line.split("|")[1:3] for line in table("| 種類 | 同時数 | 実測（2026-09-19） |")] == [
+        [" `/gradio_api/heartbeat/*` ", " 8 "], [" `/gradio_api/queue/data` ", " 8 "],
+        [" `GET /gradio_api/mcp/`（Streamable HTTP の待ち受け） ", " 32 "]]
+    open_cell = next(line for line in limits.splitlines() if line.startswith("| 開放経路 |"))
+    assert "`/gradio_api/mcp/sse`・`/gradio_api/mcp/messages/`・`/gradio_api/mcp/http`" in open_cell
+    assert "を閉じた" in open_cell
+    stream_cell = next(line for line in limits.splitlines() if line.startswith("| 長時間接続"))
+    assert all(s in stream_cell for s in ("`/gradio_api/heartbeat/*` 8", "`/gradio_api/queue/data` 8",
+                                          "`GET /gradio_api/mcp/` 32"))
 
 
 def test_s01_standard_routes_are_blocked(server):
@@ -300,6 +329,110 @@ def test_s01_queue_waiting_is_capped(tmp_path):
         audit = srv.stop()
     assert audit["queue_state"]["rejected"] == 6
     assert audit["guard_counts"].get("503") == 6 or audit["guard_counts"].get(503) == 6
+
+
+def _hold_stream(port: int, path: str, accept: str = "text/event-stream") -> tuple[socket.socket, int]:
+    """長時間接続を開いたままにする（状態行だけ読んで返す）。"""
+    sock = socket.create_connection(("127.0.0.1", port), timeout=10)
+    sock.sendall(f"GET {path} HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\nAccept: {accept}\r\n\r\n".encode())
+    head = b""
+    while b"\r\n" not in head:
+        chunk = sock.recv(1)
+        if not chunk:
+            break
+        head += chunk
+    return sock, int(head.split(b" ")[1]) if head.startswith(b"HTTP/1.1 ") else 0
+
+
+def test_s01_long_lived_streams_are_capped(tmp_path):
+    """塞げない長時間接続は種類ごとに同時数を絞り、超えた分は通信層で 503。内部クライアントは断らない。"""
+    with Server(tmp_path / "audit.json", env_extra={"MEKIKI_TEST_STREAMS": "0"}) as srv:
+        assert srv.request("GET", "/gradio_api/heartbeat/outsider")[0] == 503
+        assert srv.request("GET", "/gradio_api/queue/data?session_hash=outsider")[0] == 503
+        status, text = srv.request("GET", "/gradio_api/mcp/", headers={"Accept": "text/event-stream"})
+        assert (status, text) == (503, "too many open streams")
+
+        def body(s):  # 上限0でも、内部クライアントを通る resources/read・prompts/get は動く
+            async def run():
+                listed = await s.call_tool("list_papers", {})
+                read = await s.read_resource("mekiki://v3.5.0/llms.txt")
+                prompt = await s.get_prompt("four_modes")
+                return listed, read, prompt
+            return run()
+
+        listed, read, prompt = MC.session(srv.mcp_url, body)
+        assert MC.payload(listed)["status"] == "ok"
+        assert read.contents[0].text == (REPO_ROOT / "data" / "llms.txt").read_text(encoding="utf-8")
+        assert prompt.messages and prompt.messages[0].content.text == PR.FOUR_MODES.text
+        time.sleep(1)
+        audit = srv.stop()
+    streams = audit["streams"]
+    assert streams["internal_peak"]["heartbeat"] == 1 and streams["internal_peak"]["queue_data"] >= 1
+    assert streams["rejected"]["queue_data"] == 1 and streams["rejected"]["mcp_get"] == 1
+    # 内部クライアントが作られる一瞬（セッションが分かる前）に heartbeat が断られても、再試行の嵐にならない
+    assert 1 <= streams["rejected"]["heartbeat"] < 20, streams
+    assert sum(int(n) for n in audit["guard_counts"].values()) < 25, audit["guard_counts"]
+
+
+def test_s01_stream_slots_are_released(tmp_path):
+    """上限まで開くと次は 503、一本閉じれば枠が戻る（heartbeat と GET /gradio_api/mcp/）。
+
+    heartbeat は起動時に作った内部クライアントの1本も数に入るので、外から開けるのは上限3のうち2本。
+    """
+    with Server(tmp_path / "audit.json", env_extra={"MEKIKI_TEST_STREAMS": "3"}) as srv:
+        for path, room in (("/gradio_api/heartbeat/outsider", 2), ("/gradio_api/mcp/", 3)):
+            held = [_hold_stream(srv.port, path) for _ in range(room)]
+            assert [code for _s, code in held] == [200] * room, (path, held)
+            assert srv.request("GET", path, headers={"Accept": "text/event-stream"})[0] == 503, path
+            held[0][0].close()
+            deadline = time.monotonic() + 5
+            while True:
+                again, code = _hold_stream(srv.port, path)
+                again.close()
+                if code == 200 or time.monotonic() > deadline:
+                    break
+                time.sleep(0.2)
+            assert code == 200, path
+            for sock, _code in held[1:]:
+                sock.close()
+            time.sleep(0.5)
+        audit = srv.stop()
+    assert audit["streams"]["peak"]["mcp_get"] == 3 and audit["streams"]["peak"]["heartbeat"] == 3
+    assert audit["streams"]["internal_peak"]["heartbeat"] == 1
+    assert audit["streams"]["rejected"]["mcp_get"] >= 1 and audit["streams"]["rejected"]["heartbeat"] >= 1
+
+
+def test_s01_one_internal_client(tmp_path):
+    """起動直後に resources/read・prompts/get が同時に80本来ても、すべて通り、内部クライアントは一つだけ。
+
+    上流は最初の呼び出しのときに鍵なしで作るため、同時に来ると複数でき（16本同時で2〜16個）、
+    同時40本を超えると作成の自己要求が thread pool の空きを待って失敗した（検算）。起動時に作っておく。
+    """
+    with Server(tmp_path / "audit.json") as srv:
+        results = []
+
+        async def first_calls():
+            async def one(i):
+                async with MC.streamablehttp_client(srv.mcp_url) as (r, w, _):
+                    async with MC.ClientSession(r, w) as s:
+                        await s.initialize()
+                        if i % 4 == 3:
+                            got = await s.get_prompt("four_modes")
+                            results.append(got.messages[0].content.text == PR.FOUR_MODES.text)
+                        else:
+                            got = await s.read_resource("mekiki://v3.5.0/llms.txt")
+                            results.append(bool(got.contents and got.contents[0].text))
+            with anyio.fail_after(90):
+                async with anyio.create_task_group() as tg:
+                    for i in range(80):
+                        tg.start_soon(one, i)
+        anyio.run(first_calls)
+        time.sleep(1)
+        audit = srv.stop()
+    assert results.count(True) == 80, results.count(True)
+    streams = audit["streams"]
+    assert streams["peak"]["heartbeat"] == 1 and streams["internal_peak"]["heartbeat"] == 1, streams
+    assert streams["rejected"] == {"heartbeat": 0, "queue_data": 0, "mcp_get": 0}
 
 
 def test_s01_uncollected_results_are_dropped(tmp_path):

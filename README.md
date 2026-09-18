@@ -112,7 +112,7 @@ Mekiki Framework の論文 T1〜T5 を、**固定した版から・出典つき�
 
 ### 規則の版
 
-`SCHEMA-1.0.0`・`JSON-1.0.0`・`NORM-1.1.0`・`SEARCH-1.1.0`・`CAND-1.0.0`・`NEAR-1.0.0`・`GUIDE-1.0.0`・`LIMITS-1.1.0`・
+`SCHEMA-1.0.0`・`JSON-1.0.0`・`NORM-1.1.0`・`SEARCH-1.1.0`・`CAND-1.0.0`・`NEAR-1.0.0`・`GUIDE-1.0.0`・`LIMITS-2.0.0`・
 `LINES-1.0.0`・`LANG-1.0.0`・`SECTION-1.0.0`・`T4MAP-1.0.0`・`BUNDLE-1.0.0`・`TERMS-0.1.1`（30項目）・
 `PATTERNS-0.2.1`（50件）＋`PATTERNS-MATCH-1.1.0`・`PROMPTS-0.1.0`（6件）。本文は [docs/rules/](docs/rules/)。
 
@@ -207,10 +207,11 @@ UI の Custom Connectors はリモートの URL を Anthropic 側から取りに
 | `/gradio_api/reset`・`/cancel` | 403 |
 | `/gradio_api/login`・`/logout` | 403 |
 | `/gradio_api/deep_link`・`/process_recording` | 403 |
+| `/gradio_api/mcp/sse`・`/gradio_api/mcp/messages/`（上流が MCP 本体と同じ下に置く旧 SSE の予備経路。閉じても Streamable HTTP の三機能・SDK 検収・`mcp-remote --transport http-only` が動くことを実測して閉じた）と、上流の Streamable HTTP の別名 `/gradio_api/mcp/http`（末尾 `/` 付きも。許可を前方一致から完全一致に改めたので一緒に閉じた） | 404 |
 | 上の一覧にも下の許可にも無い経路（`/config`・`/gradio_api/call/*`・`/queue/status`・`/openapi.json`・`/assets/*`・`/static/*`・`/theme.css`・`/manifest.json` など） | 404 |
 
-通しているのは次の経路だけ（どれも実測で要ると分かったもの。`/config` は要らないことを確かめて塞いだ）。
-一覧は `app.py` の `ALLOWED_EXACT`・`ALLOWED_PREFIXES` と一致させてあり、試験が固定している。
+通しているのは次の経路だけ（`/gradio_api/mcp/schema` を除き、どれも実測で要ると分かったもの。`/config` は要らないことを確かめて塞いだ）。
+一覧は `app.py` の `ALLOWED_EXACT`・`ALLOWED_PREFIXES` と一致させてあり、試験が固定している（2026-09-19 時点で次の9経路と heartbeat の前方一致）。
 
 | 経路 | 通す理由 |
 |---|---|
@@ -220,7 +221,21 @@ UI の Custom Connectors はリモートの URL を Anthropic 側から取りに
 | `/gradio_api/queue/join` | 同じく自己呼び出しの実行（受付8・待機64） |
 | `/gradio_api/queue/data` | 同じく自己呼び出しの結果の受け取り |
 | `/gradio_api/heartbeat/*` | 自己呼び出しの内部クライアントが送り続ける。塞ぐと 404 を受けて毎秒約1,000回の再試行に入り、一時ポートを使い果たす（実測） |
-| `/gradio_api/mcp` で始まる経路 | MCP 本体 `/gradio_api/mcp/`（Streamable HTTP）。上流が同じ下に置く `/gradio_api/mcp/sse`・`/gradio_api/mcp/messages/`（旧 SSE の予備経路）と `/gradio_api/mcp/schema`（ツールの JSON スキーマ）も通る。`/gradio_api/mcp` は `/gradio_api/mcp/` へ 307 |
+| `/gradio_api/mcp/` | MCP 本体（Streamable HTTP）。`/gradio_api/mcp`（末尾 `/` なし）は `/gradio_api/mcp/` へ 307 |
+| `/gradio_api/mcp/schema` | ツールの JSON スキーマ（上流が MCP 本体と同じ下に置く）。三機能には要らないが、著者の指示で開けてある |
+
+つながったままになる GET の流れ（塞げないもの）は、種類ごとに同時数を絞る。超えた分は通信層で 503。
+
+| 種類 | 同時数 | 実測（2026-09-19） |
+|---|---|---|
+| `/gradio_api/heartbeat/*` | 8 | 内部クライアントが1本（resources/read 同時80本でも同じ） |
+| `/gradio_api/queue/data` | 8 | 内部クライアントが最大1本 |
+| `GET /gradio_api/mcp/`（Streamable HTTP の待ち受け） | 32 | mcp SDK（Python）は0本。`mcp-remote@0.14.2` は1クライアントあたり最大4本（落ち着くと2本）。断られても呼び出しは続けられる（上限0でも40回の呼び出しがすべて通った） |
+
+内部クライアント（`resources/read`・`prompts/get` の自己呼び出し）の分も数えるが、断らない（heartbeat は 503 を受けると
+毎秒約1,000回の再試行に入るため。実測）。内部かどうかは要求が名乗るセッションで見分ける。上流は内部クライアントを
+最初の呼び出しのときに鍵なしで作り、起動直後に同時に来ると複数できる（16本同時で2〜16個）うえ、同時40本を超えると
+作成が失敗し続けるので、起動の直後に一つだけ作っておく（`app.py` の `warm_internal_client`。起動直後の同時80本がすべて通る）。
 
 ### 接続時に知っておくこと
 
@@ -229,7 +244,7 @@ UI の Custom Connectors はリモートの URL を Anthropic 側から取りに
 - `http://127.0.0.1:7860/` をブラウザで開くと Gradio 標準のフロント HTML が返る（UI は無く、静的資産は遮断してあるので画面は組み上がらない）。
 - Claude Code の Code タブでは、**prompts の一覧は一度サーバに触れてから現れる**（最初のツール呼び出しの前は空に見える）。
 - 原文の強調記号（`**…**`・`*…*`・`_…_`）を外して引用しても、NORM-1.1.0 からは `normalized` で一致する（それより前の版では `quote_not_found` になっていた。検収で観察）。
-- 旧 SSE の経路 `/gradio_api/mcp/sse` は予備。通常は Streamable HTTP を使う。
+- 旧 SSE の経路（`/gradio_api/mcp/sse`・`/gradio_api/mcp/messages/`）と別名 `/gradio_api/mcp/http` は閉じてある。接続先は `/gradio_api/mcp/`（Streamable HTTP）だけで、`mcp-remote` は `--transport http-only` で使う。
 - ChatGPT の開発者モードからの接続は、公開（Spaces）の段階で確かめる。ローカルの loopback には外から届かない。
 - 接続先ごとの確認の記録は [docs/acceptance/](docs/acceptance/) に置く。
 

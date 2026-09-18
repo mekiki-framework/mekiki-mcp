@@ -17,8 +17,11 @@
 
 ## 試験の中身
 
-- **E01（スモーク・五問）**：`data/tests/reading_cases.json` の R01・R08・R13・R14・R15 を、**ja と en の両方**、
-  ガイド条件は「なし」と `read_with_guards` の**二条件**で行う。`AI_READING_TESTS` の resource は読ませない
+- **E01（スモーク・五問）**：`data/tests/reading_cases.json` の R01・R08・R13・R14・R15 を使う。
+  **配置段階一＝12本**（設問の日本語版 `question_ja` で五問 × ガイド条件「なし」と `read_with_guards` の二条件＝10本、
+  英語版 `question_en` で二問〔R01・R14〕を `read_with_guards_en` で＝2本。2026-09-18 実施・全本合格）。
+  **公開前に残り8本（英語版の「なし」5本と、英語版のガイド条件で R08・R13・R15 の3本）を足して20本にする。**
+  `AI_READING_TESTS` の resource は読ませない
   （読んだ場合は記録する）。判定は SPEC §7 の文言に限り、コーパス基準との照合は記録だけにとどめる。
   - R01：`claim_ids` は T5-A1・T5-A3・T5-N1／追加根拠なし
   - R08：`claim_ids` は T5-A4／追加根拠は T5 §1 の27行

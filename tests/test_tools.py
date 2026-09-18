@@ -401,7 +401,7 @@ def test_t04_term_map_via_fixture(reader):
     assert env["status"] == "ok"
     assert all(r["payload"]["match_via"] == ["term_map:M90"] for r in env["results"])
     assert {r["paper_id"] for r in env["results"]} >= {"T5"}
-    assert "RULES: SEARCH-1.1.0 NORM-1.1.0 TERMS-TEST LIMITS-1.0.0 LINES-1.0.0" in env["limitations"]
+    assert "RULES: SEARCH-1.1.0 NORM-1.1.0 TERMS-TEST LIMITS-1.1.0 LINES-1.0.0" in env["limitations"]
     direct = rt(T.search_passages(tr, "dignity", k=20))
     assert all("query" in r["payload"]["match_via"] for r in direct["results"])
     multi = rt(T.search_passages(tr, "Spec. cost", paper_id="T1", k=20))
@@ -521,7 +521,7 @@ def test_t08_normalized(reader, v):
         assert r["payload"]["normalization_applied"]
         for d in r["payload"]["diffs"]:
             assert d["source"] == line[d["source_char_start"]:d["source_char_start"] + len(d["source"])]
-    assert lims(env, "NORMALIZED") and "RULES: NORM-1.1.0 LIMITS-1.0.0 LINES-1.0.0" in env["limitations"]
+    assert lims(env, "NORMALIZED") and "RULES: NORM-1.1.0 LIMITS-1.1.0 LINES-1.0.0" in env["limitations"]
 
 
 def test_t08_rule_details():

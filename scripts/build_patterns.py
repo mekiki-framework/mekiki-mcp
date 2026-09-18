@@ -22,6 +22,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -233,6 +234,12 @@ def main() -> None:
         write_patterns(resolved)
         write_doc(resolved, failed, held)
         print("\nwrote mekiki_reader/patterns.py, docs/rules/PATTERNS.md")
+        check = subprocess.run(  # noqa: S603 - 施工用の道具。生成の直後に文書整合まで通す（Codex② 6）
+            [sys.executable, "-m", "pytest", "-q", "tests/test_tools.py::test_rule_documents_match_the_tables"],
+            cwd=REPO_ROOT, capture_output=True, text=True)
+        print(check.stdout.strip().splitlines()[-1] if check.stdout.strip() else "(no output)")
+        if check.returncode != 0:
+            raise SystemExit("生成のあとの文書整合試験が通らない（規則文書を直すこと）")
 
 
 def forms_of(row) -> list[str]:

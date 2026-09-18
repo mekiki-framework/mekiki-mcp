@@ -20,6 +20,7 @@ import threading
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+DATA_DIR = str(REPO_ROOT / "data")
 sys.path.insert(0, str(REPO_ROOT))
 
 AUDIT_LOG = Path(os.environ["MEKIKI_AUDIT_LOG"])
@@ -37,7 +38,7 @@ MUTATE_EVENTS = ("os.rename", "os.remove", "os.unlink", "os.mkdir", "os.rmdir", 
 BIND_EVENTS = ("socket.bind",)
 OPEN_MAX = 20000  # 記録の上限（起動前の import も全部入るため）
 
-STATE = {"phase": "import", "port": None, "control": False}
+STATE = {"phase": "import", "port": None, "control": False, "bound": []}
 NET: list[list] = []          # 通信の記録（全部・[event, target, phase]）
 OUTBOUND: list[list] = []     # 自己接続以外（例外にした分。陽性対照の分は含めない）
 CONTROL_NET: list[list] = []  # 陽性対照で自分から試みた分
@@ -51,7 +52,7 @@ CONTROL: dict[str, str] = {}  # 陽性対照の結果
 
 def _target(event: str, args) -> str:
     """宛先を host:port の形にする。Unix ソケットは unix:<パス>。"""
-    if event in ("socket.connect", "socket.sendto"):
+    if event in ("socket.connect", "socket.sendto", "socket.sendmsg"):
         address = args[1] if len(args) > 1 else None
         if isinstance(address, tuple) and address:
             host = str(address[0])
@@ -75,18 +76,43 @@ def _target(event: str, args) -> str:
     return str(args[0]) if args else ""
 
 
+def _abspath(value) -> str:
+    """相対パスを絶対パスに直す（cwd 基準）。パスでないものはそのまま短く返す。"""
+    if isinstance(value, (str, bytes, os.PathLike)):
+        try:
+            name = value.decode("utf-8", "replace") if isinstance(value, bytes) else os.fspath(value)
+        except TypeError:
+            return str(value)[:120]
+        return os.path.abspath(name) if name else name
+    return "" if value is None else str(value)[:120]
+
+
+def _paths_of(args) -> list[str]:
+    """書き換えの元・先と dir_fd を記録する（Codex② 4）。dir_fd つきは解決先を添える。"""
+    paths = [_abspath(a) for a in args[:2]]
+    fds = [a for a in args[2:] if isinstance(a, int)]
+    for fd in fds:
+        try:
+            base = os.readlink(f"/dev/fd/{fd}")
+        except OSError:
+            base = f"dir_fd={fd}"
+        paths.append(base)
+    while len(paths) < 2:
+        paths.append("")
+    return paths
+
+
 def _is_self(event: str, target: str) -> bool:
-    """自分自身への接続だけを免除する（loopback かつ自分の待ち受けポート）。"""
+    """自分自身への接続だけを免除する（実際に bind した宛先と自分のポートに限る。Codex② 4）。"""
     if target.startswith("unix:"):
         return False  # Unix ソケットは免除しない
     host, _, port = target.rpartition(":")
-    if host not in LOOPBACK_HOSTS:
-        return False
+    bound = {h for h, _p in STATE["bound"]} or {"127.0.0.1"}
     if event in ("socket.getaddrinfo", "socket.gethostbyname", "socket.gethostbyname_ex",
                  "socket.gethostbyaddr", "socket.getnameinfo"):
-        return host in ("127.0.0.1", "::1")  # 名前ではなく数値のときだけ免除（検算⑨）
-    if host not in ("127.0.0.1", "::1"):
-        return False  # localhost・0.0.0.0 を名乗るだけでは免除しない
+        return host in bound  # 名前ではなく、実際に bind したアドレスのときだけ免除
+    if host not in bound:
+        return False  # localhost・0.0.0.0・bind していない ::1 は免除しない
     return STATE["port"] is not None and port == str(STATE["port"])
 
 
@@ -112,14 +138,34 @@ def _audit(event, args) -> None:
         PROCESS.append([event, str(args[0])[:120] if args else "", STATE["phase"]])
         raise RuntimeError(f"child process blocked in the test launcher: {event}")
     elif event in MUTATE_EVENTS:
-        MUTATED.append([event, str(args[0])[:200] if args else "", STATE["phase"]])
+        paths = _paths_of(args)
+        MUTATED.append([event, *paths, STATE["phase"]])
+        if any(p.startswith(DATA_DIR) for p in paths if p):  # 原文は書き換えさせない（記録だけにしない）
+            raise RuntimeError(f"data/ write blocked in the test launcher: {event} {paths[:2]}")
     elif event in BIND_EVENTS:
-        BOUND.append([event, str(args[1])[:80] if len(args) > 1 else "", STATE["phase"]])
+        address = args[1] if len(args) > 1 else None
+        if isinstance(address, tuple) and address:
+            STATE["bound"].append((str(address[0]), address[1] if len(address) > 1 else ""))
+        BOUND.append([event, str(address)[:80], STATE["phase"]])
 
 
 sys.addaudithook(_audit)
 
 import app  # noqa: E402  （監査フックの後に読み込む）
+
+
+def _control(name: str, run) -> None:
+    """陽性対照を一つ実行し、結果を残す（フラグは必ず戻す）。"""
+    STATE["control"] = True
+    try:
+        run()
+        CONTROL[name] = "NOT BLOCKED"
+    except RuntimeError as exc:
+        CONTROL[name] = f"blocked: {exc}"[:140]
+    except Exception as exc:  # noqa: BLE001
+        CONTROL[name] = f"other: {type(exc).__name__}"
+    finally:
+        STATE["control"] = False
 
 
 def _positive_control() -> None:
@@ -151,10 +197,33 @@ def _positive_control() -> None:
         CONTROL["self"] = "allowed"
     except RuntimeError as exc:
         CONTROL["self"] = f"BLOCKED: {exc}"[:120]
+    except OSError:
+        # 監査は停止処理の後に取るので、待ち受けは終わっている。フックが通したこと（RuntimeError で
+        # はないこと）が確かめたい点なので、OS に断られた場合も「通した」と記録する。
+        CONTROL["self"] = "allowed"
     except Exception as exc:  # noqa: BLE001
         CONTROL["self"] = f"other: {type(exc).__name__}"
     finally:
         probe.close()
+        STATE["control"] = False  # フラグは必ず戻す（Codex② 4）
+
+    # 検出漏れの各項も対照にかける（どれも実際には何も起こさない）。
+    import subprocess
+
+    _control("child_process", lambda: subprocess.Popen([sys.executable, "-c", "pass"]))
+    _control("sendmsg", lambda: socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+             .sendmsg([b"x"], [], 0, ("203.0.113.2", 9)))
+    _control("ipv6_other_port", lambda: socket.create_connection(("::1", 9), timeout=0.2))
+    control_dir = Path(os.environ.get("TMPDIR", "/tmp")) / "mekiki-control"
+    control_dir.mkdir(parents=True, exist_ok=True)
+    src = control_dir / "src.txt"
+    src.write_text("x", encoding="utf-8")
+    target = REPO_ROOT / "data" / "control-should-not-exist"
+    _control("rename_into_data", lambda: os.rename(src, target))
+    CONTROL["rename_target_recorded"] = str(any(
+        DATA_DIR in " ".join(str(x) for x in row[1:3]) for row in MUTATED))
+    CONTROL["rename_did_nothing"] = str(not target.exists())  # 一歩も進んでいないこと
+    src.unlink(missing_ok=True)
 
 
 def _write_log() -> None:
@@ -163,6 +232,7 @@ def _write_log() -> None:
         "process": PROCESS, "mutated": MUTATED, "bound": BOUND,
         "control": CONTROL, "control_net": CONTROL_NET,
         "guard": [list(x) for x in app.GUARD_LOG], "guard_counts": app.GUARD_COUNTS,
+        "queue_state": dict(app._QUEUE_STATE), "sweep": {k: v for k, v in app._SWEEP.items() if k != "task"},
         "removed_env": app.REMOVED_GRADIO_ENV,
         "server_name": app.SERVER_NAME,
         "port": STATE["port"],
@@ -193,6 +263,17 @@ def main() -> int:
         app.MAX_CONCURRENCY = int(limit)
         app.BUSY_MESSAGE = f"busy: this reader accepts at most {limit} concurrent calls"
         app._SLOTS = threading.BoundedSemaphore(int(limit))
+    waiting = os.environ.get("MEKIKI_TEST_QUEUE_WAITING")  # 待機の上限（Codex② 1 の試験）
+    if waiting is not None:
+        app.QUEUE_WAITING_MAX = int(waiting)
+    inflight = os.environ.get("MEKIKI_TEST_QUEUE_INFLIGHT")  # 受付の数（同上）
+    if inflight is not None:
+        app.QUEUE_INFLIGHT_MAX = int(inflight)
+    sweep = os.environ.get("MEKIKI_TEST_SWEEP")  # 掃除の間隔と保持（同上）
+    if sweep:
+        app.RESULT_SWEEP_SECONDS = float(sweep)
+        app.RESULT_TTL_SECONDS = float(sweep)
+        app.RESULT_MESSAGES_MAX = 2
     port = app.read_port(os.environ.get(app.PORT_ENV))
     STATE["port"] = port
     app.READER = app.T.Reader(app.C.load_corpus())
@@ -217,9 +298,9 @@ def main() -> int:
     except KeyboardInterrupt:
         pass
     STATE["phase"] = "stopping"
+    DEMO.close()          # 停止処理も記録に入れる（Codex② 4）
     _positive_control()
     _write_log()
-    DEMO.close()
     return 0
 
 

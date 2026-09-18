@@ -8,8 +8,8 @@
 from __future__ import annotations
 
 import re
-from collections import OrderedDict
 from dataclasses import dataclass
+from functools import lru_cache
 from typing import Any, Iterable, Mapping, Sequence
 
 from . import corpus as C
@@ -552,22 +552,18 @@ def _parse_query(reader: Reader, query: str, terms: TM.TermIndex, limit: int | N
     return frags, dropped
 
 
-WORD_RE_CACHE_MAX = 512  # 語形ごとの正規表現の保持数（容量つき LRU。Codex① P2-5）
-_WORD_RE_CACHE: "OrderedDict[str, re.Pattern]" = OrderedDict()
+WORD_RE_CACHE_MAX = 512  # 語形ごとの正規表現の保持数（Codex① P2-5・Codex② 2）
 
 
+@lru_cache(maxsize=WORD_RE_CACHE_MAX)
 def _word_pattern(form: str) -> re.Pattern:
-    """ASCII の語形に対する単語境界の正規表現を、容量つき LRU で使い回す。"""
-    pat = _WORD_RE_CACHE.get(form)
-    if pat is not None:
-        _WORD_RE_CACHE.move_to_end(form)
-        return pat
+    """ASCII の語形に対する単語境界の正規表現を、容量つき LRU で使い回す。
+
+    自前の dict と move_to_end では、取得と並べ替えの間に別のスレッドが追い出すと KeyError になった
+    （Codex② 2）。`lru_cache` は取得・並べ替え・追加・追い出しが一つのロックの中で終わる。
+    """
     w = re.escape(_ASCII_WORD_CHARS)
-    pat = re.compile(f"(?<![{w}]){re.escape(form)}(?![{w}])")
-    _WORD_RE_CACHE[form] = pat
-    if len(_WORD_RE_CACHE) > WORD_RE_CACHE_MAX:
-        _WORD_RE_CACHE.popitem(last=False)
-    return pat
+    return re.compile(f"(?<![{w}]){re.escape(form)}(?![{w}])")
 
 
 def _occurrences(hay: str, form: str) -> list[int]:

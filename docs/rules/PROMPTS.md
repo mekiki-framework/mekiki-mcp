@@ -3,7 +3,7 @@
 | 項目 | 値 |
 |---|---|
 | 規則ID・版 | PROMPTS-0.1.0（6件：日本語3・英語3） |
-| 状態 | 確定（Q39。著者承認 2026-09-18・日本語のみ）。`prompts.py` の `PROMPTS_STATUS="approved"`・`APPROVED_ON="2026-09-18"` |
+| 状態 | 確定（Q39。著者承認 2026-09-18。日本語3件に加え、同日に英語3件を `_en` の別名で承認）。`prompts.py` の `PROMPTS_STATUS="approved"`・`APPROVED_ON="2026-09-18"` |
 | 実装 | `mekiki_reader/prompts.py`（MCP の prompts と get_reading_guide の templates が同じ定数を返す） |
 
 - 雛形は read_with_guards・four_modes・answer_format と、その英語版 `read_with_guards_en`・`four_modes_en`・`answer_format_en` の六つ（SPEC v2.2 §6・案B）。文面の全体は `prompts.py` にある。

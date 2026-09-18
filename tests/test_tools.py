@@ -7,7 +7,9 @@ import os
 import re
 import subprocess
 import sys
+import threading
 import unicodedata
+from collections import OrderedDict
 from pathlib import Path
 
 import pytest
@@ -65,6 +67,46 @@ def test_approved_tables_and_empty_start(reader):
     assert [f.anchor for f in reader.frames] == ["translation-guide", "edition-integrity"]
 
 
+def test_word_pattern_cache_is_safe_under_interleaving():
+    """取得と並べ替えの間に追い出しが割り込んでも壊れないこと（Codex② 2 の退行試験）。"""
+    # 旧実装（dict＋move_to_end）の割込み順をそのまま再現すると KeyError になる。
+    old_cache: "OrderedDict[str, object]" = OrderedDict()
+    old_cache["key0"] = object()
+
+    def old_lookup(form, interrupt):
+        hit = old_cache.get(form)          # ① 取得
+        if hit is not None:
+            interrupt()                    # ② ここで別スレッドが追い出す
+            old_cache.move_to_end(form)    # ③ 並べ替え
+            return hit
+        return None
+
+    with pytest.raises(KeyError):
+        old_lookup("key0", lambda: old_cache.pop("key0"))
+
+    # 今の実装は、同じ割込みを並行でかけても例外を出さず、上限も守る。
+    T._word_pattern.cache_clear()
+    forms = [f"w{i}" for i in range(T.WORD_RE_CACHE_MAX * 2)]
+    errors: list[Exception] = []
+
+    def hammer(seq):
+        try:
+            for _ in range(3):
+                for form in seq:
+                    assert T._word_pattern(form).pattern
+        except Exception as exc:  # noqa: BLE001 - 失敗を集める
+            errors.append(exc)
+
+    threads = [threading.Thread(target=hammer, args=(forms[i::8],)) for i in range(8)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(timeout=60)
+    assert errors == []
+    info = T._word_pattern.cache_info()
+    assert info.maxsize == T.WORD_RE_CACHE_MAX and info.currsize <= T.WORD_RE_CACHE_MAX
+
+
 def test_rule_documents_match_the_tables():
     """規則文書に書いた SHA-256 と件数が、実装と一致すること（文書だけ古くならないように）。"""
     docs = REPO_ROOT / "docs" / "rules"
@@ -82,7 +124,10 @@ def test_rule_documents_match_the_tables():
     index = TM.build_term_index(TM.TERMS)
     assert f"語形{len(index.forms)}個" in terms_doc and len(forms) >= len(index.forms)
     readme = (docs / "README.md").read_text(encoding="utf-8")
-    assert PAT.PATTERNS_TABLE_SHA256[:8] in readme and TM.TERMS_TABLE_SHA256[:8] in readme
+    # 一覧にはハッシュを写さない（写すと生成のたびに片方が古くなる。Codex② 6）。
+    assert not re.search(r"\b[0-9a-f]{8,}…?\b", readme), readme[:200]
+    for name in ("TERMS.md", "PATTERNS.md", "NORM.md"):
+        assert f"[{name}]({name})" in readme
     assert f"{len(PR.TEMPLATES)}件" in (docs / "PROMPTS.md").read_text(encoding="utf-8")
 
 

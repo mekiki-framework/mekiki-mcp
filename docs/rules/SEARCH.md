@@ -4,13 +4,13 @@
 |---|---|
 | 規則ID・版 | SEARCH-1.0.0 |
 | 状態 | 確定（回答票 Q50〜Q61、2026-09-18） |
-| 実装 | 施工段階2で実装（`mekiki_reader/tools.py`・`mekiki_reader/normalize.py` の `fold_search`。用語対応表は `mekiki_reader/terms.py`（TERMS-0.1.1・30項目・語形78）。規則は docs/rules/TERMS.md） |
+| 実装 | 施工段階2で実装（`mekiki_reader/tools.py`・`mekiki_reader/normalize.py` の `fold_search`。用語対応表は `mekiki_reader/terms.py`（TERMS-0.1.1・30項目・語形78。初版は空だったが、2026-09-18 に著者が承認した表を載せた）。規則は docs/rules/TERMS.md） |
 | 対象 | `search_passages`（SPEC §5.3）。verify_quote の近接候補と get_claim_record の query は別規則 CAND（docs/rules/CAND.md。Q92） |
 | 出典 | DECISIONS.md 付録B-2（段階0）から分離 |
 
 ## 用語対応表（TERMS）の範囲
 
-- 著者が承認した項目だけを載せる。初版は空（Q52）。
+- 著者が承認した項目だけを載せる（Q52）。初版は空で、2026-09-18 に TERMS-0.1.1（30項目）を載せた。
 - 範囲は、コーパスが自ら示す対訳と表記揺れに限る。概念レベルの対応は入れない（SPEC §11。Q53）。
 - 各結果に一致の経路 `match_via`（`query` か `term_map:<id>`）を必ず返す（Q53）。
 

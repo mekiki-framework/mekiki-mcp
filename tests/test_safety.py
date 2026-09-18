@@ -219,6 +219,37 @@ def test_s01_host_variants(server):
         assert status in want, (request.split(b"\r\n")[1], status, head[:80])
 
 
+def test_s01_no_cors_for_origin_requests(server):
+    """Origin 付きの要求に CORS の許可を返さない（ブラウザから応答を読ませない）。"""
+    origins = ("http://localhost:3000", "http://127.0.0.1:1234", "https://evil.example", "null",
+               f"http://localhost:{server.port}")
+    for origin in origins:
+        for method, path in (("GET", "/config"), ("GET", "/gradio_api/info"), ("POST", "/gradio_api/mcp/")):
+            body = b'{"jsonrpc":"2.0","id":1,"method":"tools/list"}' if method == "POST" else None
+            headers = {"Origin": origin}
+            if body:
+                headers.update(MCP_HEADERS)
+            status, text = server.raw(_request(method, path, server.port, headers, body), timeout=30)
+            assert status in (200, 400, 405), (origin, path, status)
+            assert "access-control" not in text.lower(), (origin, path, text[:120])
+    # 事前確認（preflight）も許可を返さない。
+    head = _request("OPTIONS", "/gradio_api/mcp/", server.port,
+                    {"Origin": "http://localhost:3000", "Access-Control-Request-Method": "POST"})
+    status, text = server.raw(head)
+    assert "access-control" not in text.lower(), text[:200]
+    # Origin が無い要求は普通に通る（MCP クライアントは Origin を送らない）。
+    assert server.request("GET", "/config")[0] == 200
+
+
+def _request(method: str, path: str, port: int, headers: dict, body: bytes | None = None) -> bytes:
+    lines = [f"{method} {path} HTTP/1.1", f"Host: 127.0.0.1:{port}", "Connection: close"]
+    lines += [f"{k}: {v}" for k, v in headers.items()]
+    if body is not None:
+        lines.append(f"Content-Length: {len(body)}")
+    raw = ("\r\n".join(lines) + "\r\n\r\n").encode("latin-1")
+    return raw + (body or b"")
+
+
 def test_s01_framing_is_checked(server):
     """Content-Length と Transfer-Encoding の形（Codex① P1-2）。"""
     body = b'{"jsonrpc":"2.0","id":1,"method":"tools/list"}'

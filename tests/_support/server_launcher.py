@@ -66,6 +66,12 @@ def _target(event: str, args) -> str:
         name = host.decode("utf-8", "replace") if isinstance(host, bytes) else str(host)
         port = args[1] if len(args) > 1 else ""
         return f"{name}:{port}"
+    if event == "http.client.connect":
+        # args[0] は HTTPConnection。宛先は host/port 属性から取る（object の repr にしない）。
+        conn = args[0] if args else None
+        return f"{getattr(conn, 'host', '')}:{getattr(conn, 'port', '')}"
+    if event == "urllib.Request":
+        return str(args[0])[:120] if args else ""
     return str(args[0]) if args else ""
 
 

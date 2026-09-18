@@ -35,8 +35,8 @@ CANDIDATES = REPO_ROOT / "docs/candidates/patterns_candidates_v0.md"
 TM_PATH = "THEORY_MAP.md"
 FR_PATH = "FOR_AI_READERS.md"
 APPROVED_ON = "2026-09-18"
-MATCH_RULE = "PATTERNS-MATCH-1.0.0"  # patterns.MATCH_RULE と同じ値（正準形に入る）
-PATTERNS_VERSION = "PATTERNS-0.2.0"
+MATCH_RULE = "PATTERNS-MATCH-1.1.0"  # patterns.MATCH_RULE と同じ値（正準形に入る）
+PATTERNS_VERSION = "PATTERNS-0.2.1"
 
 
 class Unresolved(Exception):
@@ -320,16 +320,16 @@ def write_doc(resolved, failed, held) -> None:
         "",
         "| 項目 | 値 |",
         "|---|---|",
-        f"| 規則ID・版 | 一覧 {PATTERNS_VERSION}（{len(resolved)}件）・照合 PATTERNS-MATCH-1.0.0 |",
+        f"| 規則ID・版 | 一覧 {PATTERNS_VERSION}（{len(resolved)}件）・照合 {MATCH_RULE} |",
         f"| 表の SHA-256 | `{table_hash()}`（`patterns.table_sha256()` が import 時に照合。Q49） |",
         f"| 状態 | 確定（著者承認 {APPROVED_ON}。起草＝検査室・SPEC §10） |",
         "| 実装 | `mekiki_reader/patterns.py`・`mekiki_reader/tools.py`（`_check_compressions`） |",
         "| 候補・解決 | `docs/candidates/patterns_candidates_v0.md`・`scripts/build_patterns.py`（PATTERNS-SRC-1.0.0） |",
         "",
-        "## 照合（PATTERNS-MATCH-1.0.0）",
+        f"## 照合（{MATCH_RULE}）",
         "",
-        "1. 入力と語形を SEARCH-1.0.0 の畳み込み（NFC-IN〔入力のみ〕・WS-ZW・WS-COLLAPSE・WIDTH・QUOTE-CURLY・ASCII 小文字化）にかける。",
-        "2. ASCII だけの語形は単語境界（前後が `[a-z0-9'-]` 以外）で、それ以外は部分文字列で、重ならない出現をすべて拾う。",
+        "1. 入力と語形を SEARCH の畳み込み（1.0.0 から不変・現行 SEARCH-1.1.0）（NFC-IN〔入力のみ〕・WS-ZW・WS-COLLAPSE・WIDTH・QUOTE-CURLY・ASCII 小文字化）にかける。",
+        "2. ASCII だけの語形は単語境界（前後が `[a-z0-9']` 以外。**ハイフンは境界**で SEARCH-1.1.0 と同じ。1.0.0 では `[a-z0-9'-]`）で、それ以外は部分文字列で、重ならない出現をすべて拾う。",
         "3. 一致したパターンごとに、関連原文ごとの結果を一つ作る。並びは（入力中の最初の一致位置、パターン id、関連原文の順）。",
         "4. payload：pattern_id・pattern_version・matched（語形・入力中の文字位置。上限20件）・needs_context_review=true・"
         "source_excerpt（関連原文の行をそのまま。1000字を超えると切って `source_excerpt_truncated` を立てる）。判定を表す欄は持たない。",

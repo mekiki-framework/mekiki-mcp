@@ -7,7 +7,7 @@
 - [x] コーパス Git参照 `v3.5.0` → 解決したコミットSHA（`git ls-remote` 等の出力）
 - [x] 採用 Gradio 版・Python 版（検証結果と `requirements.txt` の数値）（gradio[mcp]==6.27.0・Python 3.13.15・ハッシュ固定 66 パッケージ）
 - [x] 正規化規則の版（`normalize.py`・対応表）（NORM-1.1.0・対応表 sha256 7fffde88…）
-- [x] パターン一覧の版（`patterns.py`）と著者承認日（PATTERNS-0.2.0・50件・2026-09-18。0.1.0＝47件は撤回、0.1.1＝49件）
+- [x] パターン一覧の版（`patterns.py`）と著者承認日（PATTERNS-0.2.1・50件・照合 PATTERNS-MATCH-1.1.0・2026-09-18。0.1.0＝47件は撤回）
 - [x] `translations/T4.en.manifest.json` の扱い（v3.5.0 に存在するか／Reader側で作るか）と理由
 - [x] 接続URL（実際の起動表示）：`http://127.0.0.1:7860/gradio_api/mcp/`（接続先ごとの検収は施工段階4）
 - [ ] 費用と休止復帰時間の実測値（段階二）
@@ -204,6 +204,8 @@
 | 2026-09-18 | 配置段階一 | SEARCH-1.1.0（著者承認） | 検索の語境界を `[a-z0-9'-]` から `[a-z0-9']` に（**ハイフンは語境界**）。`ablation` は `domain-ablation` の行にも当たり（T1 で 10件→20件）、`domain-ablation` そのものも従来どおり12行に当たる。畳み込みと区切り文字は 1.0.0 から不変。**check_compressions の照合（PATTERNS-MATCH-1.0.0）は巻き込まず**、ハイフンを語の一部とする境界のまま（施工判断。改版の承認範囲が SEARCH だけのため） | 観察 (d) | `test_t04_hyphen_is_a_word_boundary`・`test_t04_word_boundary`（1.1.0 の境界に更新） | 確定 |
 | 2026-09-18 | 配置段階一 | PATTERNS-0.2.0（著者承認） | P31 に「代替できない」「があると証明」「AI cannot replace」「irreplaceable」、P39 に「代替できない能力」、新規 **P54**「障害を残す」「制約を残す」「retain obstacles」（関連原文 `papers/T5.md:193`・t5-4-6 の脚注 1154–1352字）。50件・語形321・関連原文100。表の SHA-256 は `9800121f059f936e37f21fb04d70a167e8e292328a7ee2319334936d7f125ab3`。「〜があると証明」は、先頭の「〜」を任意の語とみなして**「があると証明」を語形とした**（施工判断）。**残る取りこぼし**：R08 の英語の問い（`preserving obstacles`）は承認された語形（`retain obstacles`）に当たらない（要判断）。check_compressions の最悪ケースは 100 結果・184 KiB に（LIMITS に再計測） | 観察 (b) | `test_t11_acceptance_sentences`（R01 ja → P31・P39、R01 en → P31、R08 ja → P54 と脚注の抜粋、R08 en は当たらないことを記録） | 確定（R08 英語は要判断） |
 | 2026-09-18 | 配置段階一 | 改版後の試験 | `pytest -q` → **402 passed**（398＋4：記号なし引用・記号だけの入力・ハイフン境界・検収の文） | — | pytest の出力 | 確定 |
+| 2026-09-18 | 配置段階一 | PATTERNS-0.2.1（著者承認） | P54 に「preserve obstacles」「preserving obstacles」「keep obstacles」を追加（50件・語形324・関連原文100）。表の SHA-256 は `bd18a58fb7ad6f3c7e2cf18428d354a826aecbf9acb824fac1ca9d757f8aa4bc`。**0.2.0 で残っていた R08 英語の問いの取りこぼしが解消**（`preserving obstacles` で P54） | 著者承認（0.2.0 の報告で挙げた R08 英語の取りこぼし） | `test_t11_acceptance_sentences`（R08 en → P54、preserve／keep／retain の各文） | 確定 |
+| 2026-09-18 | 配置段階一 | PATTERNS-MATCH-1.1.0（著者承認） | check_compressions の照合もハイフンを語境界に（SEARCH-1.1.0 と同じ `[a-z0-9']`）。実装は `tools._WORD_CHARS` の一つにまとめ、検索と照合で別々に持っていた境界をなくした。実測：`role-playing seat` が P34（`playing seat`）に当たる（1.0.0 では当たらなかった）。語の途中（`replaying seat`・`playing seats`）には当たらない。ハイフン付きの登録語形はすべて従来どおり当たる。`match_rule` は表の正準形に入っているので、表ハッシュも変わった | 著者承認（0.2.0 の報告で挙げた「照合は巻き込まない」の解消） | `test_t11_hyphen_is_a_word_boundary_in_matching`・`pytest -q` → 403 passed | 確定 |
 
 ## Codex①（独立検査・対象 `6b8dcaa`・2026-09-18）
 

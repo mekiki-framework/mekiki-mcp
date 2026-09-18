@@ -16,9 +16,9 @@ from typing import Iterable
 from .corpus import is_blank
 from .schema import SOURCE_KIND_BY_PATH
 
-PATTERNS_VERSION = "PATTERNS-0.2.0"
+PATTERNS_VERSION = "PATTERNS-0.2.1"
 APPROVED_ON = "2026-09-18"
-MATCH_RULE = "PATTERNS-MATCH-1.0.0"
+MATCH_RULE = "PATTERNS-MATCH-1.1.0"
 RELATED_KINDS = frozenset({"paper_md", "theory_map", "reading_guide"})
 
 _ID_RE = re.compile(r"^P[0-9A-Z-]{1,16}$")
@@ -47,7 +47,7 @@ class Pattern:
     match_rule: str = MATCH_RULE
 
 
-# 著者承認済みのパターン（PATTERNS-0.2.0・承認 2026-09-18・docs/rules/PATTERNS.md）。
+# 著者承認済みのパターン（PATTERNS-0.2.1・承認 2026-09-18・docs/rules/PATTERNS.md）。
 # 候補は docs/candidates/patterns_candidates_v0.md、関連原文の解決は scripts/build_patterns.py。
 PATTERNS: tuple[Pattern, ...] = (
     Pattern(
@@ -915,6 +915,9 @@ PATTERNS: tuple[Pattern, ...] = (
             '障害を残す',
             '制約を残す',
             'retain obstacles',
+            'preserve obstacles',
+            'preserving obstacles',
+            'keep obstacles',
         ),
         related_sources=(
             RelatedSource('papers/T5.md', 193, 193, 't5-4-6', char_start=1154, char_end=1352),
@@ -978,6 +981,6 @@ def table_sha256() -> str:
 
 
 # 表の正準 JSON の SHA-256（Q49）。表を変えたら版を上げ、この値と docs/rules/PATTERNS.md を更新する。
-PATTERNS_TABLE_SHA256 = "9800121f059f936e37f21fb04d70a167e8e292328a7ee2319334936d7f125ab3"
+PATTERNS_TABLE_SHA256 = "bd18a58fb7ad6f3c7e2cf18428d354a826aecbf9acb824fac1ca9d757f8aa4bc"
 if table_sha256() != PATTERNS_TABLE_SHA256:  # pragma: no cover - 表と定数の食い違いは import 時に止める
     raise RuntimeError(f"PATTERNS table hash mismatch: {table_sha256()}")

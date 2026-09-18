@@ -55,7 +55,8 @@ def lims(env: dict, code: str) -> list[str]:
 
 
 def test_approved_tables_and_empty_start(reader):
-    assert PAT.PATTERNS_VERSION == "PATTERNS-0.2.0" and PAT.APPROVED_ON == "2026-09-18"
+    assert PAT.PATTERNS_VERSION == "PATTERNS-0.2.1" and PAT.APPROVED_ON == "2026-09-18"
+    assert PAT.MATCH_RULE == "PATTERNS-MATCH-1.1.0"
     assert PAT.table_sha256() == PAT.PATTERNS_TABLE_SHA256 and TM.table_sha256() == TM.TERMS_TABLE_SHA256
     assert TM.TERMS_VERSION == "TERMS-0.1.1" and TM.APPROVED_ON == "2026-09-18"
     assert len(reader.patterns) == len(PAT.PATTERNS) and len(reader.terms.entries) == len(TM.TERMS)
@@ -377,8 +378,8 @@ def test_t04_hyphen_is_a_word_boundary(reader):
     for r in whole["results"]:  # 一致位置はハイフン付きの語句全体を指す
         line = lines[r["locator"]["line_start"] - 1]
         assert line[r["locator"]["char_start"]:r["locator"]["char_end"]].lower() == "domain-ablation"
-    # 照合（PATTERNS-MATCH-1.0.0）はハイフンを語の一部とする境界のまま（SEARCH の改版に巻き込まない）。
-    assert T._occurrences("role-play", "play") == [] and T._occurrences("role-play", "play", T._SEARCH_WORD_CHARS) == [5]
+    # 語境界は検索と照合（PATTERNS-MATCH-1.1.0）で共通：ハイフンは境界。
+    assert T._occurrences("role-play", "play") == [5] and T._occurrences("role-playing", "play") == []
 
 
 def test_t04_input_limits(reader):
@@ -745,10 +746,10 @@ def test_t11_zero_patterns(reader):
 
 
 def test_t11_approved_patterns(reader):
-    """実表（PATTERNS-0.2.0）で該当が出て、関連原文の locator と抜粋が一致する。"""
+    """実表（PATTERNS-0.2.1）で該当が出て、関連原文の locator と抜粋が一致する。"""
     env = rt(T.check_compressions(reader, "AIは遊べないし、遊びは人類最後の砦だ。"))
     assert env["status"] == "ok" and env["results"]
-    assert f"PATTERNS: 承認済みパターン {len(PAT.PATTERNS)} 件（PATTERNS-0.2.0）" in " ".join(env["limitations"])
+    assert f"PATTERNS: 承認済みパターン {len(PAT.PATTERNS)} 件（PATTERNS-0.2.1）" in " ".join(env["limitations"])
     for r in env["results"]:
         pid = r["payload"]["pattern_id"]
         assert pid in {p.id for p in PAT.PATTERNS}
@@ -790,7 +791,7 @@ def test_t11_adversarial_forms(reader):
 
 
 def test_t11_acceptance_sentences(reader):
-    """検収 E01 で取りこぼした R01・R08 の問いの文が、PATTERNS-0.2.0 で当たる。"""
+    """検収 E01 で取りこぼした R01・R08 の問いの文が、PATTERNS-0.2.1 で当たる。"""
     raw = json.loads(_CORPUS.raw["tests/reading_cases.json"])
     q = {c["id"]: c for c in raw["cases"]}
 
@@ -812,12 +813,34 @@ def test_t11_acceptance_sentences(reader):
     assert hit["payload"]["source_excerpt"] == line[loc["char_start"]:loc["char_end"]]
     assert hit["payload"]["source_excerpt"].startswith("A boundary condition on application:")
     assert hit["payload"]["needs_context_review"] is True
-    # 英語の R08（preserving obstacles）は 0.2.0 の語形に無い。取りこぼしとして記録に残す（DECISIONS）。
+    # 英語の R08（preserving obstacles）は 0.2.1 で P54 に当たるようにした。
     r08_en = rt(T.check_compressions(reader, q["R08"]["question_en"]))
-    assert "P54" not in ids(r08_en)
+    assert ids(r08_en) == {"P54"}
+    assert {m["form"] for r in r08_en["results"] for m in r["payload"]["matched"]} == {"preserving obstacles"}
+    for sentence in ("Should we preserve obstacles in surgery?", "Keep obstacles for the sake of participation.",
+                     "They retain obstacles on purpose."):
+        assert "P54" in ids(rt(T.check_compressions(reader, sentence))), sentence
     # 語形は文の形を問わず拾う（否定の文でも当たる。判定はしない）。
     denial = rt(T.check_compressions(reader, "T5 は医療の仕事で障害を残すべきだとは言っていない。"))
     assert "P54" in ids(denial)
+
+
+def test_t11_hyphen_is_a_word_boundary_in_matching(reader):
+    """PATTERNS-MATCH-1.1.0：照合でもハイフンは語境界（SEARCH-1.1.0 と同じ）。"""
+    def ids(text):
+        return {r["payload"]["pattern_id"] for r in rt(T.check_compressions(reader, text))["results"]}
+
+    # `playing seat`（P34）は `role-playing seat` の中にも当たる（1.0.0 では当たらなかった）。
+    assert "P34" in ids("He took a role-playing seat.")
+    assert "P34" in ids("the playing seat")
+    # 語の途中にかかる場合は当たらない（`playing seats` は語の続き、`replaying seat` は語頭の続き）。
+    assert "P34" not in ids("replaying seat") and "P34" not in ids("playing seats")
+    # ハイフン付きの語形そのものも、両端が境界なら当たる。
+    hyphened = [f for p in PAT.PATTERNS for f in p.surface_forms if "-" in f and f.isascii()]
+    for form in hyphened:
+        pid = next(p.id for p in PAT.PATTERNS if form in p.surface_forms)
+        assert pid in ids(f"x {form} y"), form
+    assert T._occurrences("role-play", "play") == [5]
 
 
 def test_t11_invalid_pattern_rejected():

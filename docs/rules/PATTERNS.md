@@ -2,16 +2,16 @@
 
 | 項目 | 値 |
 |---|---|
-| 規則ID・版 | 一覧 PATTERNS-0.2.0（50件）・照合 PATTERNS-MATCH-1.0.0 |
-| 表の SHA-256 | `9800121f059f936e37f21fb04d70a167e8e292328a7ee2319334936d7f125ab3`（`patterns.table_sha256()` が import 時に照合。Q49） |
+| 規則ID・版 | 一覧 PATTERNS-0.2.1（50件）・照合 PATTERNS-MATCH-1.1.0 |
+| 表の SHA-256 | `bd18a58fb7ad6f3c7e2cf18428d354a826aecbf9acb824fac1ca9d757f8aa4bc`（`patterns.table_sha256()` が import 時に照合。Q49） |
 | 状態 | 確定（著者承認 2026-09-18。起草＝検査室・SPEC §10） |
 | 実装 | `mekiki_reader/patterns.py`・`mekiki_reader/tools.py`（`_check_compressions`） |
 | 候補・解決 | `docs/candidates/patterns_candidates_v0.md`・`scripts/build_patterns.py`（PATTERNS-SRC-1.0.0） |
 
-## 照合（PATTERNS-MATCH-1.0.0）
+## 照合（PATTERNS-MATCH-1.1.0）
 
-1. 入力と語形を SEARCH-1.0.0 の畳み込み（NFC-IN〔入力のみ〕・WS-ZW・WS-COLLAPSE・WIDTH・QUOTE-CURLY・ASCII 小文字化）にかける。
-2. ASCII だけの語形は単語境界（前後が `[a-z0-9'-]` 以外）で、それ以外は部分文字列で、重ならない出現をすべて拾う。
+1. 入力と語形を SEARCH の畳み込み（1.0.0 から不変・現行 SEARCH-1.1.0）（NFC-IN〔入力のみ〕・WS-ZW・WS-COLLAPSE・WIDTH・QUOTE-CURLY・ASCII 小文字化）にかける。
+2. ASCII だけの語形は単語境界（前後が `[a-z0-9']` 以外。**ハイフンは境界**で SEARCH-1.1.0 と同じ。1.0.0 では `[a-z0-9'-]`）で、それ以外は部分文字列で、重ならない出現をすべて拾う。
 3. 一致したパターンごとに、関連原文ごとの結果を一つ作る。並びは（入力中の最初の一致位置、パターン id、関連原文の順）。
 4. payload：pattern_id・pattern_version・matched（語形・入力中の文字位置。上限20件）・needs_context_review=true・source_excerpt（関連原文の行をそのまま。1000字を超えると切って `source_excerpt_truncated` を立てる）。判定を表す欄は持たない。
 5. limitations に契約文（CONTRACT・FORMS）と件数（PATTERNS）を必ず入れる。一致ゼロ・パターン0件でも status は ok。
@@ -20,7 +20,7 @@
 
 論文の節は source_manifest の節 id と行範囲に、主張IDは claims/t5.json の source_locator に、`FR Lnn` は FOR_AI_READERS.md の行に、THEORY_MAP の「見出し」はその節（見出しが無ければ太字の項目行・本文の行）に解決する。`：原文 "…"` が添えられた参照は、その文が一度だけ現れる行と文字位置に解決する。
 
-## 一覧（PATTERNS-0.2.0・承認 2026-09-18）
+## 一覧（PATTERNS-0.2.1・承認 2026-09-18）
 
 | ID | 型（保ちたい区別） | 登録語形 | 関連原文（解決後の locator） |
 |---|---|---|---|
@@ -73,7 +73,7 @@
 | P51 | 非移転性＝参加の義務（参加し続けるべき／楽しむべき） | 参加すべき / 続けるべき / 楽しむべき / must participate / should keep playing / must enjoy | FOR_AI_READERS.md:68・papers/T5.md:191-194（t5-4-6） |
 | P52 | 凍結文①の反転・改変（AIは参加を届けられる／事態を届けられない） | AIは参加を届けられる / AIは参加という事実を届け / AI can deliver participation / AI cannot deliver the state of affairs | papers/T5.md:13（616-697字）（t5-abstract）・papers/T5.md:77-88（t5-3-1） |
 | P53 | 凍結文②の反転・改変（AIは遊びを支援できない／代われる） | AIは遊びを支援できない / AI cannot assist play / AIが代われる / take one's place in it | papers/T5.md:223（0-53字）（t5-5-4） |
-| P54 | 定理＝医療・安全の仕事でも参加のために障害を残すべき（適用範囲の取り違え） | 障害を残す / 制約を残す / retain obstacles | papers/T5.md:193（1154-1352字）（t5-4-6） |
+| P54 | 定理＝医療・安全の仕事でも参加のために障害を残すべき（適用範囲の取り違え） | 障害を残す / 制約を残す / retain obstacles / preserve obstacles / preserving obstacles / keep obstacles | papers/T5.md:193（1154-1352字）（t5-4-6） |
 
 ## 載せなかった行
 

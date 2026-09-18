@@ -43,12 +43,10 @@ GUIDE_VERSION = "GUIDE-1.0.0"
 
 # SEARCH-1.1.0 の区切り文字（畳み込んだ後の文字で判定する。空白は別に扱う。1.0.0 から不変）
 SEPARATORS = frozenset("、。，．,.;:!?・「」『』()（）[]{}…；：！？［］｛｝") | {chr(0x22), chr(0xFF02)}
-_KEEP_IN_WORD = "'-"
-# 照合（PATTERNS-MATCH-1.0.0）の語境界：英数字・アポストロフィ・ハイフンを語の一部とみなす。
-_ASCII_WORD_CHARS = "abcdefghijklmnopqrstuvwxyz0123456789" + _KEEP_IN_WORD
-# 検索（SEARCH-1.1.0）の語境界：ハイフンを境界としても扱う（`ablation` が `domain-ablation` に当たる）。
-# ハイフン付きの語句そのものは、両端が境界であれば従来どおり当たる（検収 E01 の観察 d）。
-_SEARCH_WORD_CHARS = "abcdefghijklmnopqrstuvwxyz0123456789'"
+# 語境界（SEARCH-1.1.0・PATTERNS-MATCH-1.1.0 で共通）：英数字とアポストロフィを語の一部とみなし、
+# ハイフンは境界とする（`ablation` が `domain-ablation` に、`playing seat` が `role-playing seat` に当たる）。
+# ハイフン付きの語句そのものは、両端が境界であれば当たる（検収 E01 の観察 d・2026-09-18 著者承認）。
+_WORD_CHARS = "abcdefghijklmnopqrstuvwxyz0123456789'"
 
 _ID_RE = re.compile(r"^[A-Za-z0-9._-]{1,128}$")
 _CLAIM_ID_RE = re.compile(r"^T[1-5]-[A-Z]+[0-9]+$")
@@ -525,7 +523,7 @@ def _term_prepass(index: TM.TermIndex, folded: str) -> tuple[list[tuple[int, str
     found: list[tuple[int, str]] = []
     work = list(folded)
     for form in index.forms_by_length():
-        for k in _occurrences("".join(work), form, _SEARCH_WORD_CHARS):
+        for k in _occurrences("".join(work), form):
             found.append((k, form))
             for m in range(k, k + len(form)):
                 work[m] = " "
@@ -560,25 +558,22 @@ WORD_RE_CACHE_MAX = 512  # 語形ごとの正規表現の保持数（Codex① P2
 
 
 @lru_cache(maxsize=WORD_RE_CACHE_MAX)
-def _word_pattern(form: str, word_chars: str = _ASCII_WORD_CHARS) -> re.Pattern:
+def _word_pattern(form: str) -> re.Pattern:
     """ASCII の語形に対する単語境界の正規表現を、容量つき LRU で使い回す。
 
     自前の dict と move_to_end では、取得と並べ替えの間に別のスレッドが追い出すと KeyError になった
     （Codex② 2）。`lru_cache` は取得・並べ替え・追加・追い出しが一つのロックの中で終わる。
     """
-    w = re.escape(word_chars)
+    w = re.escape(_WORD_CHARS)
     return re.compile(f"(?<![{w}]){re.escape(form)}(?![{w}])")
 
 
-def _occurrences(hay: str, form: str, word_chars: str = _ASCII_WORD_CHARS) -> list[int]:
-    """ASCII だけの語形は単語境界で、それ以外は部分文字列で、重ならない出現位置を返す。
-
-    語境界の文字集合は、検索（`_SEARCH_WORD_CHARS`）と照合（`_ASCII_WORD_CHARS`）で違う。
-    """
+def _occurrences(hay: str, form: str) -> list[int]:
+    """ASCII だけの語形は単語境界（`_WORD_CHARS` 以外）で、それ以外は部分文字列で、重ならない出現位置を返す。"""
     if not form:
         return []
     if N.is_ascii(form):
-        return [m.start() for m in _word_pattern(form, word_chars).finditer(hay)]
+        return [m.start() for m in _word_pattern(form).finditer(hay)]
     out, start = [], 0
     while True:
         k = hay.find(form, start)
@@ -617,12 +612,11 @@ def _match_lines(reader: Reader, lines: Iterable[Line], frags: Sequence[str], te
         hay = line.fold.text
         positions, distinct, direct = [], 0, 0
         for f in frags:
-            found = [(k, k + len(f), f, "query") for k in _occurrences(hay, f, _SEARCH_WORD_CHARS)]
+            found = [(k, k + len(f), f, "query") for k in _occurrences(hay, f)]
             if found:
                 direct += 1
             for form, eid in exp[f]:
-                found += [(k, k + len(form), f, f"term_map:{eid}")
-                          for k in _occurrences(hay, form, _SEARCH_WORD_CHARS)]
+                found += [(k, k + len(form), f, f"term_map:{eid}") for k in _occurrences(hay, form)]
             if found:
                 distinct += 1
                 positions += found

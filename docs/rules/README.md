@@ -13,7 +13,7 @@
 | LIMITS | 1.0.0 | 提案（実装済み・値は実測） | 2 | [LIMITS.md](LIMITS.md) |
 | JSON | 1.0.0 | 提案（実装済み） | 2 | [JSON.md](JSON.md) |
 | SCHEMA | 1.0.0 | 提案（実装済み。資料種別の表は著者承認 2026-09-18・derivative_of 欄つき） | 2 | [SCHEMA.md](SCHEMA.md) |
-| PATTERNS | 0.2.0（50件。表の SHA-256 は [PATTERNS.md](PATTERNS.md)）・照合 PATTERNS-MATCH-1.0.0 | 一覧は確定（著者承認 2026-09-18。0.1.0＝47件は撤回、0.1.1＝49件→0.2.0 で P31・P39 の語形追加と P54 新設） | 2〜4 | [PATTERNS.md](PATTERNS.md) |
+| PATTERNS | 0.2.1（50件。表の SHA-256 は [PATTERNS.md](PATTERNS.md)）・照合 PATTERNS-MATCH-1.1.0（ハイフンを語境界に） | 一覧は確定（著者承認 2026-09-18。0.1.0＝47件は撤回、0.1.1＝49件→0.2.0 で P31・P39 の語形追加と P54 新設→0.2.1 で P54 に英語の語形3つ） | 2〜4 | [PATTERNS.md](PATTERNS.md) |
 | PROMPTS | 0.1.0（6件：日本語3・英語3） | 確定（著者承認 2026-09-18。英語版は `_en` の別名で同版・案B） | 2〜4 | [PROMPTS.md](PROMPTS.md) |
 | TERMS-SRC | 1.0.0 | 提案（施工用の道具） | 2 | `scripts/find_term_sources.py` |
 | PATTERNS-SRC | 1.0.0 | 提案（施工用の道具。`「見出し」：行 "…"` の指定を含む） | 2〜3 | `scripts/build_patterns.py` |

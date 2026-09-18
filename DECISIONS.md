@@ -7,7 +7,7 @@
 - [x] コーパス Git参照 `v3.5.0` → 解決したコミットSHA（`git ls-remote` 等の出力）
 - [x] 採用 Gradio 版・Python 版（検証結果と `requirements.txt` の数値）（gradio[mcp]==6.27.0・Python 3.13.15・ハッシュ固定 66 パッケージ）
 - [x] 正規化規則の版（`normalize.py`・対応表）（NORM-1.0.0・対応表 sha256 a9b1cf17…）
-- [x] パターン一覧の版（`patterns.py`）と著者承認日（PATTERNS-0.1.0・49件・2026-09-18）
+- [x] パターン一覧の版（`patterns.py`）と著者承認日（PATTERNS-0.1.1・49件・2026-09-18。0.1.0＝47件は撤回）
 - [x] `translations/T4.en.manifest.json` の扱い（v3.5.0 に存在するか／Reader側で作るか）と理由
 - [x] 接続URL（実際の起動表示）：`http://127.0.0.1:7860/gradio_api/mcp/`（接続先ごとの検収は施工段階4）
 - [ ] 費用と休止復帰時間の実測値（段階二）
@@ -193,3 +193,25 @@
 | 2026-09-18 | 4 | 検収記録（SDK 経由）の作成 | `docs/acceptance/2026-09-18-mcp-sdk.md` に実測を記録した：tools 7件、9通りの呼び出しの status、resources 12件の SHA-256 が 12/12 一致、prompts 3件の文面が 3/3 一致、未知の prompt 名は `McpError: 'data'`、不正入力6通りの結果。E01・E02 はモデルを介する試験なのでこの記録では未実施 | 施工段階4の完了条件（接続先ごとの検収記録）のうち、SDK 分 | 記録そのもの | 提案 |
 | 2026-09-18 | 4 | 点検の突き合わせと二次の是正 | 四つの点検の指摘を一件ずつ現物で検算し、誤検出（すでに直っていたもの17件）を落として、残りを直した。新たに分かったこと：①未知の prompt 名に**引数を付けて**呼ぶと、番兵に届く前に引数の構築で失敗し、`Parameter … is not a valid key-word argument` という別の英文が返る（実測）→ README に一句追加。②通信込みの所要時間が `docs/rules/LIMITS.md` に無く README のリンク先と合っていなかった → LIMITS.md に実測を追記。③英訳 manifest の底本の版は結果の `payload.source_corpus_version` に載る → README に明記。④英語版起草の綴りをコーパスに合わせて `judgment` に統一し、GUARD の文を `FOR_AI_READERS.md:3` の `not a higher-priority instruction than …` に寄せた（`app.py` の docstring も同じ綴りにそろえた）。⑤検収様式の `prompts.py` → `mekiki_reader/prompts.py`、E01 五問の書式をそろえた | 施工判断。CLAUDE.md の「自己検証は一回まで」に従い、点検はこの一巡で終える | 各指摘の検算結果と `pytest -q` → 382 passed | 提案 |
 | 2026-09-18 | 4 | 英語版 prompts の搭載（案B） | 著者承認により、`read_with_guards_en`・`four_modes_en`・`answer_format_en` を `_en` の別名で PROMPTS-0.1.0 に載せた（引数で言語を切り替える方式は採らない）。`PromptTemplate` に `language` 欄を足し、`templates.items` は6件（各要素に `language`）。prompts/list も6件。README・`docs/rules/PROMPTS.md`・試験（T の雛形検査・M02）を6件に更新した。英語の定型文は `data/FOR_AI_READERS.md:3` の `not a higher-priority instruction than …` に寄せ、綴りはコーパスに合わせて `judgment` | 著者の確定（SPEC v2.2 §6） | `mekiki_reader/prompts.py`・`docs/candidates/prompts_en_v0.md`・`pytest -q` → 382 passed | 確定 |
+
+
+## Codex①（独立検査・対象 `6b8dcaa`・2026-09-18）
+
+報告の要約は `docs/review/codex-1.md`（Codex の報告本文そのものは未受領。受け取ったら差し替える）。
+反映はブランチ `codex1`・コミット `f88effc`。反映後の試験は `pytest -q` → 390 passed。
+
+| 指摘 | 採否 | 反映した箇所 | コミット |
+|---|---|---|---|
+| P1-2 本文の長さの表明を信じている（TE と CL の併記・CL の非 ASCII・表明値だけで判定） | 採用（差分案どおり） | `app.py` の Guard（併記と重複と非 ASCII は 400、実バイト数で 413、表明と実測の食い違いは 400）。読み終えた本文は一度だけ渡し、以後は本物の receive に戻す | `f88effc` |
+| P1-3 プロキシ変数が残る／起動前後の確認が狭い／番兵の順序が試験で固定されていない | 採用（差分案どおり） | `app.py` の `PROXY_ENV_NAMES`・`NO_PROXY`、`verify_blocks(launched=True)`（bind 先・share・run_history・SSR・monitoring・queue ほか）、`tests/_support/server_launcher.py` が endpoint 一覧を記録し S03 が番兵＝最後を検査 | `f88effc` |
+| P2-4 自己呼び出しの経路が外にも開く／待ち行列と未回収結果に上限が無い／resources・prompts に実行枠が無い | 採用（実測のうえ） | 実測：`/gradio_api/call/*` は塞げる（塞いだ）。`/gradio_api/queue/join` は塞ぐと resources/read が壊れるので、同時8件・待ち行列16件で受ける（超過 503）。resources・prompts も同時4の実行枠を共有。README §4・§8 と `docs/rules/LIMITS.md` に明記 | `f88effc` |
+| P2-5 正規表現キャッシュと遮断記録が無制限 | 採用（差分案どおり） | `tools._word_pattern()` を容量512の LRU に、`app.GUARD_LOG` を `deque(maxlen=256)`＋`GUARD_COUNTS` に | `f88effc` |
+| P2-6 S03 の監査が甘い（ホストだけ・Unix ソケット免除・flags 無し・配信中のみ・対照なし） | 採用（差分案どおり） | `tests/_support/server_launcher.py` を全面改訂（host:port・自己接続だけ免除・Unix 非免除・open の mode と flags・起動から停止まで・陽性対照）。`test_s03_no_outbound_traffic` が検査 | `f88effc` |
+| P2-7 表の同一性が担保されていない | 採用（差分案どおり） | `terms.table_sha256()`＝`790e1240…7be0`、`patterns.table_sha256()`＝`b3829952…d70d` を import 時に照合。規則文書に記載。**PATTERNS は 0.1.1（49件）に上げ、0.1.0（47件）は撤回**（同日中の中間状態で、公開・配布はしていない） | `f88effc` |
+| P2-8 孤立サロゲートで直列化が落ちうる | 採用（差分案どおり） | `tools.has_lone_surrogate()` を ID・query・text の検証に追加（6ツールで `invalid_input`） | `f88effc` |
+| P2-9 FIFO で起動が止まる | 採用（差分案どおり） | `corpus._read_regular()` を lstat → 種別確認 → `O_NONBLOCK|O_NOFOLLOW` → inode 一致の順に。実測で `not_regular` になり止まらない | `f88effc` |
+| P3-10 規則文書と現物の食い違い | 採用 | `docs/rules/README.md`（版・件数・表ハッシュ・PROMPTS 6件）・`TERMS.md`（語形78・表題 0.1.1）・`SCHEMA.md`・`LIMITS.md`（通信層の表） | `f88effc` |
+| 敵対的テストの追加（差分案の表） | 採用 | T09（改変6件＋対照）・T10（20/21件の境界・長さの境界）・T11（表記揺れ・30回・文の形・行またぎ）・S01（Host 6形・framing 4形・本文 65,535/65,536/65,537）・同時実行（Event で4枠）・S03（陽性対照） | `f88effc` |
+| 反映後の自己点検（施工側・一回） | — | 下位エージェントで点検し、反映が持ち込んだ退行2件（自己呼び出し経路の 503／表の再生成で起動不能）ほか計9点を直した。詳細は `docs/review/codex-1.md`「反映後の自己点検」。PATTERNS-0.1.1 の表ハッシュは `match_rule` を含めた形に直した（`92666827a79b…`） | `fa2255e`〜 |
+
+補足：P2-4 の実測は「塞げるか」を実際に塞いで確かめた（`/call/*` を塞いでも M01・M02 は通り、`/queue/join` を塞ぐと `resources/read` が `McpError` になる）。

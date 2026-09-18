@@ -5,24 +5,31 @@
 読むデータ：リポジトリ内の `data/` だけ。環境変数でも引数でも変えられない（Q12）。
 """
 
+import asyncio
 import os
 import re
 import sys
 import threading
+from collections import deque
 
 # ---- gradio を import する前に環境を整える（Q93・Q80。import gradio は下の方にある） ----
 
 KEEP_GRADIO_ENV = {"GRADIO_ANALYTICS_ENABLED": "False"}
 # HF へは一切つながない。実測で、配信中に huggingface_hub が利用者のトークンファイルを開いたため、
 # 読み先を /dev/null に向けて暗黙のトークン利用も切る（S03・2026-09-18）。
+# プロキシは、自分自身への loopback 接続が外へ迂回しないように無効化する（Codex① P1-3）。
+PROXY_ENV_NAMES = ("HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "FTP_PROXY", "NO_PROXY",
+                   "http_proxy", "https_proxy", "all_proxy", "ftp_proxy", "no_proxy")
+NO_PROXY_VALUE = "127.0.0.1,localhost,::1"
 KEEP_OTHER_ENV = {"HF_HUB_DISABLE_TELEMETRY": "1", "HF_HUB_DISABLE_IMPLICIT_TOKEN": "1",
-                  "HF_HUB_OFFLINE": "1", "HF_TOKEN_PATH": os.devnull}
+                  "HF_HUB_OFFLINE": "1", "HF_TOKEN_PATH": os.devnull,
+                  "NO_PROXY": NO_PROXY_VALUE, "no_proxy": NO_PROXY_VALUE}
 
 
 def sanitize_environ(env=None) -> list[str]:
-    """GRADIO_* を全部消してから、許可した値だけを入れ直す。消した変数名を返す。"""
+    """GRADIO_* とプロキシ系を全部消してから、許可した値だけを入れ直す。消した変数名を返す。"""
     env = os.environ if env is None else env
-    removed = sorted(k for k in env if k.startswith("GRADIO_"))
+    removed = sorted(k for k in env if k.startswith("GRADIO_") or k in PROXY_ENV_NAMES)
     for key in removed:
         del env[key]
     env.update(KEEP_GRADIO_ENV)
@@ -49,10 +56,23 @@ SERVER_NAME = "127.0.0.1"  # 環境変数では変えない（Q67）
 
 MAX_CONCURRENCY = 4
 MAX_THREADS = 8
+QUEUE_MAX_SIZE = 16            # Gradio の待ち行列の長さ（Codex① P2-4）
+QUEUE_INFLIGHT_MAX = MAX_CONCURRENCY + 4  # 同時に受け付ける queue/join の数（未回収の結果を溜めない）
+QUEUE_WAIT_SECONDS = 20.0      # 自己呼び出しの順番待ちの上限（超えたら 503）
+BODY_READ_SECONDS = 10.0       # 本文が届くのを待つ上限（超えたら 408）
+GUARD_LOG_MAX = 256            # 遮断の記録の保持数（固定長。Codex① P2-5）
 SENTINEL_MESSAGE = ("unknown prompt: this server has only read_with_guards, four_modes and answer_format "
                     "(the requested name is not passed to this endpoint by the server framework)")
 BUSY_MESSAGE = f"busy: this reader accepts at most {MAX_CONCURRENCY} concurrent calls"
 _SLOTS = threading.BoundedSemaphore(MAX_CONCURRENCY)
+_queue_gate: "asyncio.Semaphore | None" = None  # 自己呼び出しの同時数（要求は同じ event loop で走る）
+
+
+def _queue_slots() -> "asyncio.Semaphore":
+    global _queue_gate
+    if _queue_gate is None:
+        _queue_gate = asyncio.Semaphore(QUEUE_INFLIGHT_MAX)
+    return _queue_gate
 
 # ---- 標準経路の遮断（Q66） ----
 
@@ -67,8 +87,15 @@ ALLOWED_EXACT = frozenset({"/", "/config", "/config/", "/gradio_api/info", "/gra
                            "/gradio_api/startup-events",
                            # resources/read と prompts/get は、サーバが自分自身に出す要求で実行される。
                            "/gradio_api/queue/join", "/gradio_api/queue/data"})
-ALLOWED_PREFIXES = ("/gradio_api/mcp", "/gradio_api/call/", "/gradio_api/heartbeat/")
-GUARD_LOG: list[tuple[int, str]] = []  # 遮断の記録（S01 の証跡）
+ALLOWED_PREFIXES = ("/gradio_api/mcp", "/gradio_api/heartbeat/")
+# 自分自身への呼び出しでだけ使う経路。外から来た分も含めて同時数を絞る（Codex① P2-4）。
+# 断るのではなく順番待ちにする：即 503 にすると、正規の resources/read・prompts/get が
+# 上流の実装の中で未定義参照になって壊れる（検算で実測）。
+SELF_CALL_PATHS = frozenset({"/gradio_api/queue/join"})
+# 本文を読み切ってから渡す経路。ここ以外は本文に触れない（触ると送り切らない要求で待たされる）。
+PRE_READ_PREFIXES = ("/gradio_api/mcp", "/gradio_api/queue/join")
+GUARD_LOG: "deque[tuple[int, str]]" = deque(maxlen=GUARD_LOG_MAX)  # 遮断の記録（固定長・S01 の証跡）
+GUARD_COUNTS: dict[int, int] = {}  # 応答コードごとの総数（記録が溢れても件数は残す）
 
 # ---- resources（Q70。12件・静的URI・テンプレート変数なし） ----
 
@@ -92,12 +119,60 @@ RESOURCES: tuple[tuple[str, str, str, str], ...] = (
 )
 
 
+_ASCII_DIGITS = re.compile(r"[0-9]+")
+BODY_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
+
+
+def _host_name(value: str) -> str:
+    """Host ヘッダからホスト名を取り出す（大小は区別しない）。形が変なら "" を返して拒ませる。
+
+    ポートは省略か、十進 1〜65535 のときだけ認める（検算⑨）。IPv6 は括弧のまま比べる。
+    """
+    value = value.strip().lower()
+    if value.startswith("["):
+        end = value.find("]")
+        if end < 0:
+            return ""
+        host, rest = value[:end + 1], value[end + 1:]
+    elif value.count(":") == 1:
+        host, _, port = value.partition(":")
+        rest = ":" + port
+    elif ":" in value:
+        return ""  # 括弧なしの IPv6 や、ポートの書き間違い
+    else:
+        host, rest = value, ""
+    if rest:
+        port = rest[1:]
+        if not (port.isascii() and port.isdigit() and 1 <= int(port) <= 65535):
+            return ""
+    return host
+
+
+def _replayer(body: bytes, receive):
+    """読み終えた本文を後段のアプリに一度だけ渡し、その後は本物の receive に戻す。
+
+    二度目以降を即 http.disconnect にすると、応答が SSE の経路で打ち切られる（実測）。
+    """
+    sent = False
+
+    async def wrapped():
+        nonlocal sent
+        if not sent:
+            sent = True
+            return {"type": "http.request", "body": body, "more_body": False}
+        return await receive()
+
+    return wrapped
+
+
 def _guard_middleware():
-    """Gradio の標準経路を遮断する ASGI ミドルウェア（Q66。app_kwargs で FastAPI に渡す）。"""
+    """Gradio の標準経路を遮断する ASGI ミドルウェア（Q66・Codex① P1-2・P2-4）。"""
 
     async def _reply(send, status: int, text: str, path: str = "") -> None:
-        GUARD_LOG.append((status, path))
-        print(f"blocked {status} {path}", file=sys.stderr, flush=True)
+        safe = path.encode("unicode_escape").decode("ascii")[:200]  # 記録に制御文字を通さない
+        GUARD_LOG.append((status, safe))
+        GUARD_COUNTS[status] = GUARD_COUNTS.get(status, 0) + 1
+        print(f"blocked {status} {safe}", file=sys.stderr, flush=True)
         await send({"type": "http.response.start", "status": status,
                     "headers": [(b"content-type", b"text/plain; charset=utf-8")]})
         await send({"type": "http.response.body", "body": text.encode("utf-8")})
@@ -111,22 +186,69 @@ def _guard_middleware():
                 return await self.app(scope, receive, send)
             if scope["type"] != "http":
                 return  # websocket などは受け付けない
-            headers = {k.decode("latin-1").lower(): v.decode("latin-1") for k, v in scope.get("headers", [])}
-            host = headers.get("host", "").rsplit(":", 1)[0] if headers.get("host", "").count(":") == 1 \
-                else headers.get("host", "")
-            if host not in ALLOWED_HOSTS:
-                return await _reply(send, 400, "bad host", scope.get("path", ""))
-            length = headers.get("content-length")
-            if length is None and headers.get("transfer-encoding", "").lower() == "chunked":
-                return await _reply(send, 411, "length required", scope.get("path", ""))
-            if length is not None and (not length.isdigit() or int(length) > MAX_BODY_BYTES):
-                return await _reply(send, 413, "request body too large", scope.get("path", ""))
             path = scope.get("path", "")
+            raw = scope.get("headers", [])
+            hosts = [v.decode("latin-1", "replace") for k, v in raw if k.lower() == b"host"]
+            if len(hosts) != 1 or _host_name(hosts[0]) not in ALLOWED_HOSTS:
+                return await _reply(send, 400, "bad host", path)
+
+            # 本文の長さの表明（Codex① P1-2）：TE と CL の併記は拒み、CL は ASCII 数字だけを受ける。
+            lengths = [v.decode("latin-1", "replace").strip() for k, v in raw if k.lower() == b"content-length"]
+            encodings = [v.decode("latin-1", "replace").strip().lower()
+                         for k, v in raw if k.lower() == b"transfer-encoding"]
+            chunked = any("chunked" in v for v in encodings)
+            if lengths and encodings:
+                return await _reply(send, 400, "conflicting framing", path)
+            if len(lengths) > 1:  # 値の違う重複は h11 が先に 400 にする。同値は畳まれてここには来ない
+                return await _reply(send, 400, "conflicting framing", path)
+            declared = None
+            if lengths:
+                if not _ASCII_DIGITS.fullmatch(lengths[0]):
+                    return await _reply(send, 400, "bad content-length", path)
+                declared = int(lengths[0])
+                if declared > MAX_BODY_BYTES:
+                    return await _reply(send, 413, "request body too large", path)
+
             if any(mark in path for mark in BLOCKED_MARKS):
                 return await _reply(send, 403, "route disabled", path)
             if path not in ALLOWED_EXACT and not path.startswith(ALLOWED_PREFIXES):
                 return await _reply(send, 404, "not found", path)
-            return await self.app(scope, receive, send)
+
+            # 本文を読む経路だけ、実際に届いたバイト数で打ち切る（表明を信じない）。
+            # それ以外の経路では本文に触れない（送り切らない要求で待たされないため）。
+            forward = receive
+            takes_body = (declared is not None or chunked
+                          or scope.get("method", "GET").upper() in BODY_METHODS)
+            if takes_body and path.startswith(PRE_READ_PREFIXES):
+                chunks, total = [], 0
+                while True:
+                    try:
+                        message = await asyncio.wait_for(receive(), BODY_READ_SECONDS)
+                    except (asyncio.TimeoutError, TimeoutError):
+                        return await _reply(send, 408, "request body timeout", path)
+                    if message["type"] == "http.disconnect":
+                        return
+                    chunks.append(message.get("body", b""))
+                    total += len(chunks[-1])
+                    if total > MAX_BODY_BYTES:
+                        return await _reply(send, 413, "request body too large", path)
+                    if not message.get("more_body", False):
+                        break
+                if declared is not None and total != declared:
+                    return await _reply(send, 400, "conflicting framing", path)
+                forward = _replayer(b"".join(chunks), receive)
+
+            if path in SELF_CALL_PATHS:  # 自己呼び出しの経路は順番待ちにする（未回収の結果を溜めない）
+                gate = _queue_slots()
+                try:
+                    await asyncio.wait_for(gate.acquire(), QUEUE_WAIT_SECONDS)
+                except (asyncio.TimeoutError, TimeoutError):
+                    return await _reply(send, 503, "busy", path)
+                try:
+                    return await self.app(scope, forward, send)
+                finally:
+                    gate.release()
+            return await self.app(scope, forward, send)
 
     return Guard
 
@@ -254,9 +376,19 @@ TOOLS = (list_papers, get_section, search_passages, get_claim_record,
 # ---------------------------------------------------------------- resources と prompts
 
 
+def _in_slot(make_value):
+    """七ツール以外（resources・prompts）にも同じ実行枠を使わせる（Codex① P2-4）。"""
+    if not _SLOTS.acquire(blocking=False):
+        raise RuntimeError(BUSY_MESSAGE)
+    try:
+        return make_value()
+    finally:
+        _SLOTS.release()
+
+
 def _resource_fn(path: str, name: str, mime: str, description: str):
     def read() -> str:
-        return READER.corpus.raw[path].decode("utf-8")
+        return _in_slot(lambda: READER.corpus.raw[path].decode("utf-8"))
 
     read.__name__ = name
     read.__doc__ = f"{description}\n\nReturns:\n    The file as it is stored in the pinned corpus.\n"
@@ -265,10 +397,11 @@ def _resource_fn(path: str, name: str, mime: str, description: str):
 
 def _prompt_fn(template):
     def show() -> str:
-        return template.text
+        return _in_slot(lambda: template.text)
 
     show.__name__ = template.name
-    show.__doc__ = f"{template.title}\n\nReturns:\n    The template text (Japanese, {PR.PROMPTS_VERSION}).\n"
+    lang = "Japanese" if template.language == "ja" else "English"
+    show.__doc__ = f"{template.title}\n\nReturns:\n    The template text ({lang}, {PR.PROMPTS_VERSION}).\n"
     return gr.mcp.prompt(description=template.title)(show)
 
 
@@ -293,21 +426,37 @@ def build_blocks() -> "gr.Blocks":
         for template in PR.TEMPLATES:
             gr.api(_prompt_fn(template), api_visibility="public", queue=False)
         gr.api(_sentinel(), api_visibility="public", queue=False)  # 必ず最後
+    demo.queue(max_size=QUEUE_MAX_SIZE, default_concurrency_limit=MAX_CONCURRENCY)
     return demo
 
 
-def verify_blocks(demo) -> list[str]:
-    """環境変数だけで有効になる経路が無効であることを確かめる（Q93）。問題の一覧を返す。"""
+def verify_blocks(demo, launched: bool = False, port: int | None = None) -> list[str]:
+    """環境変数だけで有効になる経路が無効であることを確かめる（Q93・Codex① P1-3）。問題の一覧を返す。"""
     problems = []
-    for attr, want in (("vibe_mode", False), ("dev_mode", False)):
+    checks: list[tuple[str, object]] = [("vibe_mode", False), ("dev_mode", False), ("analytics_enabled", False)]
+    if launched:  # 起動してから決まる値
+        checks += [("share", False), ("ssr_mode", False), ("enable_monitoring", False),
+                   ("run_history", False), ("pwa", False), ("mcp_server", True),
+                   ("server_name", SERVER_NAME), ("max_threads", MAX_THREADS), ("root_path", "")]
+        if port is not None:
+            checks.append(("server_port", port))
+    for attr, want in checks:
         value = getattr(demo, attr, "missing")
-        if value is not want:
+        if value is not want and value != want:
             problems.append(f"{attr}={value!r}")
-    allowed = getattr(demo, "allowed_paths", "missing")
-    if allowed not in ([], ()):
-        problems.append(f"allowed_paths={allowed!r}")
-    if getattr(demo, "analytics_enabled", "missing") is not False:
-        problems.append("analytics_enabled")
+    for attr in ("allowed_paths", "blocked_paths"):
+        value = getattr(demo, attr, "missing")
+        if value not in ([], ()):
+            problems.append(f"{attr}={value!r}")
+    queue = getattr(demo, "_queue", None)
+    if getattr(queue, "max_size", None) != QUEUE_MAX_SIZE:
+        problems.append(f"queue.max_size={getattr(queue, 'max_size', 'missing')!r}")
+    if getattr(queue, "default_concurrency_limit", None) != MAX_CONCURRENCY:
+        problems.append(f"queue.concurrency={getattr(queue, 'default_concurrency_limit', 'missing')!r}")
+    if launched:
+        url = getattr(demo, "local_url", "") or ""
+        if not url.startswith(f"http://{SERVER_NAME}:"):
+            problems.append(f"local_url={url!r}")
     return problems
 
 
@@ -358,9 +507,7 @@ def main() -> int:
         print(f"起動しない：ポート {port} で待ち受けられない（{type(exc).__name__}）。"
               f"{PORT_ENV} で別のポートを指定する", file=sys.stderr, flush=True)
         return 6
-    problems = verify_blocks(demo)
-    if not getattr(demo, "mcp_server", False):
-        problems.append("mcp_server=False")
+    problems = verify_blocks(demo, launched=True, port=port)
     if problems:
         demo.close()
         print("停止する：起動後の確認に失敗した：" + "・".join(problems), file=sys.stderr, flush=True)

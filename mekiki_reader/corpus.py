@@ -278,14 +278,26 @@ def _freeze(obj: Any) -> Any:
 
 
 def _read_regular(path: Path, rel: str) -> bytes:
+    # 先に lstat で種別を見る（FIFO を open すると書き手が現れるまで止まる。Codex① P2-9）。
     try:
-        fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+        before = os.lstat(path)
+    except FileNotFoundError:
+        raise BundleError("missing", rel) from None
+    except OSError as e:
+        raise BundleError("not_regular", rel, str(e.strerror)) from None
+    if not stat.S_ISREG(before.st_mode):
+        raise BundleError("not_regular", rel)
+    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0)
+    try:
+        fd = os.open(path, flags)
     except FileNotFoundError:
         raise BundleError("missing", rel) from None
     except OSError as e:
         raise BundleError("not_regular", rel, str(e.strerror)) from None
     try:
-        if not stat.S_ISREG(os.fstat(fd).st_mode):
+        after = os.fstat(fd)
+        # 開いたものが lstat したものと同じ通常ファイルであること（開く隙の差し替えを弾く）。
+        if not stat.S_ISREG(after.st_mode) or (after.st_ino, after.st_dev) != (before.st_ino, before.st_dev):
             raise BundleError("not_regular", rel)
         chunks = []
         while True:

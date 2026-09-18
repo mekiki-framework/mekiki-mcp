@@ -7,14 +7,16 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 import re
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from typing import Iterable
 
 from .corpus import is_blank
 from .schema import SOURCE_KIND_BY_PATH
 
-PATTERNS_VERSION = "PATTERNS-0.1.0"
+PATTERNS_VERSION = "PATTERNS-0.1.1"
 APPROVED_ON = "2026-09-18"
 MATCH_RULE = "PATTERNS-MATCH-1.0.0"
 RELATED_KINDS = frozenset({"paper_md", "theory_map", "reading_guide"})
@@ -45,7 +47,7 @@ class Pattern:
     match_rule: str = MATCH_RULE
 
 
-# 著者承認済みのパターン（PATTERNS-0.1.0・承認 2026-09-18・docs/rules/PATTERNS.md）。
+# 著者承認済みのパターン（PATTERNS-0.1.1・承認 2026-09-18・docs/rules/PATTERNS.md）。
 # 候補は docs/candidates/patterns_candidates_v0.md、関連原文の解決は scripts/build_patterns.py。
 PATTERNS: tuple[Pattern, ...] = (
     Pattern(
@@ -940,3 +942,24 @@ def validate_patterns(corpus, patterns: Iterable[Pattern]) -> tuple[Pattern, ...
         seen.add(p.id)
         out.append(p)
     return tuple(sorted(out, key=lambda p: p.id))
+
+
+def table_rows() -> list[dict]:
+    """表の正準形（Pattern の全欄）。SHA-256 の対象（Q49・Codex① P2-7）。
+
+    `asdict` で作るので、欄を足したら自動的に正準形に入り、ハッシュが変わって気づける。
+    この二つは `scripts/build_patterns.py --write` が書き換える範囲の外に置く（消えないように）。
+    """
+    return [asdict(p) for p in PATTERNS]
+
+
+def table_sha256() -> str:
+    raw = json.dumps({"version": PATTERNS_VERSION, "patterns": table_rows()},
+                     sort_keys=True, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    return hashlib.sha256(raw).hexdigest()
+
+
+# 表の正準 JSON の SHA-256（Q49）。表を変えたら版を上げ、この値と docs/rules/PATTERNS.md を更新する。
+PATTERNS_TABLE_SHA256 = "92666827a79b31b55c0fa1b424f7be9e4891b97fab044d316b2622ec1a3a304b"
+if table_sha256() != PATTERNS_TABLE_SHA256:  # pragma: no cover - 表と定数の食い違いは import 時に止める
+    raise RuntimeError(f"PATTERNS table hash mismatch: {table_sha256()}")

@@ -1,6 +1,7 @@
 # check_compressions パターン候補一覧（PATTERNS-0.1.0 案・○×承認用）
 
-**2026-09-18 著者確定**：「採用」49行を PATTERNS-0.1.0 とした（49行すべてを `mekiki_reader/patterns.py` に載せた）。「保留」4行（P10・P16・P19・P47）は載せていない。確定した一覧は `docs/rules/PATTERNS.md`。本書は候補の記録として残す。
+**2026-09-18 著者確定**：（配置段階一の検収のあと、同日に PATTERNS-0.2.0 として P31・P39 に語形を足し、P54 を新設した。下の各行に反映済み）
+「採用」49行を PATTERNS-0.1.0 とした（49行すべてを `mekiki_reader/patterns.py` に載せた）。「保留」4行（P10・P16・P19・P47）は載せていない。確定した一覧は `docs/rules/PATTERNS.md`。本書は候補の記録として残す。
 
 **同日・関連原文の差し替え（著者指定）**：解決できなかった2行について、著者が出所を指定した。
 - P22：起草は「THEORY_MAP T4「Terms that must remain distinct」；T4（心理的所有の対比箇所・施工時に節解決）；FR L40」。確定は「T4 §2.3 (t4-2-3)＋THEORY_MAP T4「Terms that must remain distinct」の Jibungoto-ka 行」。起草にあった FR L40 は著者の指定に含まれていないため載せていない（要確認）。
@@ -48,7 +49,7 @@
 | P28 | T4の相互性＝役割の同一化（対等・同じ義務） | 対等／フラットな組織／同じ義務を負う／identical roles／上下関係をなくす | T4 §4.3 (t4-4-3)；FR L67 | 「対等」「フラット」は一般語 | TM33・FR67 | 採用 | |
 | P29 | Spec.cost＝工数／Ext.cost＝価格・人件費（会計費用への読み替え） | Spec.costは工数／仕様化費用＝工数／仕様化費用は人月／Ext.cost＝価格／外化費用＝価格／外化費用＝人件費／Spec.cost is hours／Ext.cost is price | T1 §2.1 (t1-2-1) | 外部モデル・社内資料で観測 | LG | 採用 | |
 | P30 | T5＝AIは遊べない | AIは遊べない／AIには遊べない／AIに遊びはできない／AI cannot play／AI can't play／AI can never play | T5 §3.1 (t5-3-1)・§3.4 (t5-3-4)；T5-A1 | | TM17・CS-A1 | 採用 | |
-| P31 | 非移転性定理＝尊厳の証明 | 尊厳を証明／尊厳が導かれる／代替不可能だから尊厳／置き換えられないから尊厳／establishes dignity／proves dignity／dignity follows／non-substitutable therefore dignified | T5 §3.4 (t5-3-4)・§4.4 (t5-4-4)；T5-A1・N1 | | TM22・FR15・FR21・CS | 採用 | |
+| P31 | 非移転性定理＝尊厳の証明 | 尊厳を証明／尊厳が導かれる／代替不可能だから尊厳／置き換えられないから尊厳／establishes dignity／proves dignity／dignity follows／non-substitutable therefore dignified／代替できない／があると証明／AI cannot replace／irreplaceable | T5 §3.4 (t5-3-4)・§4.4 (t5-4-4)；T5-A1・N1 | | TM22・FR15・FR21・CS | 採用 | |
 | P32 | 機能的等価＝カント的価値の等価／置換テスト＝カントの基準 | 置換テスト／substitution test／置換基準／カントの基準／Kant's criterion／価値の等価 | T5 §4.4 (t5-4-4)；T5-N1 | 「置換テスト」は論文の語＝同形注記 | TM23・FR23・CS-N1 | 採用 | |
 | P33 | 尊厳＝立場＝顔＝評価的尊敬／公的名声＝技術的立場 | 尊厳＝立場／顔を立てる／face／評価的尊敬／appraisal respect／尊敬されるから尊厳／評価が高いから尊厳／public stature／名声 | T5 §4.4 (t5-4-4)；THEORY_MAP T5「Recognition architecture」；T5-N2 | | TM24・FR25・CS-N2 | 採用 | |
 | P34 | 遊ぶ席＝答える席（参加＝答責） | 遊ぶ席／答える席／playing seat／answering seat／参加すれば答責／参加＝責任／答責は参加 | THEORY_MAP T5「Terms that must remain distinct (T5 v3)」；FR L25 | 同形注記（論文・ガイドの語） | TM18・TM25・FR25 | 採用 | |
@@ -56,7 +57,7 @@
 | P36 | 成績スコア＝参加者の立場／評価・採点の禁止 | 評価してはいけない／採点は禁止／評価は許されない／scores are prohibited／must not be assessed／スコアが立場を／成績で立場を | THEORY_MAP T5「Recognition is not the suspension of appraisal」；T5-N2・N3；FR L26・L60 | | TM28・FR60・CS | 採用 | |
 | P37 | 尊厳装置＝マネジメント手法（エンゲージメント測定・楽しめと命じる・ゲーミフィケーション） | ゲーミフィケーション／gamification／エンゲージメント測定／engagement score／楽しませる仕組み／モチベーション施策／forced enjoyment／楽しむことを義務 | THEORY_MAP T5「The dignity apparatus is not a management technique」；T5-S1；FR L60 | | TM29・FR60・CS-S1 | 採用 | |
 | P38 | T5＝置換説（遊びが仕事・ケア・意味の代わり） | 仕事の代わりに遊び／遊びが意味の源泉／games replace work／遊びに逃げる／働かなくてよい／余暇社会 | T5 §4.6 (t5-4-6)；T5-A4 | | TM31・CS-A4 | 採用 | |
-| P39 | シリーズ＝「遊びは人類最後の砦」／人間にしかできない領域 | 最後の砦／last stronghold／last bastion／唯一の防波堤／人間にしかできない／only humans can／人間に残る／remain human／left to humans／AIにできないこと／人間の領域／human domain／人間だけの | THEORY_MAP「Cross-paper inference chain」8；T5 §3.4 (t5-3-4) | 最重要。外部モデル・記事で反復観測 | TM32・LG | 採用 | |
+| P39 | シリーズ＝「遊びは人類最後の砦」／人間にしかできない領域 | 最後の砦／last stronghold／last bastion／唯一の防波堤／人間にしかできない／only humans can／人間に残る／remain human／left to humans／AIにできないこと／人間の領域／human domain／人間だけの／代替できない能力 | THEORY_MAP「Cross-paper inference chain」8；T5 §3.4 (t5-3-4) | 最重要。外部モデル・記事で反復観測 | TM32・LG | 採用 | |
 | P40 | 知好楽の「楽」＝快い気分＝尊厳 | 楽しいから尊厳／楽しければ尊厳／快楽／楽しさ＝尊厳／pleasant mood／enjoyment establishes／fun therefore | T5 §4.3 (t5-4-3)・§4.4 (t5-4-4)；THEORY_MAP 日本語用語表 | | TM35・FR34 | 採用 | |
 | P41 | 趣味＝ホビー・余暇・嗜好のみ | 趣味（ホビー）／hobby／趣味＝余暇／趣味とは好きなこと／taste | T5 §4.3 (t5-4-3)；THEORY_MAP 日本語用語表 | | TM36・FR35 | 採用 | |
 | P42 | 遊び＝標本→すべての活動はゲーム／仕事はすべて遊び | すべてはゲーム／人生はゲーム／仕事も遊び／仕事を遊びに／all activities are games／everything is a game／work should be play／all work as play | T5 §3.5 (t5-3-5)・§4.6 (t5-4-6)；T5-A4 | | TM37・FR36・CS-A4 | 採用 | |
@@ -71,6 +72,7 @@
 | P51 | 非移転性＝参加の義務（参加し続けるべき／楽しむべき） | 参加すべき／続けるべき／楽しむべき／must participate／should keep playing／must enjoy | FR L68；T5 §4.6 (t5-4-6) | | FR68 | 採用 | |
 | P52 | 凍結文①の反転・改変（AIは参加を届けられる／事態を届けられない） | AIは参加を届けられる／AIは参加という事実を届け／AI can deliver participation／AI cannot deliver the state of affairs | T5 abstract (t5-abstract)・§3.1 (t5-3-1)：原文 "AI can deliver the state of affairs; it cannot deliver the fact of participation." | 返す抜粋は原文そのもの | 凍結定式 | 採用 | |
 | P53 | 凍結文②の反転・改変（AIは遊びを支援できない／代われる） | AIは遊びを支援できない／AI cannot assist play／AIが代われる／take one's place in it | T5 §5.4 (t5-5-4)：原文 "AI can assist play. It cannot take one's place in it." | 返す抜粋は原文そのもの | 凍結定式 | 採用 | |
+| P54 | 定理＝医療・安全の仕事でも参加のために障害を残すべき（適用範囲の取り違え） | 障害を残す／制約を残す／retain obstacles | T5 §4.6 (t5-4-6)：原文 "A boundary condition on application: in phases of work where obstacles have no constitutive role — replication, safety assessment, clinical judgement — nothing in this paper counsels retaining them." | 返す抜粋は §4.6 の脚注（L193）そのもの。2026-09-18 追加（検収 E01 の R08 で取りこぼし） | LG | 採用 | |
 
 補記
 - 語形は初版の候補。承認後、Codex の敵対試験（同義語再生・否定形・引用形）で漏れた語形を二版で追加する。

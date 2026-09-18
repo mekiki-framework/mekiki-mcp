@@ -16,7 +16,7 @@ from typing import Iterable
 from .corpus import is_blank
 from .schema import SOURCE_KIND_BY_PATH
 
-PATTERNS_VERSION = "PATTERNS-0.1.1"
+PATTERNS_VERSION = "PATTERNS-0.2.0"
 APPROVED_ON = "2026-09-18"
 MATCH_RULE = "PATTERNS-MATCH-1.0.0"
 RELATED_KINDS = frozenset({"paper_md", "theory_map", "reading_guide"})
@@ -47,7 +47,7 @@ class Pattern:
     match_rule: str = MATCH_RULE
 
 
-# 著者承認済みのパターン（PATTERNS-0.1.1・承認 2026-09-18・docs/rules/PATTERNS.md）。
+# 著者承認済みのパターン（PATTERNS-0.2.0・承認 2026-09-18・docs/rules/PATTERNS.md）。
 # 候補は docs/candidates/patterns_candidates_v0.md、関連原文の解決は scripts/build_patterns.py。
 PATTERNS: tuple[Pattern, ...] = (
     Pattern(
@@ -512,6 +512,10 @@ PATTERNS: tuple[Pattern, ...] = (
             'proves dignity',
             'dignity follows',
             'non-substitutable therefore dignified',
+            '代替できない',
+            'があると証明',
+            'AI cannot replace',
+            'irreplaceable',
         ),
         related_sources=(
             RelatedSource('papers/T5.md', 107, 120, 't5-3-4'),
@@ -673,6 +677,7 @@ PATTERNS: tuple[Pattern, ...] = (
             '人間の領域',
             'human domain',
             '人間だけの',
+            '代替できない能力',
         ),
         related_sources=(
             RelatedSource('THEORY_MAP.md', 269, 269, None),
@@ -903,6 +908,19 @@ PATTERNS: tuple[Pattern, ...] = (
         ),
         approved_on=APPROVED_ON,
     ),
+    Pattern(
+        id='P54',
+        version=PATTERNS_VERSION,
+        surface_forms=(
+            '障害を残す',
+            '制約を残す',
+            'retain obstacles',
+        ),
+        related_sources=(
+            RelatedSource('papers/T5.md', 193, 193, 't5-4-6', char_start=1154, char_end=1352),
+        ),
+        approved_on=APPROVED_ON,
+    ),
 )
 
 
@@ -960,6 +978,6 @@ def table_sha256() -> str:
 
 
 # 表の正準 JSON の SHA-256（Q49）。表を変えたら版を上げ、この値と docs/rules/PATTERNS.md を更新する。
-PATTERNS_TABLE_SHA256 = "92666827a79b31b55c0fa1b424f7be9e4891b97fab044d316b2622ec1a3a304b"
+PATTERNS_TABLE_SHA256 = "9800121f059f936e37f21fb04d70a167e8e292328a7ee2319334936d7f125ab3"
 if table_sha256() != PATTERNS_TABLE_SHA256:  # pragma: no cover - 表と定数の食い違いは import 時に止める
     raise RuntimeError(f"PATTERNS table hash mismatch: {table_sha256()}")

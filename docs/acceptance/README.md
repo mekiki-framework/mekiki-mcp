@@ -13,7 +13,10 @@
 | mcp SDK（1.30.0）での接続 | 施工段階3 | 済み（M01〜M03。`tests/test_mcp.py`・DECISIONS の段階3の行） |
 | Claude Code | 施工段階3〜4 | 記録を作る |
 | Claude Desktop | 施工段階4 | 記録を作る（HTTP 直結は不可。`mcp-remote` 経由。README §5） |
-| ChatGPT 開発者モード | 配置段階二 | 施工段階4の対象外（Q73） |
+| ChatGPT（Web の Plugins） | 配置段階二 | 済み（P03・2026-09-19。[2026-09-19-space-private.md](2026-09-19-space-private.md) §10） |
+| Space（private・public）と Claude Code | 配置段階二 | 済み（S04・P01・P02 の一部と public 後の確認。同 §1〜§9） |
+| Claude（Web の Custom Connector） | 配置段階二 | 済み（P03・同 §10） |
+| Grok（Custom コネクタ） | 配置段階二 | 済み（P03・同 §10） |
 
 ## 試験の中身
 

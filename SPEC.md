@@ -1,6 +1,6 @@
-# SPEC.md — Mekiki Reader MCP v2.4（読み取り専用・根拠つき読解窓口）
+# SPEC.md — Mekiki Reader MCP v2.4.1（読み取り専用・根拠つき読解窓口）
 
-改版：v1（2026-09-18）→ v2（2026-09-18・ChatGPT Pro独立検証A01〜A08・B01〜B03を反映）→ v2.1（2026-09-18・段階0の現物確認 Q01〜Q95 と回答票 `docs/stage0_answers.md` を反映）→ v2.2（2026-09-18・施工段階2〜4の実測と確定した規則・表を反映）→ v2.3（2026-09-18・Codex①②の反映、配置段階一の検収 E01/E02、規則改版を反映。配置段階一は完成）→ v2.3.1（2026-09-19・v2.3 と現物の照合結果、開放経路の最終一覧、旧 SSE の閉鎖、長時間接続の上限、内部クライアントの単一化、LIMITS-2.0.0、版運用の境界を反映）→ **v2.4（2026-09-19・Codex③の反映と、配置段階二の方針＝配置モード〔local／spaces〕・Docker Space・Host と bind・環境変数の整理・ログの開示・公開前後の検収を追加。`docs/spaces_facts.md` に基づく）**。骨格（読み取り専用・公開版固定・サーバ内LLMなし・Gradio・ローカル先行）は不変。v2.1〜v2.3.1 の変更は §12 に列挙。
+改版：v1（2026-09-18）→ v2（2026-09-18・ChatGPT Pro独立検証A01〜A08・B01〜B03を反映）→ v2.1（2026-09-18・段階0の現物確認 Q01〜Q95 と回答票 `docs/stage0_answers.md` を反映）→ v2.2（2026-09-18・施工段階2〜4の実測と確定した規則・表を反映）→ v2.3（2026-09-18・Codex①②の反映、配置段階一の検収 E01/E02、規則改版を反映。配置段階一は完成）→ v2.3.1（2026-09-19・v2.3 と現物の照合結果、開放経路の最終一覧、旧 SSE の閉鎖、長時間接続の上限、内部クライアントの単一化、LIMITS-2.0.0、版運用の境界を反映）→ **v2.4（2026-09-19・Codex③の反映と、配置段階二の方針＝配置モード〔local／spaces〕・Docker Space・Host と bind・環境変数の整理・ログの開示・公開前後の検収を追加。`docs/spaces_facts.md` に基づく）→ **v2.4.1（2026-09-19・施工照合の二点＝一式に `.dockerignore`、README の YAML 記述の更新。P03 の順序）**。骨格（読み取り専用・公開版固定・サーバ内LLMなし・Gradio・ローカル先行）は不変。v2.1〜v2.3.1 の変更は §12 に列挙。
 工程＝方針（本書）→施工（Claude Code）→独立検査（Codex：指摘と差分案のみ）→最終検査（Claude）→接続確認・公開判断（著者）。
 段階一＝ローカル動作（SDKとReader自体に追加のAPI料金・ホスティング料金は不要）。段階二＝Hugging Face Spaces（PRO加入後・CPU Basic）。
 
@@ -95,7 +95,8 @@ mekiki-mcp/
   requirements.in requirements.txt         # gradio[mcp]==6.27.0 ほか・推移依存までハッシュ付き（uv pip compile --generate-hashes）
   Dockerfile                   # Docker Space 用：python:3.13 の slim をダイジェストで固定・pip --require-hashes・PYTHONUNBUFFERED=1・MEKIKI_READER_MODE=spaces・EXPOSE 7860・CMD python app.py
   requirements-dev.in requirements-dev.txt # pytest 等
-  README.md                    # 対応表・接続手順・開示・ライセンス節・YAML（sdk/sdk_version/python_version/app_file/license）
+  README.md                    # 対応表・接続手順・開示・ライセンス節・YAML（sdk: docker／app_port: 7860／license: mit）
+  .dockerignore                # Space への一式に含める（.DS_Store・.venv・.git・tests 等を除外）
 ```
 
 同梱許可ファイル（18本）：`source_manifest.json`・`papers/T1〜T5.md`・`THEORY_MAP.md`・`FOR_AI_READERS.md`・`SOURCE_INDEX.md`・`claims/t5.json`・`T5_CLAIM_STATUS.md`・`tests/reading_cases.json`・`AI_READING_TESTS.md`・`translations/T4.en.md`・`translations/T4.en.manifest.json`・`llms.txt`・**`LICENSE`（CC BY 4.0 本文・バイト一致）**・**`CITATION.md`（帰属文の書式）**。`translations/T4.en.meta.json`・`metadata.json`・`papers/*.html`・統合MD・`tools/*.py` は同梱しない（名前で参照される場合は `not_bundled_references` に列挙するだけ）。
@@ -171,7 +172,7 @@ mekiki-mcp/
 
 **施工段階（CLAUDE.md）**：0 読了・計画→1 `data/`・bundle・corpus（D01〜D04）→2 schema・normalize・terms・tools・patterns（T01〜T12・R01）→3 app.py・接続（S01〜S03・M01〜M03）→4 README・requirements 固定・検収記録。実行環境は Python **3.13**（uv で導入・minor をローカルと Spaces でそろえる）、Gradio は **6.27.0** を暫定（`run_history=False` 必須・施工段階3の着手時に再比較して確定）。
 **配置段階一（ローカル）**：`.venv/bin/python app.py`（loopback）→Claude Code（`.mcp.json` を許可）から接続し `docs/acceptance/` に記録→Codex①②の反映→五問（E01）と E02→**自分用の正典統一は 2026-09-18 に完成**（Desktop の実機検収は任意で残す）。
-**配置段階二（公開）**：HF PRO加入→**Docker Space**（CPU Basic・最初は private）→**一式**（`Dockerfile`・`app.py`・`mekiki_reader/`・`data/`〔LICENSE・CITATION.md を含む〕・`requirements.txt`・`README.md`〔YAMLに `sdk: docker`／`app_port: 7860`／`license: mit`〕・`LICENSE`・`NOTICE`）をアップロード→S04・M01〜M03・P01〜P03 を private のまま検収→README に接続 URL と復帰時間→開示に署名と対象コミット→Space を public に・GitHub リポジトリを public に→X一投（動くURLと一緒に・「棚が先にあった」・生成開示）。ZeroGPU の無料枠は Gradio SDK 専用で Python 3.12 以前のため使わない。公開前に `DECISIONS.md` の非公開資料への参照を置換し、未報告の上流不具合の詳細を要約化する。公開前に、標準出力・標準エラーと Spaces 側のログに利用者入力が残るかを実測し、開示に記す。Codex③は実施済み（対象 40b2777・11件反映・437件通過）。Spaces 構成の施工後に Codex④（③の残存と配置モードだけの狭い検査）を入れる。
+**配置段階二（公開）**：HF PRO加入→**Docker Space**（CPU Basic・最初は private）→**一式**（`Dockerfile`・`.dockerignore`・`app.py`・`mekiki_reader/`・`data/`〔LICENSE・CITATION.md を含む〕・`requirements.txt`・`README.md`〔YAMLに `sdk: docker`／`app_port: 7860`／`license: mit`〕・`LICENSE`・`NOTICE`）を git で push（フォルダのアップロードは `.DS_Store` が混入しうる）→S04・M01〜M03・P01・P02 を private のまま検収（Claude Code は読み取りトークンをヘッダで送る）→README に接続 URL と復帰時間→開示に署名と対象コミット→Space を public に（この時点では告知しない）→P03（Custom Connector と ChatGPT は認証ヘッダを送れないため public 後にしか検収できない）→GitHub リポジトリを public に→X一投（動くURLと一緒に・「棚が先にあった」・生成開示）。ZeroGPU の無料枠は Gradio SDK 専用で Python 3.12 以前のため使わない。公開前に `DECISIONS.md` の非公開資料への参照を置換し、未報告の上流不具合の詳細を要約化する。公開前に、標準出力・標準エラーと Spaces 側のログに利用者入力が残るかを実測し、開示に記す。Codex③は実施済み（対象 40b2777・11件反映・437件通過）。Spaces 構成の施工後に Codex④（③の残存と配置モードだけの狭い検査）を入れる。
 
 ## 10. 役割
 
@@ -240,4 +241,7 @@ mekiki-mcp/
 4. §7 S04（Spaces 上の外からの検査）、M01 の接頭辞の扱いの反転、P01〜P03。
 5. §8 Space の URL と各クライアントの接続方式（Desktop は Custom Connector）。
 6. §9 Docker Space・private で検収してから public・ZeroGPU 不使用・Codex④の位置。
+
+### v2.4 → v2.4.1
+1. §3 `.dockerignore` と README の YAML 記述を Docker Space に合わせた。§9 一式に `.dockerignore`、git push を推奨、P03 を public 後に（認証ヘッダの制約）。
 

@@ -6,6 +6,7 @@ import http.client
 import json
 import os
 import socket
+import subprocess
 import sys
 import threading
 import time
@@ -1185,16 +1186,134 @@ def test_s03_reader_has_no_network_imports():
             assert f"import {name}" not in text, (path.name, name)
 
 
+SPACES_ENV = {
+    "MEKIKI_READER_MODE": "spaces", "SPACE_HOST": "Owner-Mekiki-Reader.hf.space,reader.example.org",
+    "SYSTEM": "spaces", "SPACE_ID": "owner/mekiki-reader", "SPACE_AUTHOR_NAME": "owner",
+    "SPACE_REPO_NAME": "mekiki-reader", "SPACES_ZERO_GPU": "true", "OAUTH_CLIENT_ID": "x", "OAUTH_SCOPES": "openid",
+    "HF_TOKEN": "hf_not_a_real_token", "WEB_CONCURRENCY": "4", "FORWARDED_ALLOW_IPS": "*",
+}
+
+
+def test_s01_local_mode_checks_host_on_root(server):
+    """local では `/` も Host を検査する（Host を問わないのは spaces の `/` だけ）。"""
+    status, _ = server.raw(f"GET / HTTP/1.1\r\nHost: evil.example\r\nConnection: close\r\n\r\n".encode())
+    assert status == 400
+
+
+def test_s01_spaces_mode_settings():
+    """spaces モードの設定（bind・許可 Host・変数の除去・pwa）を、待ち受けずに確かめる（SPEC v2.4 §2.10）。
+
+    実際に 0.0.0.0 で待ち受けると手元の網に出るので、ここでは launch に渡す値を見る。実際の待ち受けは
+    コンテナ／Space の上で確かめる（S04）。
+    """
+    code = "\n".join([
+        "import json, os, app",
+        "captured = {}",
+        "demo = app.build_blocks()",
+        "demo.launch = lambda **kw: captured.update(kw)",
+        "app.launch(demo, 7860)",
+        "print(json.dumps({'deploy': app.DEPLOY, 'server_name': app.SERVER_NAME,",
+        "    'allowed': sorted(app.ALLOWED_HOSTS), 'removed': app.REMOVED_GRADIO_ENV,",
+        "    'left': sorted(k for k in os.environ if k in app.SPACES_ENV_NAMES or k.startswith('OAUTH_')),",
+        "    'space_host': os.environ.get('SPACE_HOST'),",
+        "    'launch': {k: captured.get(k) for k in ('server_name', 'pwa', 'share', 'ssr_mode')}}))",
+    ])
+    env = {k: v for k, v in os.environ.items() if not k.startswith("GRADIO_")}
+    env.update(SPACES_ENV)
+    out = subprocess.run([sys.executable, "-c", code], cwd=REPO_ROOT, env=env, capture_output=True, text=True,
+                         timeout=120)
+    assert out.returncode == 0, out.stderr[-500:]
+    got = json.loads(out.stdout.strip().splitlines()[-1])
+    assert got["deploy"]["mode"] == "spaces" and got["deploy"]["bind"] == "0.0.0.0" and got["server_name"] == "0.0.0.0"
+    assert got["deploy"]["hosts"] == ["owner-mekiki-reader.hf.space", "reader.example.org", "localhost", "127.0.0.1"]
+    assert got["allowed"] == sorted(got["deploy"]["hosts"])  # ::1 は spaces では許可しない
+    removed = set(SPACES_ENV) - {"MEKIKI_READER_MODE", "SPACE_HOST"}
+    assert removed <= set(got["removed"]) and got["left"] == [], got
+    assert got["space_host"] == SPACES_ENV["SPACE_HOST"]  # 許可 Host の読み先は残す
+    assert got["launch"] == {"server_name": "0.0.0.0", "pwa": False, "share": False, "ssr_mode": False}
+
+
+@pytest.mark.parametrize("env, word", [
+    ({"MEKIKI_READER_MODE": "spaces"}, "SPACE_HOST"),                                  # 許可 Host が無い
+    ({"MEKIKI_READER_MODE": "spaces", "SPACE_HOST": "bad host!"}, "SPACE_HOST"),       # 形が違う
+    ({"MEKIKI_READER_MODE": "cloud"}, "MEKIKI_READER_MODE"),                           # 二値のどちらでもない
+])
+def test_s01_spaces_mode_refuses_bad_settings(tmp_path, env, word):
+    """配置モードの設定が誤っていれば起動しない（SPEC v2.4 §2.10）。"""
+    with pytest.raises(RuntimeError) as raised:
+        Server(tmp_path / "audit.json", env_extra=env).start()
+    assert "VERIFY-FAILED" in str(raised.value) and word in str(raised.value)
+
+
+def test_s01_spaces_mode_server(tmp_path):
+    """spaces モードで起動：許可 Host・`/` の Host 不問・ツール名に接頭辞なし・pwa なし・変数の除去（M01）。
+
+    待ち受けは試験のため loopback（MEKIKI_TEST_BIND）。起動表示にモードと許可 Host が出る。
+    """
+    env = dict(SPACES_ENV, MEKIKI_TEST_BIND="127.0.0.1")
+    with Server(tmp_path / "audit.json", env_extra=env) as srv:
+        def status(method, path, host, body=None):
+            conn = http.client.HTTPConnection("127.0.0.1", srv.port, timeout=30)
+            try:
+                conn.putrequest(method, path, skip_host=True)
+                conn.putheader("Host", host)
+                if body is not None:
+                    conn.putheader("Content-Type", "application/json")
+                    conn.putheader("Accept", "application/json, text/event-stream")
+                    conn.putheader("Content-Length", str(len(body)))
+                conn.endheaders(body)
+                resp = conn.getresponse()
+                resp.read()
+                return resp.status
+            finally:
+                conn.close()
+
+        assert status("GET", "/gradio_api/info", "owner-mekiki-reader.hf.space") == 200
+        assert status("GET", "/gradio_api/info", "Reader.Example.org:443") == 200
+        assert status("GET", "/gradio_api/info", "evil.example") == 400
+        assert status("GET", "/gradio_api/info", "[::1]") == 400  # spaces では ::1 は許可しない
+        assert status("POST", "/gradio_api/mcp/", "evil.example", CALL_BODY) == 400
+        assert status("GET", "/", "evil.example") == 200 and status("HEAD", "/", "10.0.0.7:7860") == 200
+        conn = http.client.HTTPConnection("127.0.0.1", srv.port, timeout=30)
+        conn.putrequest("GET", "/", skip_host=True)
+        conn.putheader("Host", "marker-host.example")
+        conn.endheaders()
+        page = conn.getresponse().read().decode("utf-8")
+        conn.close()
+        assert page == app.HEALTH_HTML and "marker-host" not in page  # 許可していない Host には固定の HTML だけ
+        assert status("POST", "/", "evil.example", b"{}") == 400  # Host を問わないのは `/` の GET・HEAD だけ
+        assert status("POST", "/gradio_api/mcp/", "owner-mekiki-reader.hf.space", CALL_BODY) == 200
+
+        async def body(s):
+            tools = [t.name for t in (await s.list_tools()).tools]
+            prompts = [p.name for p in (await s.list_prompts()).prompts]
+            got = await s.get_prompt(prompts[0])
+            return tools, prompts, got.messages[0].content.text
+
+        tools, prompts, text = MC.session(srv.mcp_url, body)
+        audit = srv.stop()
+    assert tools == ["list_papers", "get_section", "search_passages", "get_claim_record", "verify_quote",
+                     "check_compressions", "get_reading_guide"], tools  # 接頭辞なし（SYSTEM を消した）
+    assert prompts == [t.name for t in PR.TEMPLATES] and text == PR.TEMPLATES[0].text
+    assert audit["deploy"]["mode"] == "spaces" and audit["deploy"]["bind"] == "0.0.0.0"
+    assert audit["pwa"] is False
+    assert set(SPACES_ENV) - {"MEKIKI_READER_MODE", "SPACE_HOST"} <= set(audit["removed_env"])
+    display = [line for line in srv.lines if line.startswith("モード ")]
+    assert display and "spaces" in display[0] and "owner-mekiki-reader.hf.space" in display[0], display
+
+
 def test_s03_app_launch_arguments():
     """app.py が環境変数を整え、loopback で起動し、標準経路を遮断していること（静的検査）。"""
     text = (REPO_ROOT / "app.py").read_text(encoding="utf-8")
-    for needed in ('HF_TOKEN_PATH": os.devnull', 'HF_HUB_DISABLE_IMPLICIT_TOKEN', 'server_name=SERVER_NAME', 'SERVER_NAME = "127.0.0.1"', "share=False",
+    for needed in ('HF_TOKEN_PATH": os.devnull', 'HF_HUB_DISABLE_IMPLICIT_TOKEN', 'server_name=SERVER_NAME',
+                   'SERVER_NAME = DEPLOY["bind"]', 'return {"mode": mode, "bind": "127.0.0.1"', "pwa=False", "share=False",
                    "run_history=False", "ssr_mode=False", "enable_monitoring=False",
                    "analytics_enabled=False", "allowed_paths=[]", "blocked_paths=[]",
                    'GRADIO_ANALYTICS_ENABLED": "False"', 'HF_HUB_DISABLE_TELEMETRY": "1"',
                    "app_kwargs=", "prevent_thread_lock=True"):
         assert needed in text, needed
-    assert text.index("REMOVED_GRADIO_ENV = sanitize_environ()") < text.index("import gradio as gr")
+    assert text.index("DEPLOY = read_deploy()") < text.index("REMOVED_GRADIO_ENV = sanitize_environ()") \
+        < text.index("import gradio as gr")  # SPACE_HOST は消す前に読み、どちらも gradio の import より前
 
 
 _ALL_CALLS = (

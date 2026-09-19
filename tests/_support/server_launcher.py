@@ -384,6 +384,8 @@ def _write_log() -> None:
         "clients_created": CLIENTS["created"], "ready": app._READY["mcp"], "queue_sizes": QUEUE_SIZES,
         "removed_env": app.REMOVED_GRADIO_ENV,
         "server_name": app.SERVER_NAME,
+        "deploy": {k: (list(v) if isinstance(v, tuple) else v) for k, v in app.DEPLOY.items()},
+        "pwa": getattr(DEMO, "pwa", "missing"),
         "port": STATE["port"],
         "vibe_mode": getattr(DEMO, "vibe_mode", "missing"),
         "dev_mode": getattr(DEMO, "dev_mode", "missing"),
@@ -481,6 +483,9 @@ def main() -> int:
         app.RESULT_SWEEP_SECONDS = float(sweep)
         app.RESULT_TTL_SECONDS = float(sweep)
         app.RESULT_MESSAGES_MAX = 2
+    bind = os.environ.get("MEKIKI_TEST_BIND")  # spaces の試験でも待ち受けは loopback にする（手元の網に出さない）
+    if bind:
+        app.SERVER_NAME = bind
     ttl = os.environ.get("MEKIKI_TEST_RESULT_TTL")  # 期限だけを変える（Codex③ 3 の境界の試験）
     if ttl:
         app.RESULT_TTL_SECONDS = float(ttl)
@@ -501,6 +506,8 @@ def main() -> int:
         return 4
     app.mark_ready()
     STATE["phase"] = "serving"
+    for line in app.startup_lines(port):
+        print(line, flush=True)
     print(f"READY {DEMO.local_url}", flush=True)
     stop = threading.Event()
     signal.signal(signal.SIGTERM, lambda *_: stop.set())

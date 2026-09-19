@@ -1,4 +1,4 @@
-"""引用照合と語句検索のための正規化（NORM-1.1.0・docs/rules/NORM.md）。
+"""引用照合と語句検索のための正規化（NORM-1.2.0・docs/rules/NORM.md）。
 
 明示の対応表だけを使い、NFKC は使わない。`unicodedata.normalize` は入力側の NFC 合成（NFC-IN）だけに使う
 （明示の例外。正準等価の合成で互換変換ではなく、同梱データは全ファイル NFC 済み）。
@@ -13,7 +13,7 @@ import json
 import unicodedata
 from dataclasses import dataclass
 
-NORM_VERSION = "NORM-1.1.0"
+NORM_VERSION = "NORM-1.2.0"
 SEARCH_FOLD_VERSION = "SEARCH-1.1.0"  # 検索用の畳み込み（SEARCH 規則の一部。畳み込み自体は 1.0.0 と同じ）
 
 WHITESPACE = frozenset(map(chr, (0x09, 0x0A, 0x0D, 0x20, 0xA0, 0x202F, 0x205F, 0x3000, *range(0x2000, 0x200B))))
@@ -83,7 +83,7 @@ def table_sha256() -> str:
 
 
 # 表の正準 JSON の SHA-256（Q49）。表を変えたら版を上げ、この値と docs/rules/NORM.md を更新する。
-NORM_TABLE_SHA256 = "7fffde88fe1477b5e36819f16942d742b435bf4ffc336e46c59209b04b1d055b"
+NORM_TABLE_SHA256 = "19f90a79f945e17050264999caf4cd06dbe1056af0272ebfe079a9e10b16f6f0"
 if table_sha256() != NORM_TABLE_SHA256:  # pragma: no cover - 表と定数の食い違いは import 時に止める
     raise RuntimeError(f"NORM table hash mismatch: {table_sha256()}")
 
@@ -152,7 +152,7 @@ def _normalize(s: str, *, nfc: bool, ws_cjk: bool, punct: bool, lower: bool, emp
                 j += 1
             if (emph and out and out[-1] == " " and last_space_end >= 0
                     and all(src[k] in EMPHASIS_MARKS or src[k] in ZERO_WIDTH for k in range(last_space_end, i))):
-                # 「空白 記号 空白」：記号を落とすと空白が二つ並ぶので、後ろの並びを前の空白へ畳む（規則8）。
+                # 「空白 記号 空白」：記号を落とすと空白が二つ並ぶので、後ろの並びを前の空白へ畳む（規則9）。
                 # 並びの中のゼロ幅文字は WS-ZW として記録する（規則7）
                 has_zw = any(c in ZERO_WIDTH for c in src[i:j])
                 drops.append((len(out), i, j, "WS-COLLAPSE" + ("+WS-ZW" if has_zw else "")))
@@ -224,7 +224,7 @@ def _normalize(s: str, *, nfc: bool, ws_cjk: bool, punct: bool, lower: bool, emp
 
 
 def normalize_quote(s: str, *, is_input: bool) -> Normalized:
-    """NORM-1.1.0（verify_quote）。入力側だけ NFC-IN を先にかける。強調記号は両側で落とす（MARK-EMPH）。"""
+    """NORM-1.2.0（verify_quote）。入力側だけ NFC-IN を先にかける。強調記号は両側で落とす（MARK-EMPH）。"""
     return _normalize(s, nfc=is_input, ws_cjk=True, punct=True, lower=False, emph=True)
 
 

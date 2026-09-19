@@ -28,7 +28,7 @@ T1 出発点／T2 委任してよい境界／T3 答える立場／T4 組織で�
 
 1. **つなぐ**：`https://kenngotm-mekiki-reader.hf.space/gradio_api/mcp/` を、使っているクライアント（Claude・ChatGPT・Grok・Claude Code）に認証なしで登録する（手順は §5「公開版（Space）への接続」）。
 2. **最初に送る一言**（雛形 `mekiki_start`。英語は `mekiki_start_en`）：
-   > Mekiki Reader を接続しています。最初に get_reading_guide(part="all") を呼んでください。資料（llms.txt・THEORY_MAP.md）を読めるクライアントではそれも読んでください。以後の回答では、原文（出典つき）・著者が記録した位置づけ（status はラベル）・あなたの解釈を分けて書き、引用は verify_quote で照合し、自分の要約は check_compressions に一度通し、私の事例についての判断は私に残してください。
+   > Mekiki Reader を接続しています。最初に get_reading_guide(part="all") を呼んでください。資料（llms.txt・THEORY_MAP.md）を読めるクライアントではそれも読んでください。以後の回答では、原文（出典つき）・著者が記録した位置づけ（status はラベル）・あなたの解釈を分けて書き、著者が記録した位置づけがない場合は、記録がないと明記してください。引用は verify_quote で照合し、自分の要約は check_compressions に一度通し、私の事例についての判断は私に残してください。
 3. **最初に打つ三つ**：
    - 「T5 の非移転性定理は AI に代替できない人間の能力や尊厳を証明しているか、原文の位置を添えて」→ いいえ。T5 §4.4 L171 の原文と、台帳の status が返る。
    - 「Spec.cost とは何か。専門性や Spec. とどう違うか、原文で」→ T1 §2.1 L54 と T2 §2.1 L37 が返る。
@@ -118,7 +118,7 @@ Step-by-step guide in Japanese and English: [docs/TUTORIAL.md](docs/TUTORIAL.md)
 `.md` は `text/markdown`、`llms.txt` と `claims/t5.json` は `text/plain`。テンプレート変数は使わない（任意のパスの入口を作らないため）。
 `AI_READING_TESTS.md` は公開されている17問で、**採点には使わない**。
 
-### prompts（8件・PROMPTS-0.2.1）
+### prompts（8件・PROMPTS-0.2.2）
 
 日本語：`read_with_guards`（読む手順）・`four_modes`（支援の四つのモード）・`answer_format`（答え方の五欄）・`mekiki_start`（接続直後に送る最初の依頼）。
 英語：`read_with_guards_en`・`four_modes_en`・`answer_format_en`・`mekiki_start_en`（同じ内容の英語版。引数で言語を切り替える方式は採らない）。
@@ -136,7 +136,7 @@ Step-by-step guide in Japanese and English: [docs/TUTORIAL.md](docs/TUTORIAL.md)
 
 `SCHEMA-1.0.0`・`JSON-1.0.0`・`NORM-1.2.0`・`SEARCH-1.1.0`・`CAND-1.0.0`・`NEAR-1.0.0`・`GUIDE-1.0.0`・`LIMITS-3.1.0`・
 `LINES-1.0.0`・`LANG-1.0.0`・`SECTION-1.0.0`・`T4MAP-1.0.0`・`BUNDLE-1.0.0`・`TERMS-0.1.1`（30項目）・
-`PATTERNS-0.2.1`（50件）＋`PATTERNS-MATCH-2.0.0`・`PROMPTS-0.2.1`（8件）。本文は [docs/rules/](docs/rules/)。
+`PATTERNS-0.2.1`（50件）＋`PATTERNS-MATCH-2.0.0`・`PROMPTS-0.2.2`（8件）。本文は [docs/rules/](docs/rules/)。
 
 ## 5. 準備と起動
 
@@ -168,7 +168,7 @@ uv pip install --python .venv/bin/python --require-hashes -r requirements-dev.tx
 🔨 Launching MCP server:
 * Streamable HTTP URL: http://127.0.0.1:7860/gradio_api/mcp/
 corpus 3.5.0 (6748061)・bundle 40a09c5ba422…
-tools 7・resources 12・prompts 8（PROMPTS-0.2.1）
+tools 7・resources 12・prompts 8（PROMPTS-0.2.2）
 消した環境変数：なし
 モード local・待ち受け 127.0.0.1:7860・許可 Host：127.0.0.1・localhost・::1・[::1]
 ```
@@ -267,7 +267,7 @@ Space が非公開（private）の間は、Hugging Face が要求ごとに持ち
 | ChatGPT | **Web** で Developer mode →Plugins →MCP URL を登録 →Personal plugin をインストール。Web で入れればデスクトップ版のチャットにも出る（デスクトップ版の設定にある「MCP サーバー」は Codex 系統で、通常のチャットには出ない） |
 | Grok | `grok.com/connectors` →新しいコネクタ →Custom・認証なし。チャットでは `@Mekiki Reader` で呼ぶ |
 
-Gemini（個人向け）は Spark（ベータ）のアプリ連携→カスタムアプリで MCP を登録でき、七ツールが操作一覧に出る。`list_papers` ok（2026-09-19）。通常チャットでは未確認。
+Gemini（個人向け）は Spark（ベータ）のアプリ連携→カスタムアプリで MCP を登録でき、七ツールが操作一覧に出る。`list_papers` ok（2026-09-19）。`bundle_hash` は未照合のまま。通常チャットでは未確認。
 
 Hugging Face の MCP バッジと `hf.co/mcp` 経由の呼び出しは Hugging Face 側の機能で、このサーバは関知しない（検収の対象外）。
 各クライアントでの確認は `docs/acceptance/` に記録する（SPEC §7 P02・P03）。

@@ -102,5 +102,5 @@ P02 は SPEC §7 では「M01〜M03 と E01 二問（R01・R14）」。今回は
 | Gemini（個人向け・Spark〔ベータ〕） | アプリ連携 →カスタムアプリで MCP を登録。七ツールが操作一覧に出る。通常チャットでは未確認 | ok（`list_papers`） |
 
 Claude・ChatGPT・Grok の三つは `list_papers` が `ok`・`corpus_version` 3.5.0・`source_commit` 6748061・`bundle_hash` が
-`data/bundle_manifest.json` の SHA-256（`40a09c5b…24d5`）と一致。Gemini（Spark）は `list_papers` が `ok`（2026-09-19。
-版・`bundle_hash` の照合は著者の報告に含まれていないので、ここには書かない）。
+`data/bundle_manifest.json` の SHA-256（`40a09c5b…24d5`）と一致。Gemini（Spark）は `list_papers` が `ok`（2026-09-19）。**`bundle_hash` は未照合のまま**
+（版の照合も著者の報告に含まれていない）。

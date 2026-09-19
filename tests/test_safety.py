@@ -1453,7 +1453,7 @@ def test_s01_guide_page_is_static():
             continue
         assert banned not in lower, banned
     for heading in ("Mekiki とは / What Mekiki is", "しないこと / What it does not do", "MCP の URL / MCP URL",
-                    "つなぐ / Connect", "最初に打つ三つ / Three things to try first",
+                    "つなぐ / Connect", "最初に打つ四つ / Four things to try first",
                     "読み方 / How to read the answers", "リンク / Links"):
         assert f"<h2>{heading}</h2>" in page, heading
     for name in ("Claude", "ChatGPT", "Grok", "Claude Code"):
@@ -1461,6 +1461,8 @@ def test_s01_guide_page_is_static():
     assert "T5 §4.4 L171" in page and "T1 §2.1 L54" in page and "T2 §2.1 L37" in page
     assert "AI は遊べないので人間の尊厳が守られる" in page  # PATTERNS-MATCH-2.0.0 で P30 が該当する（空白あり）
     assert "<h2>最初に送る一言 / First message</h2>" in page
+    first = page.split("<h2>最初に打つ四つ / Four things to try first</h2>", 1)[1].split("</ol>", 1)[0]
+    assert first.count("<li>") == 4 and first.index("そもそもMekiki Frameworkとは何か") < first.index("T5 の非移転性定理")
     # 外部リンクは新しいタブで開く（HF の Space ページは案内ページを iframe で表示し、GitHub は iframe 内表示を拒む）
     anchors = re.findall(r"<a [^>]*>", page)
     assert len(anchors) == 7

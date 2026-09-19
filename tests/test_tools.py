@@ -134,15 +134,17 @@ def test_rule_documents_match_the_tables():
 
 def test_prompts_are_approved_with_guard(reader):
     """八つの雛形（日本語四つ・英語四つ。SPEC v2.2 §6・案B。mekiki_start は PROMPTS-0.2.0）。"""
-    assert PR.PROMPTS_VERSION == "PROMPTS-0.2.1"
-    assert PR.PROMPTS_STATUS == "approved" and PR.APPROVED_ON == "2026-09-19"
+    assert PR.PROMPTS_VERSION == "PROMPTS-0.2.2"
+    assert PR.PROMPTS_STATUS == "approved" and PR.APPROVED_ON == "2026-09-20"
     assert [t.name for t in PR.TEMPLATES] == ["read_with_guards", "four_modes", "answer_format", "mekiki_start",
                                               "read_with_guards_en", "four_modes_en", "answer_format_en",
                                               "mekiki_start_en"]
     assert [t.language for t in PR.TEMPLATES] == ["ja"] * 4 + ["en"] * 4
     # mekiki_start は著者の文面そのもの（利用者の発話なので見出し・定型文を付けない）
-    assert PR.MEKIKI_START.text == "Mekiki Reader を接続しています。最初に get_reading_guide(part=\"all\") を呼んでください。資料（llms.txt・THEORY_MAP.md）を読めるクライアントではそれも読んでください。以後の回答では、原文（出典つき）・著者が記録した位置づけ（status はラベル）・あなたの解釈を分けて書き、引用は verify_quote で照合し、自分の要約は check_compressions に一度通し、私の事例についての判断は私に残してください。"
+    assert PR.MEKIKI_START.text == "Mekiki Reader を接続しています。最初に get_reading_guide(part=\"all\") を呼んでください。資料（llms.txt・THEORY_MAP.md）を読めるクライアントではそれも読んでください。以後の回答では、原文（出典つき）・著者が記録した位置づけ（status はラベル）・あなたの解釈を分けて書き、著者が記録した位置づけがない場合は、記録がないと明記してください。引用は verify_quote で照合し、自分の要約は check_compressions に一度通し、私の事例についての判断は私に残してください。"
     assert PR.UTTERANCES == {"mekiki_start", "mekiki_start_en"}
+    assert "著者が記録した位置づけがない場合は、記録がないと明記してください。" in PR.MEKIKI_START.text  # 0.2.2
+    assert "If the author recorded no positioning for a claim, say so explicitly." in PR.MEKIKI_START_EN.text
     for t in (PR.MEKIKI_START, PR.MEKIKI_START_EN):
         assert PR.GUARD_SENTENCE not in t.text and PR.GUARD_SENTENCE_EN not in t.text
         for name in ("get_reading_guide(part=\"all\")", "llms.txt", "THEORY_MAP.md", "verify_quote",

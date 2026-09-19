@@ -31,18 +31,32 @@ https://kenngotm-mekiki-reader.hf.space/gradio_api/mcp/
 接続したら、最初に次の一言を送る（雛形 `mekiki_start`。英語は `mekiki_start_en`。§6）。
 / After connecting, send this first (the `mekiki_start` template; `mekiki_start_en` in English; §6).
 
-> Mekiki Reader を接続しています。最初に get_reading_guide(part="all") を呼んでください。資料（llms.txt・THEORY_MAP.md）を読めるクライアントではそれも読んでください。以後の回答では、原文（出典つき）・著者が記録した位置づけ（status はラベル）・あなたの解釈を分けて書き、引用は verify_quote で照合し、自分の要約は check_compressions に一度通し、私の事例についての判断は私に残してください。
+> Mekiki Reader を接続しています。最初に get_reading_guide(part="all") を呼んでください。資料（llms.txt・THEORY_MAP.md）を読めるクライアントではそれも読んでください。以後の回答では、原文（出典つき）・著者が記録した位置づけ（status はラベル）・あなたの解釈を分けて書き、著者が記録した位置づけがない場合は、記録がないと明記してください。引用は verify_quote で照合し、自分の要約は check_compressions に一度通し、私の事例についての判断は私に残してください。
 
-> I have connected Mekiki Reader. First call get_reading_guide(part="all"). If your client can read the material (llms.txt, THEORY_MAP.md), read those too. In your answers from then on, write the text (with its source), the position the author recorded (the status is a label) and your own interpretation separately; check quotations with verify_quote, put your own summaries through check_compressions once, and leave judgments about my own case to me.
+> I have connected Mekiki Reader. First call get_reading_guide(part="all"). If your client can read the material (llms.txt, THEORY_MAP.md), read those too. In your answers from then on, write the text (with its source), the position the author recorded (the status is a label) and your own interpretation separately. If the author recorded no positioning for a claim, say so explicitly. Check quotations with verify_quote, put your own summaries through check_compressions once, and leave judgments about my own case to me.
 
-## 3. 最初に打つ三つ / Three things to try first
+## 3. 最初に打つ四つ / Four things to try first
 
-「返るもの」は、下に挙げた実測の記録で確かめたもの（推定ではない）。モデルの文章はクライアントとモデルで変わるが、
-出典の位置と記録はサーバの同じデータから返る。
-/ "What comes back" was checked against the recorded runs cited below, not guessed. The model's wording varies by client and model;
-the locations and records come from the same server data.
+②〜④の「返るもの」は、下に挙げた実測の記録で確かめたもの（推定ではない）。モデルの文章はクライアントとモデルで変わるが、
+出典の位置と記録はサーバの同じデータから返る。①はまだ実行記録がないので、返るものではなく材料の位置だけを書く。
+/ For ②–④, "what comes back" was checked against the recorded runs cited below, not guessed. The model's wording varies by client and
+model; the locations and records come from the same server data. ① has no recorded run yet, so only where the material is is given.
 
-### ① T5 の定理は何を証明しているか / What the T5 theorem proves
+### ① Mekiki Framework とは / What the Mekiki Framework is
+
+> そもそもMekiki Frameworkとは何か。五本の論文（T1〜T5）がそれぞれ何を扱っているかを、読解ガイドと各論文の要旨を引いて説明して
+>
+> What is the Mekiki Framework in the first place? Explain what each of the five papers (T1–T5) deals with, quoting the reading guide and each paper's abstract.
+
+**材料の位置 / Where the material is**：読解ガイド `FOR_AI_READERS.md`（`get_reading_guide(part="all")`・L1–73）。
+要旨は T1 `t1-abstract`（L12–17）・T2 `t2-abstract`（L11–18）・T3 `t3-abstract`（L9–12）・T5 `t5-abstract`（L11–14）。
+T4 には要旨の節が別に無く、冒頭の節 `paper-t4`（L1–24）の中に「要旨」（L17〜）がある（英語の Abstract は末尾の L256〜）。
+/ The reading guide `FOR_AI_READERS.md` (`get_reading_guide(part="all")`, L1–73). Abstracts: T1 `t1-abstract` (L12–17), T2 `t2-abstract`
+(L11–18), T3 `t3-abstract` (L9–12), T5 `t5-abstract` (L11–14). T4 has no separate abstract section; its 要旨 is inside the opening
+section `paper-t4` (L1–24, from L17), and its English abstract is near the end (from L256).
+確認 / Checked：2026-09-20、`get_section`・`get_reading_guide` の実応答（行範囲）。
+
+### ② T5 の定理は何を証明しているか / What the T5 theorem proves
 
 > T5 の非移転性定理は AI に代替できない人間の能力や尊厳を証明しているか、原文の位置を添えて
 >
@@ -54,7 +68,7 @@ the locations and records come from the same server data.
 (for example T5-A1 `analytic theorem (paper's classification)`, T5-N1 `constructive normative extension`).
 記録 / Record: [acceptance/e01/R01-guards.md](acceptance/e01/R01-guards.md)（2026-09-18・Opus 5・`read_with_guards`）
 
-### ② Spec.cost とは / What Spec.cost is
+### ③ Spec.cost とは / What Spec.cost is
 
 > Spec.cost とは何か。専門性や Spec. とどう違うか、原文で
 >
@@ -64,7 +78,7 @@ the locations and records come from the same server data.
 / T1 §2.1 L54 (the definition, and how it differs from domain expertise) and T2 §2.1 L37 (domain expertise, specification cost and specification as three concepts).
 記録 / Record: [acceptance/e01/R14-guards.md](acceptance/e01/R14-guards.md)（2026-09-18・Opus 5・`read_with_guards`）
 
-### ③ 要約を検査する / Check a summary
+### ④ 要約を検査する / Check a summary
 
 > 次の文を check_compressions に通して：『AI は遊べないので人間の尊厳が守られる』
 >
@@ -75,6 +89,19 @@ the locations and records come from the same server data.
 / `ok`, with the approved pattern P30 (form `AIは遊べない`; in English `AI cannot play`) and three related passages
 (T5 §3.1 L77–88, §3.4 L107–120, §3.1 L79). **A match is not a verdict; it is a place to compare with the text.**
 確認 / Checked：2026-09-19、`check_compressions` の実応答（PATTERNS-0.2.1・PATTERNS-MATCH-2.0.0）。
+
+### レンズを指定して聞く / Ask through a lens
+
+①で全体を見たら、自分の立場を添えて入口を聞く。〔 〕の中から自分に近いものを選ぶ。
+/ Once ① has given the overview, ask where to start from your own position. Pick the one in [ ] closest to you.
+
+> 私は〔仕事で AI に何を任せてよいか迷っている／部下の育て方を考えている／組織に AI を入れる立場にいる〕。五本のうちどれから読めばよいか、理由と節の位置を添えて
+>
+> I am [unsure what I may hand over to AI at work / thinking about how to develop the people I manage / in a position to bring AI into an organization]. Which of the five papers should I start with? Give the reasons and the section locations.
+
+どの論文を勧めるかは答え手の読みで、原文の主張ではない。勧められた節は `get_section` で原文を読み、判断は自分に残す（実行記録はまだない）。
+/ Which paper to recommend is the answerer's reading, not a claim of the papers. Read the recommended sections in the original with
+`get_section`, and keep the decision your own (no recorded run yet).
 
 ## 4. 自分の文で / With your own sentences
 

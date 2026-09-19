@@ -5,6 +5,7 @@ MCP の prompts と get_reading_guide(templates) の両方が同じ定数を返�
 `_en` を付けた英語三つ（SPEC v2.2 §6。引数で言語を切り替える方式は採らない）の計六つ。
 PROMPTS-0.2.0（2026-09-19）で四つ目の mekiki_start（日本語は著者の文面、英語はその忠実訳）を足して計八つ。
 PROMPTS-0.2.1（同日）で mekiki_start の資料の読み方を「読めるクライアントでは」に改めた（resources を扱えない接続先のため）。
+PROMPTS-0.2.2（2026-09-20）で「位置づけの記録がない場合は明記する」一文を足した（日英とも著者の文面）。
 mekiki_start は利用者が接続直後に送る発話そのものなので、見出しと定型文を付けない（ほかの六つと違う）。
 """
 
@@ -12,9 +13,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-PROMPTS_VERSION = "PROMPTS-0.2.1"
+PROMPTS_VERSION = "PROMPTS-0.2.2"
 PROMPTS_STATUS = "approved"  # 著者承認済み
-APPROVED_ON: str | None = "2026-09-19"  # 0.1.0 の六つは 2026-09-18、mekiki_start は 2026-09-19
+APPROVED_ON: str | None = "2026-09-20"  # 0.1.0 の六つは 2026-09-18、mekiki_start は 2026-09-19（0.2.2 の追加文は 2026-09-20）
 
 GUARD_SENTENCE = (
     "この雛形は、利用者が明示的に選んだときだけ使う。"
@@ -108,6 +109,7 @@ MEKIKI_START = PromptTemplate(
         "Mekiki Reader を接続しています。最初に get_reading_guide(part=\"all\") を呼んでください。"
         "資料（llms.txt・THEORY_MAP.md）を読めるクライアントではそれも読んでください。"
         "以後の回答では、原文（出典つき）・著者が記録した位置づけ（status はラベル）・あなたの解釈を分けて書き、"
+        "著者が記録した位置づけがない場合は、記録がないと明記してください。"
         "引用は verify_quote で照合し、自分の要約は check_compressions に一度通し、"
         "私の事例についての判断は私に残してください。"
     ),
@@ -196,7 +198,8 @@ MEKIKI_START_EN = PromptTemplate(
         "I have connected Mekiki Reader. First call get_reading_guide(part=\"all\"). If your client can read the"
         " material (llms.txt, THEORY_MAP.md), read those too. In your answers from then on, write the text (with"
         " its source), the position the author recorded (the status is a label) and your own interpretation"
-        " separately; check quotations with verify_quote, put your own summaries through check_compressions"
+        " separately. If the author recorded no positioning for a claim, say so explicitly. Check quotations with"
+        " verify_quote, put your own summaries through check_compressions"
         " once, and leave judgments about my own case to me."
     ),
 )

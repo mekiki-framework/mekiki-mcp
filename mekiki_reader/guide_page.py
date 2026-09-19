@@ -2,8 +2,8 @@
 
 JavaScript も外部の資産（画像・フォント・スタイルシート）も使わない。英日併記。
 MCP の URL は要求からではなく、起動時に読んだ SPACE_HOST から組み立てる（要求の中身を写さない）。
-「最初に打つ三つ」の返り値は docs/acceptance/e01（R01・R14）と check_compressions の実応答で確かめた
-（docs/TUTORIAL.md と同じ）。
+「最初に打つ四つ」のうち後の三つの返り値は docs/acceptance/e01（R01・R14）と check_compressions の実応答で
+確かめた。先頭の一問（2026-09-20 追加）は実行記録がないので、返り値ではなく材料の位置だけを書く（docs/TUTORIAL.md と同じ）。
 """
 
 from __future__ import annotations
@@ -89,8 +89,11 @@ def render(mcp_url: str) -> str:
 <pre>{html.escape(MEKIKI_START.text)}</pre>
 <pre>{html.escape(MEKIKI_START_EN.text)}</pre>
 
-<h2>最初に打つ三つ / Three things to try first</h2>
+<h2>最初に打つ四つ / Four things to try first</h2>
 <ol>
+<li>「そもそもMekiki Frameworkとは何か。五本の論文（T1〜T5）がそれぞれ何を扱っているかを、読解ガイドと各論文の要旨を引いて説明して」<br>
+<span class="en">“What is the Mekiki Framework in the first place? Explain what each of the five papers (T1–T5) deals with, quoting the reading guide and each paper's abstract.”</span><br>
+→ 材料は読解ガイド（get_reading_guide）と各論文の要旨（T4 は冒頭の節）。<span class="en">The material: the reading guide (get_reading_guide) and each paper's abstract (for T4, in its opening section).</span></li>
 <li>「T5 の非移転性定理は AI に代替できない人間の能力や尊厳を証明しているか、原文の位置を添えて」<br>
 <span class="en">“Does the T5 non-transferability theorem prove human abilities or dignity that AI cannot replace? Give the location in the text.”</span><br>
 → いいえ。T5 §4.4 L171 の原文と、台帳の status。<span class="en">No — with the text at T5 §4.4 L171 and the ledger's status.</span></li>

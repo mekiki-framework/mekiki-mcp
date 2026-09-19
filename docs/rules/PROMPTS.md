@@ -2,8 +2,8 @@
 
 | 項目 | 値 |
 |---|---|
-| 規則ID・版 | PROMPTS-0.2.1（8件：日本語4・英語4。2026-09-19 に mekiki_start の資料の読み方を「読めるクライアントでは」に改めた＝文面の手直しなので PATCH）。PROMPTS-0.2.0（同日に `mekiki_start`・`mekiki_start_en` を追加＝既存の六つは変えずに足したので MINOR）。PROMPTS-0.1.0（6件：日本語3・英語3） |
-| 状態 | 0.1.0 は確定（Q39。著者承認 2026-09-18。日本語3件に加え、同日に英語3件を `_en` の別名で承認）。0.2.1 の `mekiki_start` は著者の文面（2026-09-19）、`mekiki_start_en` は施工の訳を著者が承認（2026-09-19）。`prompts.py` の `PROMPTS_STATUS="approved"`・`APPROVED_ON="2026-09-19"` |
+| 規則ID・版 | PROMPTS-0.2.2（8件：日本語4・英語4。2026-09-20 に mekiki_start〔ja／en〕へ「位置づけの記録がない場合は明記する」一文を足した＝文面の追加なので PATCH。日英とも著者の文面）。PROMPTS-0.2.1（2026-09-19 に mekiki_start の資料の読み方を「読めるクライアントでは」に改めた＝文面の手直しなので PATCH）。PROMPTS-0.2.0（同日に `mekiki_start`・`mekiki_start_en` を追加＝既存の六つは変えずに足したので MINOR）。PROMPTS-0.1.0（6件：日本語3・英語3） |
+| 状態 | 0.1.0 は確定（Q39。著者承認 2026-09-18。日本語3件に加え、同日に英語3件を `_en` の別名で承認）。0.2.1 の `mekiki_start` は著者の文面（2026-09-19）、`mekiki_start_en` は施工の訳を著者が承認（2026-09-19）。`prompts.py` の `PROMPTS_STATUS="approved"`・`APPROVED_ON="2026-09-20"`（0.2.2 の追加文は著者の文面・2026-09-20） |
 | 実装 | `mekiki_reader/prompts.py`（MCP の prompts と get_reading_guide の templates が同じ定数を返す） |
 
 - 雛形は read_with_guards・four_modes・answer_format・mekiki_start と、その英語版 `read_with_guards_en`・`four_modes_en`・`answer_format_en`・`mekiki_start_en` の八つ（SPEC v2.2 §6・案B）。文面の全体は `prompts.py` にある。

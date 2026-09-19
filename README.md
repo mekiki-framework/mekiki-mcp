@@ -1,7 +1,13 @@
 ---
+title: Mekiki Reader
+emoji: 📚
+colorFrom: gray
+colorTo: blue
 sdk: docker
 app_port: 7860
+pinned: false
 license: mit
+short_description: Read-only MCP for the Mekiki papers. No LLM inside.
 ---
 
 # Mekiki Reader（mekiki-mcp）

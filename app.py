@@ -87,12 +87,16 @@ import gradio.queueing  # noqa: E402
 import gradio.routes  # noqa: E402
 import gradio.utils  # noqa: E402
 import gradio_client  # noqa: E402
+import mcp.types as mcp_types  # noqa: E402  （gradio[mcp] の依存。ツール注釈を足すために使う）
 import orjson  # noqa: E402  （Gradio の依存。queue/data と同じ直列化で大きさを測る）
 import uvicorn  # noqa: E402
 import uvicorn.protocols.http.h11_impl as uvicorn_h11  # noqa: E402  （httptools は入れていないので h11 が使われる）
+from mcp.server.lowlevel.server import request_ctx  # noqa: E402
+from mcp.shared.context import RequestContext  # noqa: E402
 from starlette.middleware import Middleware  # noqa: E402
 
 from mekiki_reader import corpus as C  # noqa: E402
+from mekiki_reader import guide_page  # noqa: E402
 from mekiki_reader import prompts as PR  # noqa: E402
 from mekiki_reader import schema as S  # noqa: E402
 from mekiki_reader import tools as T  # noqa: E402
@@ -105,6 +109,13 @@ SERVER_NAME = DEPLOY["bind"]  # local は "127.0.0.1"。変えられるのは配
 LOOPBACK = "127.0.0.1"         # 自分自身に当てる確認（check_cors）の宛先（どのモードでも許可 Host に入る）
 # spaces で Host を問わない `/`（健康検査）に返す固定の HTML（要求の中身を写さない）
 HEALTH_HTML = "<!doctype html><title>Mekiki Reader</title><p>Mekiki Reader (MCP): /gradio_api/mcp/</p>\n"
+# spaces で外部の許可 Host（SPACE_HOST）宛ての GET・HEAD / に返す案内ページ（JS・外部資産なし）。
+# loopback（内部クライアント・起動時の確認）には従来どおり Gradio の HTML を返す（設定がそこから読まれるため）。
+EXTERNAL_HOSTS = tuple(h for h in DEPLOY["hosts"] if h not in LOCAL_HOSTS) if DEPLOY["mode"] == "spaces" else ()
+GUIDE_HTML = guide_page.render(f"https://{EXTERNAL_HOSTS[0]}/gradio_api/mcp/") if EXTERNAL_HOSTS else ""
+GUIDE_HEADERS = ((b"content-security-policy",
+                  b"default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'"),
+                 (b"x-content-type-options", b"nosniff"), (b"referrer-policy", b"no-referrer"))
 
 # ---- 同時実行（Q65。上限超過は status ではなく通信層で返す） ----
 
@@ -767,6 +778,15 @@ def _guard_middleware():
                                 (b"content-length", str(len(body)).encode("ascii")), (b"connection", b"close")]})
         await send({"type": "http.response.body", "body": b"" if method == "HEAD" else body})
 
+    async def _guide(send, method: str, receive) -> None:
+        await _drain(receive)
+        body = GUIDE_HTML.encode("utf-8")
+        await send({"type": "http.response.start", "status": 200,
+                    "headers": [(b"content-type", b"text/html; charset=utf-8"),
+                                (b"content-length", str(len(body)).encode("ascii")), *GUIDE_HEADERS,
+                                (b"connection", b"close")]})
+        await send({"type": "http.response.body", "body": b"" if method == "HEAD" else body})
+
     async def _finish_read(send, read, path: str) -> None:
         if read[0] == "reply":
             return await _reply(send, read[1], read[2], path)
@@ -797,6 +817,9 @@ def _guard_middleware():
                 # 健康検査には固定の短い HTML だけを返す（Gradio の画面は要求の Host から設定を組み立てるため、
                 # 許可していない Host には渡さない）
                 return await _health(send, scope.get("method", "GET").upper(), receive)
+            if (EXTERNAL_HOSTS and path == "/" and _host_name(hosts[0]) in EXTERNAL_HOSTS
+                    and scope.get("method", "GET").upper() in ("GET", "HEAD")):
+                return await _guide(send, scope.get("method", "GET").upper(), receive)
 
             # 本文の長さの表明（Codex① P1-2）：TE と CL の併記は拒み、CL は ASCII 数字だけを受ける。
             lengths = [v.decode("latin-1", "replace").strip() for k, v in raw if k.lower() == b"content-length"]
@@ -1022,6 +1045,57 @@ def get_reading_guide(part: str = "all") -> str:
 
 TOOLS = (list_papers, get_section, search_passages, get_claim_record,
          verify_quote, check_compressions, get_reading_guide)
+TOOL_NAMES = tuple(fn.__name__ for fn in TOOLS)
+
+# ---- ツール注釈（上流の差し替え⑦） ----
+# 七ツールはどれも読むだけで、同じ入力には同じ結果を返し、外の世界に触れない（SPEC §2.2〜§2.4）。
+# Gradio 6.27.0 の list_tools は annotations を渡す経路を持たない（6.28.0・main も同じ。DECISIONS）ので、
+# 登録後の tools/list の処理を包んで、七ツールに注釈を足す。注釈はクライアントへの手がかりで、保証ではない。
+TOOL_ANNOTATIONS = mcp_types.ToolAnnotations(readOnlyHint=True, destructiveHint=False,
+                                             idempotentHint=True, openWorldHint=False)
+
+
+def _mcp_lowlevel(demo):
+    return getattr(getattr(demo, "mcp_server_obj", None), "mcp_server", None)
+
+
+def install_tool_annotations(demo) -> None:
+    """tools/list の応答の七ツールに TOOL_ANNOTATIONS を付ける（起動の直後、外からの MCP を受ける前）。"""
+    server = _mcp_lowlevel(demo)
+    original = None if server is None else server.request_handlers.get(mcp_types.ListToolsRequest)
+    if original is None or getattr(original, "mekiki_annotations", False):
+        return
+
+    async def with_annotations(request):
+        result = await original(request)
+        inner = getattr(result, "root", None)
+        if not isinstance(inner, mcp_types.ListToolsResult):
+            return result
+        tools = [t.model_copy(update={"annotations": TOOL_ANNOTATIONS}) if t.name in TOOL_NAMES else t
+                 for t in inner.tools]
+        return mcp_types.ServerResult(inner.model_copy(update={"tools": tools}))
+
+    with_annotations.mekiki_annotations = True
+    server.request_handlers[mcp_types.ListToolsRequest] = with_annotations
+
+
+def check_tool_annotations(demo) -> list[str]:
+    """差し替えた tools/list を一度呼び、七ツール全部に注釈が付いていることを確かめる（起動後の確認）。"""
+    server = _mcp_lowlevel(demo)
+    handler = None if server is None else server.request_handlers.get(mcp_types.ListToolsRequest)
+    if not getattr(handler, "mekiki_annotations", False):
+        return ["tool-annotations=unpatched"]
+    token = request_ctx.set(RequestContext(request_id="mekiki-startup-check", meta=None, session=None,
+                                           lifespan_context=None))
+    try:
+        result = asyncio.run(handler(mcp_types.ListToolsRequest(method="tools/list")))
+    except Exception as exc:  # noqa: BLE001 - 起動後の確認で止める
+        return [f"tool-annotations-check-failed={type(exc).__name__}"]
+    finally:
+        request_ctx.reset(token)
+    got = {t.name: t.annotations for t in result.root.tools}
+    missing = [name for name in TOOL_NAMES if got.get(name) != TOOL_ANNOTATIONS]
+    return [f"tool-annotations-missing={','.join(missing)}"] if missing else []
 
 
 # ---------------------------------------------------------------- resources と prompts
@@ -1135,6 +1209,7 @@ def verify_blocks(demo, launched: bool = False, port: int | None = None) -> list
             problems += check_cors(port)
         if _internal_session(demo) is None:
             problems.append("internal-client=missing")
+        problems += check_tool_annotations(demo)
     return problems
 
 
@@ -1162,6 +1237,7 @@ def launch(demo, port: int):
     )
     redact_logs()
     warm_internal_client(demo)
+    install_tool_annotations(demo)
     return launched
 
 

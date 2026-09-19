@@ -74,6 +74,12 @@ def test_m01_tools_list_and_call(server, mcp_url):
     # Spaces ではツール名に接頭辞が付く（Q69）。ローカルでは付かないことを確かめる。
     assert len(tools) == 7 and [t.name for t in tools] == list(TOOL_NAMES)
     by_name = {t.name: t for t in tools}
+    # ツール注釈（上流の差し替え⑦）：七ツール全部が読むだけ・同じ結果・外に触れない
+    for name in TOOL_NAMES:
+        ann = by_name[name].annotations
+        assert ann is not None, name
+        assert (ann.readOnlyHint, ann.destructiveHint, ann.idempotentHint, ann.openWorldHint) == (
+            True, False, True, False), (name, ann)
     for name in TOOL_NAMES:
         schema = by_name[name].inputSchema
         assert schema["type"] == "object"
@@ -166,11 +172,12 @@ def test_m02_prompts(server, mcp_url):
         return listed, got, unknown
 
     listed, got, unknown = MC.session(mcp_url, body)
-    assert [p.name for p in listed] == [t.name for t in PR.TEMPLATES] and len(listed) == 6
+    assert [p.name for p in listed] == [t.name for t in PR.TEMPLATES] and len(listed) == 8
     for template in PR.TEMPLATES:
         text = got[template.name].messages[0].content.text
         assert text == template.text
-        assert (PR.GUARD_SENTENCE if template.language == "ja" else PR.GUARD_SENTENCE_EN) in text
+        if template.name not in PR.UTTERANCES:  # mekiki_start は利用者の発話そのもの（定型文なし）
+            assert (PR.GUARD_SENTENCE if template.language == "ja" else PR.GUARD_SENTENCE_EN) in text
     # Q64：名前が一致しないとき、上流は endpoint 一覧の最後を実行する。番兵が例外にする。
     assert unknown[0] == "raised", unknown
     assert not any(t.text in unknown[1] for t in PR.TEMPLATES)

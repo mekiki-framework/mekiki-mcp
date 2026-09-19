@@ -133,12 +133,24 @@ def test_rule_documents_match_the_tables():
 
 
 def test_prompts_are_approved_with_guard(reader):
-    """六つの雛形（日本語三つ・英語三つ。SPEC v2.2 §6・案B）。"""
-    assert PR.PROMPTS_STATUS == "approved" and PR.APPROVED_ON == "2026-09-18"
-    assert [t.name for t in PR.TEMPLATES] == ["read_with_guards", "four_modes", "answer_format",
-                                              "read_with_guards_en", "four_modes_en", "answer_format_en"]
-    assert [t.language for t in PR.TEMPLATES] == ["ja"] * 3 + ["en"] * 3
+    """八つの雛形（日本語四つ・英語四つ。SPEC v2.2 §6・案B。mekiki_start は PROMPTS-0.2.0）。"""
+    assert PR.PROMPTS_VERSION == "PROMPTS-0.2.0"
+    assert PR.PROMPTS_STATUS == "approved" and PR.APPROVED_ON == "2026-09-19"
+    assert [t.name for t in PR.TEMPLATES] == ["read_with_guards", "four_modes", "answer_format", "mekiki_start",
+                                              "read_with_guards_en", "four_modes_en", "answer_format_en",
+                                              "mekiki_start_en"]
+    assert [t.language for t in PR.TEMPLATES] == ["ja"] * 4 + ["en"] * 4
+    # mekiki_start は著者の文面そのもの（利用者の発話なので見出し・定型文を付けない）
+    assert PR.MEKIKI_START.text == "Mekiki Reader を接続しています。最初に get_reading_guide(part=\"all\") を呼び、資料の llms.txt と THEORY_MAP.md を読んでから答えてください。以後の回答では、原文（出典つき）・著者が記録した位置づけ（status はラベル）・あなたの解釈を分けて書き、引用は verify_quote で照合し、自分の要約は check_compressions に一度通し、私の事例についての判断は私に残してください。"
+    assert PR.UTTERANCES == {"mekiki_start", "mekiki_start_en"}
+    for t in (PR.MEKIKI_START, PR.MEKIKI_START_EN):
+        assert PR.GUARD_SENTENCE not in t.text and PR.GUARD_SENTENCE_EN not in t.text
+        for name in ("get_reading_guide(part=\"all\")", "llms.txt", "THEORY_MAP.md", "verify_quote",
+                     "check_compressions"):
+            assert name in t.text, (t.name, name)
     for t in PR.TEMPLATES:
+        if t.name in PR.UTTERANCES:
+            continue
         guard = PR.GUARD_SENTENCE if t.language == "ja" else PR.GUARD_SENTENCE_EN
         assert guard in t.text and t.text.startswith(f"[{t.name}]" if t.language == "en" else f"【{t.name}】")
     material = {"ja": PR.MATERIAL_SENTENCE, "en": PR.MATERIAL_SENTENCE_EN}
@@ -161,8 +173,8 @@ def test_reading_guide(reader):
     assert r["source_kind"] == "reading_guide" and r["canonical_doi"] is None and r["paper_id"] is None
     assert (r["locator"]["line_start"], r["locator"]["line_end"]) == (42, 61)
     assert r["payload"]["text"].startswith("## Four practical response modes")
-    assert env["templates"]["status"] == "approved" and len(env["templates"]["items"]) == 6
-    assert [i["language"] for i in env["templates"]["items"]] == ["ja"] * 3 + ["en"] * 3
+    assert env["templates"]["status"] == "approved" and len(env["templates"]["items"]) == 8
+    assert [i["language"] for i in env["templates"]["items"]] == ["ja"] * 4 + ["en"] * 4
     assert rt(T.get_reading_guide(reader, "all"))["results"][0]["locator"]["line_end"] == 73
     ranges = {p: reader.guide_ranges[p][:2] for p, _ in T.GUIDE_PARTS}
     assert ranges["interpretation"] == (5, 41) and ranges["core-terms"] == (7, 29)

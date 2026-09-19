@@ -12,7 +12,7 @@
 | モデル | 名前・版 |
 | 接続方式 | Streamable HTTP 直結 ／ mcp-remote@<版> 経由 ／ その他 |
 | 接続 URL（実測） | `http://127.0.0.1:<port>/gradio_api/mcp/` |
-| サーバの起動表示 | `corpus …・bundle …` / `tools 7・resources 12・prompts 6（PROMPTS-…）` |
+| サーバの起動表示 | `corpus …・bundle …` / `tools 7・resources 12・prompts 8（PROMPTS-…）` |
 | サーバの版 | コミット・`pytest -q` の結果・規則の版（TERMS・PATTERNS・PROMPTS） |
 | 消した環境変数 | 起動表示の「消した環境変数」の行 |
 
@@ -32,7 +32,7 @@
 | `get_reading_guide` | `ok` | | |
 | `resources/list` | 12件・テンプレート0件 | | |
 | `resources/read` | 本文の SHA-256 が bundle と一致 | | 照合の仕方は下の「本文の照合」 |
-| `prompts/list` | 6件（日本語3・英語3） | | |
+| `prompts/list` | 8件（日本語4・英語4） | | |
 | `prompts/get`（既知） | 文面が `mekiki_reader/prompts.py` と一致 | | |
 | `prompts/get`（未知の名前） | 雛形を返さずエラー | | |
 

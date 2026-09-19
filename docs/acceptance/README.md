@@ -17,6 +17,7 @@
 | Space（private・public）と Claude Code | 配置段階二 | 済み（S04・P01・P02 の一部と public 後の確認。同 §1〜§9） |
 | Claude（Web の Custom Connector） | 配置段階二 | 済み（P03・同 §10） |
 | Grok（Custom コネクタ） | 配置段階二 | 済み（P03・同 §10） |
+| Gemini（Spark〔ベータ〕のカスタムアプリ） | 配置段階二 | 済み（P03・同 §10。通常チャットは未確認） |
 
 ## 試験の中身
 

@@ -99,6 +99,8 @@ P02 は SPEC §7 では「M01〜M03 と E01 二問（R01・R14）」。今回は
 | Claude（Web） | Custom Connector に URL を登録（サインインなし） | ok |
 | ChatGPT（Web） | Developer mode →Plugins →MCP URL を登録 →Personal plugin をインストール。デスクトップ版の「MCP サーバー」設定は Codex 系統で、通常のチャットには出ない。Web で入れればデスクトップ版のチャットにも出る | ok |
 | Grok | `grok.com/connectors` →新しいコネクタ →Custom・認証なし。チャットでは `@Mekiki Reader` で呼ぶ | ok |
+| Gemini（個人向け・Spark〔ベータ〕） | アプリ連携 →カスタムアプリで MCP を登録。七ツールが操作一覧に出る。通常チャットでは未確認 | ok（`list_papers`） |
 
-三つとも `list_papers` が `ok`・`corpus_version` 3.5.0・`source_commit` 6748061・`bundle_hash` が
-`data/bundle_manifest.json` の SHA-256（`40a09c5b…24d5`）と一致。
+Claude・ChatGPT・Grok の三つは `list_papers` が `ok`・`corpus_version` 3.5.0・`source_commit` 6748061・`bundle_hash` が
+`data/bundle_manifest.json` の SHA-256（`40a09c5b…24d5`）と一致。Gemini（Spark）は `list_papers` が `ok`（2026-09-19。
+版・`bundle_hash` の照合は著者の報告に含まれていないので、ここには書かない）。

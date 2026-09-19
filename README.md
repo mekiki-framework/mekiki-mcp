@@ -267,7 +267,7 @@ Space が非公開（private）の間は、Hugging Face が要求ごとに持ち
 | ChatGPT | **Web** で Developer mode →Plugins →MCP URL を登録 →Personal plugin をインストール。Web で入れればデスクトップ版のチャットにも出る（デスクトップ版の設定にある「MCP サーバー」は Codex 系統で、通常のチャットには出ない） |
 | Grok | `grok.com/connectors` →新しいコネクタ →Custom・認証なし。チャットでは `@Mekiki Reader` で呼ぶ |
 
-Gemini は CLI と Enterprise に経路あり・個人向けアプリは未確認。
+Gemini（個人向け）は Spark（ベータ）のアプリ連携→カスタムアプリで MCP を登録でき、七ツールが操作一覧に出る。`list_papers` ok（2026-09-19）。通常チャットでは未確認。
 
 Hugging Face の MCP バッジと `hf.co/mcp` 経由の呼び出しは Hugging Face 側の機能で、このサーバは関知しない（検収の対象外）。
 各クライアントでの確認は `docs/acceptance/` に記録する（SPEC §7 P02・P03）。

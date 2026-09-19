@@ -78,7 +78,7 @@ Mekiki Framework の論文 T1〜T5 を、**固定した版から・出典つき�
 | `search_passages(query, paper_id="", k=5)` | 語句検索（モデルなし・行単位）。全語一致を `results`、一部一致を `candidates`。一致位置・±100字の抜粋・`match_via`・節への経路 | `ok` / `no_lexical_match` / `unknown_id` / `invalid_input` | query は生1000字・畳み込み後200字・断片8個、`k` は1〜20（既定5） |
 | `get_claim_record(claim_id="", query="")` | `claims/t5.json` の記録を逐語（台帳の `status`〔位置づけのラベル〕・`source_quote`・`not_claimed` ほか）。未記録欄は `null` | （応答の状態）`ok` / `unknown_id` / `ledger_not_available`（T1〜T4）/ `no_lexical_match` / `invalid_input` | `query` 経路の候補は5件。`unknown_id` では台帳の全項目、`ledger_not_available` ではその論文の全節を候補に出す |
 | `verify_quote(text, paper_id="", language="")` | 引用が原文にあるかの照合（`exact` / `normalized` / `none`）と、位置・差分・近接候補 | `ok` / `quote_not_found` / `unknown_id` / `invalid_input` | text 2000字、最小長は仮名・漢字を含めば5字・それ以外10字、一致20件 |
-| `check_compressions(text)` | 著者が承認した語形に当たった箇所と、その関連原文の抜粋 | `ok`（該当ゼロでも ok）/ `invalid_input` | text 2000字、抜粋1000字、**一致位置は1結果につき20件**（結果の数はパターンの関連原文の数だけ出る。最悪100件・約184 KiB） |
+| `check_compressions(text)` | 著者が承認した語形に当たった箇所と、その関連原文の抜粋 | `ok`（該当ゼロでも ok）/ `invalid_input` | text 2000字、抜粋1000字、**一致位置は1結果につき20件**（結果の数はパターンの関連原文の数だけ出る。上限は100件。応答の大きさは入力で変わる：測定例（1655字反復で100結果・約204 KiB）） |
 | `get_reading_guide(part="all")` | `FOR_AI_READERS.md` の該当部分と、読み方の雛形（`templates`） | `ok` / `invalid_input` | `part` は11個の固定列挙 |
 
 `status` は六値（`ok` / `unknown_id` / `quote_not_found` / `no_lexical_match` / `invalid_input` / `ledger_not_available`）で、混ぜない。
@@ -112,7 +112,7 @@ Mekiki Framework の論文 T1〜T5 を、**固定した版から・出典つき�
 
 ### 規則の版
 
-`SCHEMA-1.0.0`・`JSON-1.0.0`・`NORM-1.1.0`・`SEARCH-1.1.0`・`CAND-1.0.0`・`NEAR-1.0.0`・`GUIDE-1.0.0`・`LIMITS-2.0.0`・
+`SCHEMA-1.0.0`・`JSON-1.0.0`・`NORM-1.1.0`・`SEARCH-1.1.0`・`CAND-1.0.0`・`NEAR-1.0.0`・`GUIDE-1.0.0`・`LIMITS-3.0.0`・
 `LINES-1.0.0`・`LANG-1.0.0`・`SECTION-1.0.0`・`T4MAP-1.0.0`・`BUNDLE-1.0.0`・`TERMS-0.1.1`（30項目）・
 `PATTERNS-0.2.1`（50件）＋`PATTERNS-MATCH-1.1.0`・`PROMPTS-0.1.0`（6件）。本文は [docs/rules/](docs/rules/)。
 
@@ -220,7 +220,7 @@ UI の Custom Connectors はリモートの URL を Anthropic 側から取りに
 | `/gradio_api/info`（末尾 `/` 付きも） | `resources/read`・`prompts/get` の自己呼び出しが読む（塞ぐと McpError） |
 | `/gradio_api/queue/join` | 同じく自己呼び出しの実行（受付8・待機64） |
 | `/gradio_api/queue/data` | 同じく自己呼び出しの結果の受け取り |
-| `/gradio_api/heartbeat/*` | 自己呼び出しの内部クライアントが送り続ける。塞ぐと 404 を受けて毎秒約1,000回の再試行に入り、一時ポートを使い果たす（実測） |
+| `/gradio_api/heartbeat/*` | 自己呼び出しの内部クライアントが使う。上流のクライアントは断られると間を置かずに再試行するので、塞がずに同時数で絞る（上流との互換のため） |
 | `/gradio_api/mcp/` | MCP 本体（Streamable HTTP）。`/gradio_api/mcp`（末尾 `/` なし）は `/gradio_api/mcp/` へ 307 |
 | `/gradio_api/mcp/schema` | ツールの JSON スキーマ（上流が MCP 本体と同じ下に置く）。三機能には要らないが、著者の指示で開けてある |
 
@@ -232,10 +232,20 @@ UI の Custom Connectors はリモートの URL を Anthropic 側から取りに
 | `/gradio_api/queue/data` | 8 | 内部クライアントが最大1本 |
 | `GET /gradio_api/mcp/`（Streamable HTTP の待ち受け） | 32 | mcp SDK（Python）は0本。`mcp-remote@0.14.2` は1クライアントあたり最大4本（落ち着くと2本）。断られても呼び出しは続けられる（上限0でも40回の呼び出しがすべて通った） |
 
-内部クライアント（`resources/read`・`prompts/get` の自己呼び出し）の分も数えるが、断らない（heartbeat は 503 を受けると
-毎秒約1,000回の再試行に入るため。実測）。内部かどうかは要求が名乗るセッションで見分ける。上流は内部クライアントを
-最初の呼び出しのときに鍵なしで作り、起動直後に同時に来ると複数できる（16本同時で2〜16個）うえ、同時40本を超えると
-作成が失敗し続けるので、起動の直後に一つだけ作っておく（`app.py` の `warm_internal_client`。起動直後の同時80本がすべて通る）。
+内部クライアント（`resources/read`・`prompts/get` の自己呼び出し）の分も数えるが、断らない（上流のクライアントは断られると
+間を置かずに再試行するため）。内部かどうかは要求が名乗るセッションで見分ける。内部クライアントは起動の直後に一つだけ作り、
+それと起動後の確認が済むまで、外からの MCP は HTTP 503（`starting`）で断る（上流の遅延作成は、同時の初回呼び出しで重複しうる
+ため。上流との互換の措置）。起動直後の同時100本の初回呼び出しがすべて通り、内部クライアントは一つ（`tests/test_safety.py`）。
+
+そのほかの要求は、種類ごとの受付枠で受ける。枠は本文を読む前に取り、応答を送り終えるまで持つ（受付から60秒の期限つき。
+受け取りを止めた相手は期限で接続ごと切る）。枠も順番待ちも埋まっていれば HTTP 503（`busy`）で、断った接続は閉じる。
+接続の数とヘッダを送り切らない接続には、こちらでは上限を置いていない（HTTP の層の既定に従う。`docs/rules/LIMITS.md`）。
+
+| 種類 | 同時に受け付ける数 | 順番待ち（20秒まで） |
+|---|---|---|
+| MCP の要求（`/gradio_api/mcp/` への POST など） | 32 | 96 |
+| 自己呼び出しの登録（`/gradio_api/queue/join`） | 8 | 64 |
+| そのほか（`/`・`/gradio_api/info`・`/gradio_api/mcp/schema` など） | 16 | 32 |
 
 ### 接続時に知っておくこと
 
@@ -288,7 +298,7 @@ D01〜D04（同梱データ）・T01〜T12 と R01（七ツールと再現性）
 - **制作工程と使用モデル**：方針（`SPEC.md`）→施工（Claude Code / Claude Opus 5）→独立検査（Codex。指摘と差分案のみ）→最終検査（Claude）→接続確認と公開判断（著者）。生成 AI を使って作った。<!-- 著者確認：独立検査・最終検査に使ったモデルの具体名 -->
 - **参照した型**：Paper2Agent（Miao et al., Nature 2026）から借りたのは型（資源・プロンプト・ツール・検証テスト・Spaces での公開）であって工程ではない。読解の対象は T1〜T5（題名・版・DOI は `data/CITATION.md`）。
 - **費用と休止**：ローカルで動かす分には追加の API 料金・ホスティング料金は要らない。公開（Spaces）での費用と休止からの復帰時間は、公開時に実測して記す。<!-- 配置段階二で記入 -->
-- **利用者入力の送信先と保存方針**：`verify_quote` と `check_compressions` の入力には未公開の情報が入りうる。実測では、起動から全ツール・全 resource・全 prompt の呼び出しまで loopback 以外への接続は0件。**配信中**は書き込みで開いたファイルも0件で、`data/` には一切触れない。起動の途中では、依存ライブラリ（filelock）が作業ディレクトリに `probe-source`・`probe-link` を作って消し、Gradio が一時領域に書く（どちらも利用者の入力とは関係がない）。サーバは入力をファイルに保存しない方針で、実測した範囲（外への接続と、書き込みで開いたファイル）では保存は確認されなかった。**標準出力・標準エラー、およびホスティング側のログに何が残るかは未実測**で、公開の前に実測して記す。
+- **利用者入力の送信先と保存方針**：`verify_quote` と `check_compressions` の入力には未公開の情報が入りうる。実測では、起動から全ツール・全 resource・全 prompt の呼び出しまで loopback 以外への接続は0件。**配信中**は書き込みで開いたファイルも0件で、`data/` には一切触れない。起動の途中では、依存ライブラリ（filelock）が作業ディレクトリに `probe-source`・`probe-link` を作って消し、Gradio が一時領域に書く（どちらも利用者の入力とは関係がない）。サーバは入力をファイルに保存しない方針で、実測した範囲（外への接続と、書き込みで開いたファイル）では保存は確認されなかった。**標準出力・標準エラー**に出るのは、起動時の表示・遮断の記録（状態コードと理由だけ。経路は出さない）・例外の型と場所（ファイル名と行。例外の文は出さない）・ログの水準と名前と出した場所（文は出さない。文に値が埋め込まれることがあるため）だけにしてある。実測（2026-09-19・ローカル）では、正常・不正・例外の各要求（ツールの引数・未知のツール名・未知のメソッドと通知・応答やエラーの形の要求・URL でない URI・壊れた `_meta`・JSON でない本文・壊れた JSON・queue の入力検証のエラー・遮断した経路・ヘッダ・問い合わせ・待ち受け直後の例外）に入れた目印の文字列は、標準出力・標準エラーのどこにも出なかった（試した範囲。`tests/test_safety.py::test_s01_inputs_do_not_reach_the_logs`・`test_s01_logs_are_redacted_from_the_start`）。対策の前は、queue の入力検証のエラー・未知のツール名・JSON-RPC の中身がログに出ていた。**Spaces 側のログ**は実行中の標準出力・標準エラーで、公開の段階で Spaces 上で実測して記す。
 - **外向きの資料取得**：起動後に取得する資料は同梱データだけ。
 - **既知の制約**：
   1. T4 の英訳は ChatGPT で作成された派生の言語版で、著者レビューの認証はない。英訳由来の結果には作成経緯（`preparation`・`authority`）を必ず添える。
@@ -296,7 +306,7 @@ D01〜D04（同梱データ）・T01〜T12 と R01（七ツールと再現性）
   3. 同梱物は `data/LICENSE`（CC BY 4.0）に従う。論文本文中に別の表記（T1 の figshare 寄託データについての `CC BY-NC 4.0`）があっても、同梱物には及ばない。原文は改変しない。
   4. 日本語の問いは英語の論文に当たりにくい（語句の照合であるため）。該当ゼロは記述が無いことを意味しない。
   5. 未知の prompt 名は MCP のエラーとして返る（上流の実装の挙動。本文は §5 参照）。Spaces ではツール名に接頭辞が付く。
-  6. `/` に Gradio 標準のフロント HTML が返る。`resources/read` と `prompts/get` はサーバが自分自身に出す HTTP 要求で実行されるため、その経路（`/gradio_api/queue/join`・`/gradio_api/queue/data`）だけは通してある。外から同じ経路を叩くこともできるので、**受付8件・順番待ち64件まで**で受ける（超えると HTTP 503）。回収されない結果は件数64・4 MiB・120秒で捨てる。実行されるのは登録済みの七ツール・resources・prompts だけで、どれも同じ実行枠（同時4）を使う。`/gradio_api/call/*` は塞いである（実測で、自己呼び出しには要らないことを確かめた）。
+  6. `/` に Gradio 標準のフロント HTML が返る。`resources/read` と `prompts/get` はサーバが自分自身に出す HTTP 要求で実行されるため、その経路（`/gradio_api/queue/join`・`/gradio_api/queue/data`）だけは通してある。外から同じ経路を叩くこともできるので、**受付8件・順番待ち64件まで**で受ける（本文を読む前に取る枠。超えると HTTP 503）。回収されない結果は、できてから120秒・同じセッションで64件・4 MiB（UTF-8 の JSON で数える）を超えた分を古いものから捨てる（取りに来ているセッションには手を付けない）。実行されるのは登録済みの七ツール・resources・prompts だけで、どれも同じ実行枠（同時4）を使う。`/gradio_api/call/*` は塞いである（実測で、自己呼び出しには要らないことを確かめた）。
   7. 起動時に `HF_HUB_DISABLE_TELEMETRY=1`・`HF_HUB_DISABLE_IMPLICIT_TOKEN=1`・`HF_HUB_OFFLINE=1`・`HF_TOKEN_PATH=/dev/null` を設定している（依存ライブラリの利用状況送信を止め、利用者のトークンファイルを開かせないため）。
   8. **別オリジンのページに CORS の許可ヘッダを返さない**。`Origin` の付いた要求には `Access-Control-Allow-Origin` ほかを一切返さない（`http://localhost:<ポート>` など同じ機械からの Origin も含む。上流の既定では loopback に許可が出る）。ブラウザからの**別オリジンの読み取り**を防ぐだけで、同一オリジンでの取得や、URL を直接開いて表示することを禁じるものではない。MCP のクライアントは `Origin` を送らないので接続には影響しない。
   9. 同梱データの照合は事故の検出までで、改竄への耐性は主張しない。

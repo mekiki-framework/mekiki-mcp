@@ -44,13 +44,22 @@ class Server:
     # ---- 起動と停止 ----
 
     def start(self) -> "Server":
+        return self.spawn().wait_ready()
+
+    def spawn(self) -> "Server":
+        """起動だけして、準備が済むのを待たない（待ち受け直後の要求を試すため。Codex③ 5）。"""
         env = {k: v for k, v in os.environ.items() if not k.startswith("GRADIO_")}
         env.update({"MEKIKI_READER_PORT": str(self.port), "MEKIKI_AUDIT_LOG": str(self.audit_log),
                     "PYTHONHASHSEED": "0"})
         env.update(self.env_extra)
         self.proc = subprocess.Popen([sys.executable, "-u", str(LAUNCHER)], cwd=str(REPO_ROOT), env=env,
                                      stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-        threading.Thread(target=self._read, daemon=True).start()
+        self.reader = threading.Thread(target=self._read, daemon=True)
+        self.reader.start()
+        return self
+
+    def wait_ready(self) -> "Server":
+        assert self.proc is not None
         deadline = time.monotonic() + START_TIMEOUT
         while time.monotonic() < deadline:
             for line in list(self.lines):
@@ -79,6 +88,9 @@ class Server:
             except subprocess.TimeoutExpired:
                 self.proc.kill()
                 self.proc.wait(timeout=STOP_TIMEOUT)
+        reader = getattr(self, "reader", None)
+        if reader is not None:
+            reader.join(timeout=5)  # 出力を読み切ってから返す（標準出力・標準エラーの検査のため）
         self.audit = json.loads(self.audit_log.read_text(encoding="utf-8")) if self.audit_log.exists() else {}
         return self.audit
 

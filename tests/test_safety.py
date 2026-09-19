@@ -1461,6 +1461,11 @@ def test_s01_guide_page_is_static():
     assert "T5 §4.4 L171" in page and "T1 §2.1 L54" in page and "T2 §2.1 L37" in page
     assert "AI は遊べないので人間の尊厳が守られる" in page  # PATTERNS-MATCH-2.0.0 で P30 が該当する（空白あり）
     assert "<h2>最初に送る一言 / First message</h2>" in page
+    # 外部リンクは新しいタブで開く（HF の Space ページは案内ページを iframe で表示し、GitHub は iframe 内表示を拒む）
+    anchors = re.findall(r"<a [^>]*>", page)
+    assert len(anchors) == 7
+    for tag in anchors:
+        assert re.search(r'href="https://', tag) and 'target="_blank"' in tag and 'rel="noopener"' in tag, tag
     for template in (PR.MEKIKI_START, PR.MEKIKI_START_EN):
         assert f"<pre>{html.escape(template.text)}</pre>" in page
     hostile = guide_page.render('https://x.example/"><b>x</b>')

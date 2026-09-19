@@ -56,8 +56,8 @@ def render(mcp_url: str) -> str:
 <span class="en">Five papers on a framework that divides knowledge work into the demand on expertise to decide what should be made (Spec.cost) and the cost of giving it form (Ext.cost); what AI lowers is the latter.</span></p>
 <p>T1 出発点／T2 委任してよい境界／T3 答える立場／T4 組織での引き受け／T5 参加と尊厳。<br>
 <span class="en">T1 the starting point / T2 the boundary of what may be delegated / T3 the standing to answer / T4 taking things on in organizations / T5 participation and dignity.</span></p>
-<p>原文はコーパス <a href="{CORPUS_URL}">mekiki-framework.github.io</a>。<br>
-<span class="en">The original texts are in the corpus at <a href="{CORPUS_URL}">mekiki-framework.github.io</a>.</span></p>
+<p>原文はコーパス <a href="{CORPUS_URL}" target="_blank" rel="noopener">mekiki-framework.github.io</a>。<br>
+<span class="en">The original texts are in the corpus at <a href="{CORPUS_URL}" target="_blank" rel="noopener">mekiki-framework.github.io</a>.</span></p>
 
 <h2>しないこと / What it does not do</h2>
 <ul>
@@ -111,11 +111,11 @@ def render(mcp_url: str) -> str:
 
 <h2>リンク / Links</h2>
 <ul>
-<li><a href="{REPO_URL}#readme">README</a></li>
-<li><a href="{REPO_URL}/blob/main/docs/TUTORIAL.md">三分で試す / Tutorial</a></li>
-<li><a href="{REPO_URL}">GitHub</a></li>
-<li><a href="{CORPUS_URL}">コーパス / Corpus</a></li>
-<li><a href="{REPO_URL}#8-開示">開示 / Disclosure</a></li>
+<li><a href="{REPO_URL}#readme" target="_blank" rel="noopener">README</a></li>
+<li><a href="{REPO_URL}/blob/main/docs/TUTORIAL.md" target="_blank" rel="noopener">三分で試す / Tutorial</a></li>
+<li><a href="{REPO_URL}" target="_blank" rel="noopener">GitHub</a></li>
+<li><a href="{CORPUS_URL}" target="_blank" rel="noopener">コーパス / Corpus</a></li>
+<li><a href="{REPO_URL}#8-開示" target="_blank" rel="noopener">開示 / Disclosure</a></li>
 </ul>
 </main>
 </body>

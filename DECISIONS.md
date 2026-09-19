@@ -273,11 +273,43 @@
 | 2026-09-19 | 配置段階一 | 反映の検算（merge 前） | 施工側の検算（下位エージェント・独立の再現）で19件を確認して直した：期限で切っても接続が閉じない／断った接続が本文を抱えたまま残る／回収中のセッションに上限が無い／上流の `del` と捨てた完了の ID の残り／ログの文に値が埋め込まれる（mcp の f 文字列）／待ち受け直後のログ／長時間接続の経路の本文／監査の二重記録・別名のパス・`supports_dir_fd`・対照の安全／NORM のゼロ幅と差分／記述の食い違い。試験の起動器では、つながっている相手への `sendmsg`（asyncio が溜まった応答を書く）を外向きと誤判定していたのも直した | Codex③ の差分案の実装が、別の経路で同じ資源を残さないかを確かめるため | `tests/test_safety.py`・`tests/test_tools.py` | 確定 |
 
 
+### Codex③ 反映前の検算19件の個別対応（Codex④ F8）
+
+原記録：施工側の検算（下位エージェント5本＋反証の検証）の出力。確認された19件と棄却1件が一件ずつ残っていたので、その順番と題を写した
+（出力はセッションの一時領域にあり、リポジトリには置いていない。推定で補った行は無い）。上の「反映の検算（merge 前）」の行はこれを一段落に
+まとめたもの。試験の欄の「なし」は、その件に専用の試験を置いていないことを示す。
+
+| # | 検算の観点 | 指摘（原記録の題の要約） | 反映した箇所 | 試験 |
+|---|---|---|---|---|
+| 1 | 受付 | 送信期限で枠は返るが、接続が閉じず未送信の応答を抱えたまま残る | `app.py`：uvicorn の要求ごとの処理を包み `transport.abort` をガードへ渡す。期限で送信途中なら切る | `test_s01_stalled_response_is_cut`（サーバ側に相手の接続が残らない） |
+| 2 | 受付 | 断った要求・待たせた要求の本文を HTTP の層が抱え、断った接続が残る | `_reply` に `connection: close`、閉じる前に本文を 64 KiB・1秒まで読み捨てる（`_drain`）。LIMITS に HTTP の層の保持を明記 | なし（読み捨てが無いと先に閉じて RST になる副作用は `test_s01_mcp_waits_for_ready` で出て、読み捨てで直した） |
+| 3 | 受付 | 受け取らない応答の試験が主張どおりに失敗し得ない | 試験をサーバ側の接続（相手のポート）で確かめる形に | `test_s01_stalled_response_is_cut` |
+| 4 | 保持 | 回収中のセッションに上限が無い | 回収中は期限だけ免除し、件数・大きさの上限は当てる。内部クライアントは除く | `test_sweep_results_by_age_count_and_size` |
+| 5 | 保持 | 上流の `del`（queue/data の切断）で ID の集合と状態が残る | `_SessionTable.__delitem__` で関連を消す | `test_session_table_releases_on_upstream_delete` |
+| 6 | 保持 | 捨てた完了の結果の ID が残り続ける | 掃除で完了済みの ID を捨て、空の集合も消す | `test_sweep_results_releases_finished_event_ids` |
+| 7 | 監査 | `os.open` の包みが `os.supports_dir_fd` から外れ、依存が本番と別の経路を通る | 包みを `supports_dir_fd` に加え、`functools.wraps` | なし（S03 の起動はこの状態で通る） |
+| 8 | 監査 | dir_fd つきの open を二重に記録し、片方を cwd 基準で誤って解決する | 包みの中は監査事象 open を記録しない（スレッドごとの印） | なし |
+| 9 | 監査 | 別名のパスで data/ への書き込みを見逃す | `_in_data` を実体のパスと dev・inode でも判定 | なし（ハードリンクの陽性対照は置いていない） |
+| 10 | 監査 | 陽性対照が本物の data/ に作成・rename の呼び出しを出す | 対照を、止め損ねても何も作らない形（存在しない元・作らない開き方）に | `test_s03_no_outbound_traffic`（対照がすべて blocked・data/ に何もできない） |
+| 11 | ログ | ログの文を書式として出すが、mcp が f 文字列で値を埋めた文を出す | ログは水準・名前・出した場所だけ（文を出さない） | `test_s01_inputs_do_not_reach_the_logs`（MCP の各種の形を追加。書式の文を出す対照では目印が出た） |
+| 12 | ログ | 待ち受け開始から差し替えまでの間の要求が uvicorn の出口で記録される | uvicorn のログ設定の直後に差し替える（待ち受けの前） | `test_s01_logs_are_redacted_from_the_start` |
+| 13 | 記述 | DECISIONS に Codex③ の節が無いのに codex-2.md が参照している | Codex③ の節を作った | なし（文書） |
+| 14 | 記述 | 長時間接続の GET に本文があると受付枠の外で先読みする | 長時間接続の経路は本文を受けない（400） | `test_s01_stream_routes_take_no_body` |
+| 15 | NORM | 強調記号とゼロ幅文字を挟んだ空白の並びが畳まれない | 畳み込みの条件にゼロ幅文字を含める | `test_t08_emphasis_and_zero_width_between_spaces` |
+| 16 | NORM | 畳み込みで WS-ZW の記録が落ちる | `WS-COLLAPSE+WS-ZW` を記録 | 同上（並びの中にゼロ幅文字を置いた場合の記録を 2026-09-19 の Codex④ 反映時に追加） |
+| 17 | NORM | 先頭・末尾の強調記号が差分に出ない | `compare` の端の差分に MARK-EMPH を出す | `test_t08_emphasis_at_the_edges_is_in_diffs` |
+| 18 | 記述 | PLAN が Q95 の三つとも済みとするが ② が未実施 | DECISIONS の必須記録項目の「（段階二）」を直し、PLAN の注記を正確に | なし（文書） |
+| 19 | 記述 | codex-2.md の訂正が不完全（19行目と ⑩） | 19行目と ⑩ の記述を訂正 | なし（文書） |
+
+棄却1件：`stage0_answers.md` に非公開資料への参照が残るという指摘は、反証の検証で確認できず棄却した（該当行はすでに置換済み）。
+上の19件のほか、施工側の反映中に、試験の起動器が接続済みの `sendmsg` を外向きと誤判定する点（起動器を修正）と、先に閉じると応答が
+届かない点（読み捨てを追加）を見つけて直した。
+
 ## 配置段階二（SPEC v2.4・ブランチ `spaces`・2026-09-19）
 
 | 日付 | 段階 | 項目 | 判断 | 理由 | 根拠 | 状態 |
 |---|---|---|---|---|---|---|
-| 2026-09-19 | 配置段階二 | 配置モード `MEKIKI_READER_MODE` | local（既定）と spaces の二値（それ以外は起動しない）。spaces で変わるのは三つだけ：待ち受け 0.0.0.0（ポートは `MEKIKI_READER_PORT`・既定 7860）、許可 Host＝起動時に読んだ `SPACE_HOST`（カンマ区切りは各値・小文字にそろえる・DNS 名の形でなければ起動しない）と localhost・127.0.0.1、`/` の GET・HEAD だけ Host を問わない。`pwa=False` を明示し、起動後の確認に入れる。起動表示にモード・待ち受け・許可 Host の行を足した（`startup_lines`）。`verify_blocks` は 0.0.0.0 のとき `local_url` を `http://localhost:` で照合する。自分に当てる確認（`check_cors`）はどのモードでも 127.0.0.1 に当てる | 著者の指示（SPEC v2.4 §2.10） | `app.py` の `read_deploy`・`SERVER_NAME`・`ALLOWED_HOSTS`・`startup_lines` | 確定 |
+| 2026-09-19 | 配置段階二 | 配置モード `MEKIKI_READER_MODE` | local（既定）と spaces の二値（それ以外は起動しない）。spaces で変わるのは三つだけ：待ち受け 0.0.0.0（ポートは `MEKIKI_READER_PORT`・既定 7860。→Codex④ F7 で 7860 固定に改めた）、許可 Host＝起動時に読んだ `SPACE_HOST`（カンマ区切りは各値・小文字にそろえる・DNS 名の形でなければ起動しない）と localhost・127.0.0.1、`/` の GET・HEAD だけ Host を問わない。`pwa=False` を明示し、起動後の確認に入れる。起動表示にモード・待ち受け・許可 Host の行を足した（`startup_lines`）。`verify_blocks` は 0.0.0.0 のとき `local_url` を `http://localhost:` で照合する。自分に当てる確認（`check_cors`）はどのモードでも 127.0.0.1 に当てる | 著者の指示（SPEC v2.4 §2.10） | `app.py` の `read_deploy`・`SERVER_NAME`・`ALLOWED_HOSTS`・`startup_lines` | 確定 |
 | 2026-09-19 | 配置段階二 | Spaces の変数の除去をどちらのモードでも | `SYSTEM`・`SPACE_ID`・`SPACE_AUTHOR_NAME`・`SPACE_REPO_NAME`・`SPACES_ZERO_GPU`・`OAUTH_*`・`HF_TOKEN`・`WEB_CONCURRENCY`・`FORWARDED_ALLOW_IPS` を、`SPACE_HOST` を読んだ後に gradio の import 前に消す。SPEC は spaces での除去を定めるが、local でも消す（どのモードでも、これらの変数で挙動が変わらないように。例：手元で `SYSTEM=spaces` があっても Spaces の分岐に入らない）。消した名前は起動表示に出す（値は出さない）。`SPACE_HOST` は消さない | 守則「環境変数で挙動が変わらない」 | `app.py` の `sanitize_environ` | 提案 |
 | 2026-09-19 | 配置段階二 | `/` の健康検査への応答 | spaces で許可していない Host の `/`（GET・HEAD）には、Gradio の画面ではなく固定の短い HTML（`HEALTH_HTML`）を返す。Gradio の画面は要求の Host から設定を組み立てるため、許可していない Host には渡さない（許可した Host の `/` は従来どおり Gradio が返し、内部クライアントはそこから設定を読む） | SPEC §2.10「静的 HTML のみ」。検算の指摘 | `app.py` の `_health`・`test_s01_spaces_mode_server` | 提案 |
 | 2026-09-19 | 配置段階二 | Dockerfile | 基底 `python:3.13.15-slim-trixie@sha256:9d2e5553305c7c7b0097999bb17187c69b921ccd6bc9d40e4bb5ebe652c00285`（Docker Hub の registry で確認：`3.13-slim`・`3.13.15-slim`・`3.13.15-slim-trixie` が同じダイジェスト、amd64 の `PYTHON_VERSION=3.13.15`＝手元の .venv と同じ）。`pip install --require-hashes --only-binary=:all: -r requirements.txt`。`PYTHONUNBUFFERED=1`・`PYTHONDONTWRITEBYTECODE=1`・`MEKIKI_READER_MODE=spaces`・`EXPOSE 7860`・`STOPSIGNAL SIGINT`。ID 1000 の利用者で動かし、コードと `data/` は root の持ち物（読むだけ）。`.dockerignore` で `.DS_Store` などを組み立てに渡さない | 著者の指示（SPEC v2.4 §3・§9）。Spaces はコンテナを ID 1000 で動かす | Docker Hub registry（`registry-1.docker.io/v2/library/python/manifests/…`）・`Dockerfile`・`.dockerignore` | 確定（値は提案） |
@@ -289,3 +321,30 @@
 | 2026-09-19 | 配置段階二 | LIMITS-3.1.0 | spaces の値（待ち受け・許可 Host・`/` の扱い）と配置モードの行を足した。local の値は変えていないので MINOR | 版の運用（main の `72b13eb` 以降） | `docs/rules/LIMITS.md` | 提案 |
 | 2026-09-19 | 配置段階二 | 反映前の検算 | 施工側の検算（下位エージェント・独立の再現）で8件を確認：コンテナで SIGTERM が届かない／`/` の健康検査が Gradio の画面を返していた／README の「差し替えはすべて起動時に確認」に⑤の確認が無かった／非公開の間の認証の記述が無かった／NORM の規則番号の古い注記／DECISIONS の記録の不足（以上は直した）。SPEC §9 の一式に `.dockerignore` が無い・SPEC §3 の README の YAML の記述が古い（sdk/sdk_version/python_version/app_file）の2件は正本の記述で、施工側では直していない | merge 前に自分の退行を捕まえるため | `tests/test_safety.py` | 確定 |
 | 2026-09-19 | 配置段階二 | 著者判断（要確認） | ①SPEC §9 の一式に `.dockerignore` を加えるか（無いと、フォルダのアップロードで `data/.DS_Store` が入ったときに起動しない。git で上げれば `.gitignore` で入らない）。②SPEC §3 の README の YAML の記述（Gradio SDK の項目のまま）を §9 に合わせるか。③非公開の間、Custom Connector と ChatGPT からは Hugging Face の認証を送れない見込みで、P03 を private のまま行えない可能性（公開の後に行うか） | 正本の改版と検収の順序は著者判断 | SPEC v2.4 §3・§7・§9 | 要確認 |
+
+
+## Codex④（独立検査・対象 `3a80f04`・2026-09-19）
+
+報告の本文は `docs/review/codex-4-report.md`（著者が配置。ローカルの絶対パスは含まれていなかった）。反映はブランチ `codex4`。
+正本は SPEC v2.4.2（spaces のポートは 7860 固定）。
+
+| 指摘 | 採否 | 反映した箇所 | 試験・確かめ方 |
+|---|---|---|---|
+| F1 P1 新設文書に上流の不具合の詳細 | 採用 | `docs/spaces_facts.md` の c' の行と論点7を、互換性の説明に要約し「現構成（`SYSTEM` の除去）では該当しない」を添えた | 該当の行に上流のファイル名・行番号・照合の条件が残っていないこと（目視と grep） |
+| F2 P2 README の接頭辞の旧記述 | 採用 | README「接続時に知っておくこと」：spaces でもツール名・prompt 名に接頭辞は付かない | `test_s01_spaces_mode_server`（M01 の期待値） |
+| F3 P2 設定入り HTML の公開範囲の過小な説明 | 採用 | README の開放経路の `/` の行：local は loopback の中、spaces は許可した Host の `GET /` にも設定が返る。許可外の Host の GET・HEAD には固定の HTML | `test_s01_spaces_mode_server`（固定 HTML・Host を写さない） |
+| F4 P3 長い数字の Host のポートで例外 | 採用 | `_host_name`：ポートは5桁以内を先に見てから整数にする。LIMITS の Host の行に桁数を明記。同じ型の入口として `Content-Length` も確かめた（20桁を超えれば HTTP の層が先に 400、20桁以内なら整数にしても例外にならず、64 KiB 超は 413） | `test_s01_host_port_digits_are_checked`（IPv4・括弧つき IPv6・DNS 名で5,000桁、6桁・範囲外）、`test_s01_content_length_digits`、spaces の `/` は5,000桁でも 200・info は 400 |
+| F5 P3 ゼロ幅文字を含む空白で WS-COLLAPSE が落ちる | 採用 | `normalize.py`：並びにゼロ幅文字があれば、空白が一字でも WS-COLLAPSE を記録 | `test_t08_zero_width_in_a_single_space`（空白一字＋3種のゼロ幅文字：本文・normalization_applied・diffs.rules） |
+| F6 P3 LIMITS の回収中の旧記述 | 採用 | LIMITS「回収されない結果」：回収中は期限だけ免除、件数・大きさの上限は当てる、内部クライアントは手を付けない | — |
+| F7 P3 spaces のポート契約 | 採用（SPEC v2.4.2） | `read_port`：spaces は 7860 固定、`MEKIKI_READER_PORT` に別の値があれば起動しない。試験のポートは起動器の内部引数 `--port` に移した（起動器は `MEKIKI_READER_PORT` を読まない）。LIMITS・README を同期 | `test_s01_port_env_is_checked`（spaces の受理と拒否）、`test_s01_spaces_mode_refuses_other_port`（`app.py` が待ち受ける前に止まる） |
+| F8 P3 反映時19件の個別対応 | 採用 | 原記録が残っていたので、Codex③ の節に一件ずつの表を置いた（推定の行なし） | — |
+| F9 P3 版・検収・依存の古い記述 | 採用（README 分） | README：filelock は一時ディレクトリの中に作る、Linux 検証で除く3項目は Windows か emscripten でだけ入るもの。SPEC の記述（LIMITS の版・E01 の本数）は正本 v2.4.2 で著者が同期済み | — |
+| 配置の残検証 | 今回は対象外 | S04・M01〜M03・P01・P02（private の Space 上）、停止の区別の検査、実イメージでの権限は、Space の作成後に行う | — |
+
+| 日付 | 段階 | 項目 | 判断 | 理由 | 根拠 | 状態 |
+|---|---|---|---|---|---|---|
+| 2026-09-19 | 配置段階二 | LIMITS の版（F7） | spaces のポートを 7860 固定に訂正したが、版は 3.1.0 のまま。3.1.0 は提案のままで、正本 v2.4.2 §5.5 が 3.1.0 を指し、spaces を 7860 固定と定めているため、3.1.0 の記述を正本に合わせた扱いにした | 正本と規則文書の版をそろえる | `docs/rules/LIMITS.md` | 提案 |
+| 2026-09-19 | 配置段階二 | NORM の版（F5） | 規則7の文言どおりに実装を合わせただけなので、版は NORM-1.2.0 のまま（表の SHA-256 も変わらない）。ただし `normalization_applied` と差分の規則の記録は変わる | 規則の文言は変えていない | `mekiki_reader/normalize.py` | 提案 |
+| 2026-09-19 | 配置段階二 | ゼロ幅文字が空白の直前にある場合（要確認） | 「AI＋ゼロ幅＋空白＋can」のようにゼロ幅文字が空白の**前**にあると、ゼロ幅文字は空白の並びの外で WS-ZW として落ち、空白一字は規則を記録しない（本文の照合は同じ）。規則7の「空白類の並び」に直前のゼロ幅文字を含めるかは規則の文言の変更になるので、施工側では変えていない | 規則の改版は著者判断 | 規則7 | 要確認 |
+| 2026-09-19 | 配置段階二 | Content-Length の桁数（F4 の同型） | 一度はガードに12桁の上限を足したが、検算で、HTTP の層（h11）が20桁を超える表明を先に拒むので整数化は例外にならず、12桁の上限は文書の 413 を 400 に変え、先頭の0で埋めた正しい表明も拒むだけと分かったので外した。ガード側の追加の制限は置かず、HTTP の層の20桁と、64 KiB 超の 413 を試験に固定した | 既存の上限（413）を変えない | `test_s01_content_length_digits` | 確定 |
+| 2026-09-19 | 配置段階二 | Host のポートの桁数（F4） | 5桁以内を先に見る。`065535` のような先頭の0を含む6桁は、以前は 65535 として通っていたが、今は 400。LIMITS の Host の行に明記し、版は 3.1.0 のまま（F7 と同じ扱い） | 長い数字で int() が例外にならないように | `docs/rules/LIMITS.md` | 提案 |

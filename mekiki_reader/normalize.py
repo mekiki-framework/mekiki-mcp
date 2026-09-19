@@ -171,7 +171,8 @@ def _normalize(s: str, *, nfc: bool, ws_cjk: bool, punct: bool, lower: bool, emp
             else:
                 out.append(" ")
                 spans.append((i, j))
-                parts = ([] if ws_only == " " else ["WS-COLLAPSE"]) + (["WS-ZW"] if has_zw else [])
+                # ゼロ幅文字を含む並びは、空白が一字でも WS-COLLAPSE と WS-ZW の両方を記録する（規則7。Codex④ F5）
+                parts = ([] if ws_only == " " and not has_zw else ["WS-COLLAPSE"]) + (["WS-ZW"] if has_zw else [])
                 tags.append("+".join(parts))
                 last_space_end = j
             i = j

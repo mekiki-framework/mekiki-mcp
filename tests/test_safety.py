@@ -178,10 +178,41 @@ def test_s01_concurrency_is_bounded_in_process(reader):
 
 
 def test_s01_port_env_is_checked():
-    assert app.read_port(None) == app.DEFAULT_PORT and app.read_port("7861") == 7861
+    assert app.read_port(None, "local") == app.DEFAULT_PORT and app.read_port("7861", "local") == 7861
     for bad in ("0", "80", "65536", "-1", " 7861", "7861a", "０", "7861;ls", "99999"):
         with pytest.raises(ValueError):
-            app.read_port(bad)
+            app.read_port(bad, "local")
+    # spaces は 7860 固定。未指定と 7860 だけを受け、別の値は起動しない（SPEC v2.4.2・Codex④ F7）
+    assert app.read_port(None, "spaces") == app.read_port("", "spaces") == app.read_port("7860", "spaces") == 7860
+    for bad in ("18123", "7861", "07860", "80"):
+        with pytest.raises(ValueError):
+            app.read_port(bad, "spaces")
+
+
+def test_s01_spaces_mode_refuses_other_port():
+    """spaces で MEKIKI_READER_PORT に 7860 以外があれば、待ち受ける前に止まる（app.main の経路）。
+
+    確認が外れても手元で 0.0.0.0 に待ち受けないよう、launch を「呼ばれたら記録して止める」ものに差し替えて走らせる。
+    """
+    code = "\n".join([
+        "import app, sys",
+        "called = []",
+        "def fake_launch(demo, port):",
+        "    called.append(port)",
+        "    raise SystemExit(99)",
+        "app.launch = fake_launch",
+        "code = app.main()",
+        "print('LAUNCH-CALLED' if called else 'LAUNCH-NOT-CALLED')",
+        "sys.exit(code)",
+    ])
+    env = {k: v for k, v in os.environ.items() if not k.startswith("GRADIO_")}
+    env.update({"MEKIKI_READER_MODE": "spaces", "SPACE_HOST": "owner-mekiki-reader.hf.space",
+                "MEKIKI_READER_PORT": "18123"})
+    out = subprocess.run([sys.executable, "-c", code], cwd=REPO_ROOT, env=env, capture_output=True, text=True,
+                         timeout=120)
+    assert out.returncode == 2, (out.returncode, out.stderr[-300:])
+    assert "起動しない" in out.stderr and "7860" in out.stderr
+    assert "LAUNCH-NOT-CALLED" in out.stdout  # 待ち受けの手前で止まっている
 
 
 # ---------------------------------------------------------------- S01（HTTP の層）
@@ -1194,6 +1225,39 @@ SPACES_ENV = {
 }
 
 
+@pytest.mark.parametrize("host", [
+    "127.0.0.1:" + "9" * 5000, "[::1]:" + "9" * 5000, "localhost:" + "9" * 5000,  # 長い数字のポート
+    "127.0.0.1:065535", "localhost:123456", "[::1]:99999",                         # 6桁・範囲外
+])
+def test_s01_host_port_digits_are_checked(server, host):
+    """Host のポートは桁数（5桁以内）と範囲を先に見る。長い数字でも例外にならず 400（Codex④ F4）。"""
+    with socket.create_connection(("127.0.0.1", server.port), timeout=30) as sock:
+        sock.sendall(f"GET /gradio_api/info HTTP/1.1\r\nHost: {host}\r\nConnection: close\r\n\r\n".encode())
+        data = b""
+        while chunk := sock.recv(65536):  # 閉じるまで読む（本文はヘッダの後に届く）
+            data += chunk
+    assert data.startswith(b"HTTP/1.1 400") and b"bad host" in data, (host[:20], data[:60])
+
+
+def test_s01_content_length_digits(server):
+    """Content-Length の長い数字：20桁を超えれば HTTP の層（h11）が先に 400 で拒み、20桁以内で 64 KiB を超えれば
+    ガードが 413（表明を読んだだけで本文には触れない）。どちらも例外にならない（Codex④ F4 の同型の確認）。"""
+    def answer(value):
+        with socket.create_connection(("127.0.0.1", server.port), timeout=30) as sock:
+            sock.sendall(f"POST /gradio_api/mcp/ HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Length: {value}\r\n"
+                         f"Connection: close\r\n\r\n".encode())
+            data = b""
+            while chunk := sock.recv(65536):
+                data += chunk
+        return data
+
+    for value in ("9" * 21, "9" * 40, "0" * 20 + "5"):
+        assert answer(value).startswith(b"HTTP/1.1 400"), value[:8]      # h11 が先に拒む
+    for value in ("9" * 13, "9" * 20):
+        data = answer(value)
+        assert data.startswith(b"HTTP/1.1 413") and b"request body too large" in data, value[:8]
+
+
 def test_s01_local_mode_checks_host_on_root(server):
     """local では `/` も Host を検査する（Host を問わないのは spaces の `/` だけ）。"""
     status, _ = server.raw(f"GET / HTTP/1.1\r\nHost: evil.example\r\nConnection: close\r\n\r\n".encode())
@@ -1281,6 +1345,9 @@ def test_s01_spaces_mode_server(tmp_path):
         page = conn.getresponse().read().decode("utf-8")
         conn.close()
         assert page == app.HEALTH_HTML and "marker-host" not in page  # 許可していない Host には固定の HTML だけ
+        long_port = "owner-mekiki-reader.hf.space:" + "9" * 5000  # 長い数字のポート（Codex④ F4）
+        assert status("GET", "/", long_port) == 200                 # 健康検査の例外は壊れない
+        assert status("GET", "/gradio_api/info", long_port) == 400
         assert status("POST", "/", "evil.example", b"{}") == 400  # Host を問わないのは `/` の GET・HEAD だけ
         assert status("POST", "/gradio_api/mcp/", "owner-mekiki-reader.hf.space", CALL_BODY) == 200
 

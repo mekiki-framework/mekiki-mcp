@@ -43,7 +43,7 @@ GUIDE_VERSION = "GUIDE-1.0.0"
 
 # SEARCH-1.1.0 の区切り文字（畳み込んだ後の文字で判定する。空白は別に扱う。1.0.0 から不変）
 SEPARATORS = frozenset("、。，．,.;:!?・「」『』()（）[]{}…；：！？［］｛｝") | {chr(0x22), chr(0xFF02)}
-# 語境界（SEARCH-1.1.0・PATTERNS-MATCH-1.1.0 で共通）：英数字とアポストロフィを語の一部とみなし、
+# 語境界（SEARCH-1.1.0・PATTERNS-MATCH-1.1.0 以降で共通）：英数字とアポストロフィを語の一部とみなし、
 # ハイフンは境界とする（`ablation` が `domain-ablation` に、`playing seat` が `role-playing seat` に当たる）。
 # ハイフン付きの語句そのものは、両端が境界であれば当たる（検収 E01 の観察 d・2026-09-18 著者承認）。
 _WORD_CHARS = "abcdefghijklmnopqrstuvwxyz0123456789'"
@@ -583,6 +583,41 @@ def _occurrences(hay: str, form: str) -> list[int]:
         start = k + len(form)
 
 
+def _is_cjk(ch: str) -> bool:
+    """仮名・漢字（LIMITS の「仮名・漢字を含む」と同じ範囲）。"""
+    o = ord(ch)
+    return 0x3040 <= o <= 0x30FF or 0x3400 <= o <= 0x4DBF or 0x4E00 <= o <= 0x9FFF
+
+
+def _strip_boundary_spaces(text: str) -> tuple[str, list[int]]:
+    """PATTERNS-MATCH-2.0.0：英字（畳み込み後の a–z）と仮名・漢字の境界にある空白の並びを除く。
+
+    畳み込み（SEARCH）の後の文字列に使う（全角空白も畳み込みで半角の空白一つになっている）。
+    返り値は（除いた文字列, 各文字の元の位置の表。末尾に len(text) を足す）。照合の側だけで使い、
+    verify_quote の正規化（NORM）には使わない。
+    """
+    out, index, i, n = [], [], 0, len(text)
+    while i < n:
+        if text[i].isspace():
+            j = i
+            while j < n and text[j].isspace():
+                j += 1
+            before, after = (text[i - 1] if i else ""), (text[j] if j < n else "")
+            if before and after and (("a" <= before <= "z" and _is_cjk(after))
+                                     or (_is_cjk(before) and "a" <= after <= "z")):
+                i = j
+                continue
+            out.extend(text[i:j])
+            index.extend(range(i, j))
+            i = j
+            continue
+        out.append(text[i])
+        index.append(i)
+        i += 1
+    index.append(n)
+    return "".join(out), index
+
+
 def _expansions(terms: TM.TermIndex, frag: str) -> list[tuple[str, str]]:
     out = set()
     for eid in terms.entry_ids_for(frag):
@@ -987,13 +1022,14 @@ def _check_compressions(reader: Reader, text: Any, patterns: Sequence[PAT.Patter
     folded = N.fold_search(text, is_input=True)
     if not folded.text:
         return _invalid(reader, "空文字・空白だけの入力は照合しない")
+    hay, index = _strip_boundary_spaces(folded.text)  # PATTERNS-MATCH-2.0.0
     matches = []
     for p in patterns:
         found = []
         for form in p.surface_forms:
-            ff = N.fold_search(form, is_input=False).text
-            for k in _occurrences(folded.text, ff):
-                c0, c1 = N.source_span(folded, k, k + len(ff))
+            ff = _strip_boundary_spaces(N.fold_search(form, is_input=False).text)[0]
+            for k in _occurrences(hay, ff):
+                c0, c1 = N.source_span(folded, index[k], index[k + len(ff) - 1] + 1)
                 found.append({"form": form, "char_start": c0, "char_end": c1})
         if found:
             found.sort(key=lambda x: (x["char_start"], x["char_end"], x["form"]))

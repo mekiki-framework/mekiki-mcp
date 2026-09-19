@@ -35,7 +35,7 @@ CANDIDATES = REPO_ROOT / "docs/candidates/patterns_candidates_v0.md"
 TM_PATH = "THEORY_MAP.md"
 FR_PATH = "FOR_AI_READERS.md"
 APPROVED_ON = "2026-09-18"
-MATCH_RULE = "PATTERNS-MATCH-1.1.0"  # patterns.MATCH_RULE と同じ値（正準形に入る）
+MATCH_RULE = "PATTERNS-MATCH-2.0.0"  # patterns.MATCH_RULE と同じ値（正準形に入る）
 PATTERNS_VERSION = "PATTERNS-0.2.1"
 
 
@@ -329,11 +329,15 @@ def write_doc(resolved, failed, held) -> None:
         f"## 照合（{MATCH_RULE}）",
         "",
         "1. 入力と語形を SEARCH の畳み込み（1.0.0 から不変・現行 SEARCH-1.1.0）（NFC-IN〔入力のみ〕・WS-ZW・WS-COLLAPSE・WIDTH・QUOTE-CURLY・ASCII 小文字化）にかける。",
-        "2. ASCII だけの語形は単語境界（前後が `[a-z0-9']` 以外。**ハイフンは境界**で SEARCH-1.1.0 と同じ。1.0.0 では `[a-z0-9'-]`）で、それ以外は部分文字列で、重ならない出現をすべて拾う。",
-        "3. 一致したパターンごとに、関連原文ごとの結果を一つ作る。並びは（入力中の最初の一致位置、パターン id、関連原文の順）。",
-        "4. payload：pattern_id・pattern_version・matched（語形・入力中の文字位置。上限20件）・needs_context_review=true・"
+        "2. **英字と仮名・漢字の境界にある空白は任意**（2.0.0）：畳み込んだ入力と語形の両方から、英字（畳み込み後の ASCII `a`–`z`。全角・大文字もここに入る）と"
+        "仮名・漢字（U+3040–U+30FF・U+3400–U+4DBF・U+4E00–U+9FFF）の間にある空白の並び（半角・全角。畳み込みで空白一つになる）を除いてから照合する"
+        "（`AI は遊べない` も `AIは遊べない` に当たる）。一致位置は元の入力の文字位置で返す。数字と仮名・漢字の間、英字どうしの間の空白は除かない。"
+        "verify_quote の正規化（NORM）は変えない。",
+        "3. ASCII だけの語形は単語境界（前後が `[a-z0-9']` 以外。**ハイフンは境界**で SEARCH-1.1.0 と同じ。1.0.0 では `[a-z0-9'-]`）で、それ以外は部分文字列で、重ならない出現をすべて拾う。",
+        "4. 一致したパターンごとに、関連原文ごとの結果を一つ作る。並びは（入力中の最初の一致位置、パターン id、関連原文の順）。",
+        "5. payload：pattern_id・pattern_version・matched（語形・入力中の文字位置。上限20件）・needs_context_review=true・"
         "source_excerpt（関連原文の行をそのまま。1000字を超えると切って `source_excerpt_truncated` を立てる）。判定を表す欄は持たない。",
-        "5. limitations に契約文（CONTRACT・FORMS）と件数（PATTERNS）を必ず入れる。一致ゼロ・パターン0件でも status は ok。",
+        "6. limitations に契約文（CONTRACT・FORMS）と件数（PATTERNS）を必ず入れる。一致ゼロ・パターン0件でも status は ok。",
         "",
         "## 関連原文の解決（PATTERNS-SRC-1.0.0）",
         "",

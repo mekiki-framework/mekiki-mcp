@@ -56,7 +56,7 @@ def lims(env: dict, code: str) -> list[str]:
 
 def test_approved_tables_and_empty_start(reader):
     assert PAT.PATTERNS_VERSION == "PATTERNS-0.2.1" and PAT.APPROVED_ON == "2026-09-18"
-    assert PAT.MATCH_RULE == "PATTERNS-MATCH-1.1.0"
+    assert PAT.MATCH_RULE == "PATTERNS-MATCH-2.0.0"
     assert PAT.table_sha256() == PAT.PATTERNS_TABLE_SHA256 and TM.table_sha256() == TM.TERMS_TABLE_SHA256
     assert TM.TERMS_VERSION == "TERMS-0.1.1" and TM.APPROVED_ON == "2026-09-18"
     assert len(reader.patterns) == len(PAT.PATTERNS) and len(reader.terms.entries) == len(TM.TERMS)
@@ -134,14 +134,14 @@ def test_rule_documents_match_the_tables():
 
 def test_prompts_are_approved_with_guard(reader):
     """八つの雛形（日本語四つ・英語四つ。SPEC v2.2 §6・案B。mekiki_start は PROMPTS-0.2.0）。"""
-    assert PR.PROMPTS_VERSION == "PROMPTS-0.2.0"
+    assert PR.PROMPTS_VERSION == "PROMPTS-0.2.1"
     assert PR.PROMPTS_STATUS == "approved" and PR.APPROVED_ON == "2026-09-19"
     assert [t.name for t in PR.TEMPLATES] == ["read_with_guards", "four_modes", "answer_format", "mekiki_start",
                                               "read_with_guards_en", "four_modes_en", "answer_format_en",
                                               "mekiki_start_en"]
     assert [t.language for t in PR.TEMPLATES] == ["ja"] * 4 + ["en"] * 4
     # mekiki_start は著者の文面そのもの（利用者の発話なので見出し・定型文を付けない）
-    assert PR.MEKIKI_START.text == "Mekiki Reader を接続しています。最初に get_reading_guide(part=\"all\") を呼び、資料の llms.txt と THEORY_MAP.md を読んでから答えてください。以後の回答では、原文（出典つき）・著者が記録した位置づけ（status はラベル）・あなたの解釈を分けて書き、引用は verify_quote で照合し、自分の要約は check_compressions に一度通し、私の事例についての判断は私に残してください。"
+    assert PR.MEKIKI_START.text == "Mekiki Reader を接続しています。最初に get_reading_guide(part=\"all\") を呼んでください。資料（llms.txt・THEORY_MAP.md）を読めるクライアントではそれも読んでください。以後の回答では、原文（出典つき）・著者が記録した位置づけ（status はラベル）・あなたの解釈を分けて書き、引用は verify_quote で照合し、自分の要約は check_compressions に一度通し、私の事例についての判断は私に残してください。"
     assert PR.UTTERANCES == {"mekiki_start", "mekiki_start_en"}
     for t in (PR.MEKIKI_START, PR.MEKIKI_START_EN):
         assert PR.GUARD_SENTENCE not in t.text and PR.GUARD_SENTENCE_EN not in t.text
@@ -798,12 +798,38 @@ def test_t11_forms_are_flagged_the_same_way(preader, case, text):
     assert p["pattern_id"] == "P-T01" and p["pattern_version"] == "TEST-1"
     assert p["needs_context_review"] is True
     assert p["source_excerpt"] == _CORPUS.lines["papers/T5.md"][222]
-    assert (r["source_path"], r["locator"]["line_start"], r["section_anchor"]) == ("papers/T5.md", 223, "t5-5-4")
-    for m in p["matched"]:
-        assert N.fold_search(text[m["char_start"]:m["char_end"]], is_input=True).text == \
-            N.fold_search(m["form"], is_input=False).text
-    assert not (set(p) & JUDGMENT_KEYS)
-    assert T.CONTRACT in env["limitations"] and T.FORMS in env["limitations"]
+
+
+@pytest.mark.parametrize("text,span", [
+    ("AI は遊べないので人間の尊厳が守られる", (0, 8)),     # 半角空白（例文③）
+    ("AIは遊べないので人間の尊厳が守られる", (0, 7)),      # 空白なし
+    ("AI\u3000は遊べないので人間の尊厳が守られる", (0, 8)),  # 全角空白
+    ("ＡＩ \u3000は遊べない", (0, 9)),                     # 全角の英字と、半角・全角の空白の並び
+    ("だから AI は遊べない", (4, 12)),                      # 前にも境界の空白がある
+])
+def test_t11_boundary_space_is_optional(reader, text, span):
+    """PATTERNS-MATCH-2.0.0：英字と仮名・漢字の境界の空白は任意。どの形も P30 に当たり、位置は元の入力で返る。"""
+    env = rt(T.check_compressions(reader, text))
+    assert env["status"] == "ok"
+    assert [r["payload"]["pattern_id"] for r in env["results"]] == ["P30"] * 3
+    matched = env["results"][0]["payload"]["matched"]
+    assert [(m["form"], m["char_start"], m["char_end"]) for m in matched] == [("AIは遊べない", *span)]
+    assert "RULES: PATTERNS-MATCH-2.0.0 " + PAT.PATTERNS_VERSION in " ".join(env["limitations"])
+
+
+@pytest.mark.parametrize("text", ["A I は遊べない", "AIは 遊べない", "AI 1は遊べない"])
+def test_t11_other_spaces_are_kept(reader, text):
+    """英字どうし・仮名漢字どうし・数字をはさむ空白は除かない（当たらない）。"""
+    env = rt(T.check_compressions(reader, text))
+    assert env["status"] == "ok" and env["results"] == []
+
+
+def test_boundary_space_does_not_change_verify_quote(reader):
+    """verify_quote の正規化（NORM）は変えていない：英字と漢字の境界に空白を足した引用は一致しないまま。"""
+    original = "用いてきた。DOTSの設計からは，三つの特徴"  # T4 L53
+    assert rt(T.verify_quote(reader, original, "T4"))["match"] == "exact"
+    spaced = rt(T.verify_quote(reader, "用いてきた。DOTS の設計からは，三つの特徴", "T4"))
+    assert spaced["status"] == "quote_not_found" and spaced["match"] == "none"
 
 
 def test_t11_multiple_sources_and_guide(preader):

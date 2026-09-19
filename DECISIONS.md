@@ -7,7 +7,7 @@
 - [x] コーパス Git参照 `v3.5.0` → 解決したコミットSHA（`git ls-remote` 等の出力）
 - [x] 採用 Gradio 版・Python 版（検証結果と `requirements.txt` の数値）（gradio[mcp]==6.27.0・Python 3.13.15・ハッシュ固定 66 パッケージ）
 - [x] 正規化規則の版（`normalize.py`・対応表）（NORM-1.2.0・対応表 sha256 19f90a79…。1.1.0 は 7fffde88…）
-- [x] パターン一覧の版（`patterns.py`）と著者承認日（PATTERNS-0.2.1・50件・照合 PATTERNS-MATCH-1.1.0・2026-09-18。0.1.0＝47件は撤回）
+- [x] パターン一覧の版（`patterns.py`）と著者承認日（PATTERNS-0.2.1・50件・照合 PATTERNS-MATCH-2.0.0〔2026-09-19〕・2026-09-18。0.1.0＝47件は撤回）
 - [x] `translations/T4.en.manifest.json` の扱い（v3.5.0 に存在するか／Reader側で作るか）と理由
 - [x] 接続URL（実際の起動表示）：`http://127.0.0.1:7860/gradio_api/mcp/`（接続先ごとの検収は施工段階4）
 - [x] 費用と休止復帰時間の実測値（配置段階二）（HF PRO 月9ドル・CPU basic・再起動からの復帰17秒〔目視〕・休止からの復帰は未実測）
@@ -369,3 +369,10 @@
 | 2026-09-19 | 配置段階二 | 案内ページ | spaces で外部の許可 Host（`SPACE_HOST`）宛ての `GET`・`HEAD /` に、自前の静的 HTML（JS・外部資産なし・英日併記・七項目）を返す。MCP の URL は要求からではなく起動時の最初の `SPACE_HOST` から作る。CSP `default-src 'none'; style-src 'unsafe-inline'`・`nosniff`・`no-referrer` を付ける。loopback には従来どおり Gradio の HTML（内部クライアントが設定を読む）。これで外部に Gradio の設定は出なくなった。LIMITS は配置モードの行に追記し、版は 3.1.0 のまま（F7 と同じ扱い） | 著者の指示 | `mekiki_reader/guide_page.py`・`app.py` の `_guide`／`test_s01_spaces_mode_server`・`test_s01_guide_page_is_static` | 確定 |
 | 2026-09-19 | 配置段階二 | TUTORIAL と「三分で試す」の三つ目の例 | 著者の例文「AI は遊べないので…」（AI の後に空白）は `check_compressions` で該当0件だった。空白なしの「AIは遊べないので人間の尊厳が守られる」と英文「AI cannot play, so human dignity is protected」は P30 が該当し、関連原文3件（T5 L77–88・L107–120・L79）。案内ページ・README・TUTORIAL には空白なしの形を載せ、TUTORIAL に空白ありでは該当しないことを明記した。照合規則（PATTERNS-MATCH）で空白を吸収するかは変えていない。①②の「返る」は e01 の R01-guards・R14-guards で確認 | 推定で書かない（著者の指示）。照合規則の変更は規則の改版 | 2026-09-19 の `check_compressions` の実応答（PATTERNS-0.2.1・PATTERNS-MATCH-1.1.0）／`docs/acceptance/e01/R01-guards.md`・`R14-guards.md` | 提案 |
 | 2026-09-19 | 配置段階二 | 開示（署名済み）の既知の制約6・10 | 10 に⑦を足したのは著者の指示。6（`/` に Gradio の HTML が返る）は案内ページの追加に合わせて「loopback 宛てでは Gradio、spaces の外部の許可 Host 宛てには案内ページ」に直した | 実態と食い違わないように | README §8 | 提案（署名後の文面の変更） |
+
+## 照合の空白と mekiki_start の改訂（2026-09-19・closing7）
+
+| 日付 | 段階 | 項目 | 判断 | 理由 | 根拠 | 状態 |
+|---|---|---|---|---|---|---|
+| 2026-09-19 | 配置段階二 | PATTERNS-MATCH-2.0.0 | check_compressions の照合で、畳み込んだ入力と語形の両方から、英字（畳み込み後の ASCII `a`–`z`）と仮名・漢字（U+3040–U+30FF・U+3400–U+4DBF・U+4E00–U+9FFF）の境界にある空白の並び（半角・全角・改行。畳み込みで空白一つになる）を除いてから照合する。一致位置は元の入力の文字位置で返す。数字と仮名・漢字の間、英字どうし・仮名漢字どうしの空白は除かない（「英字」を文字どおりに取った施工判断）。verify_quote の正規化（NORM）と検索（SEARCH）は変えない。各パターンの `match_rule` 欄が変わるので表の SHA-256 は `7b7574c2dc915afd5626016d3280a5b5e29c4db7a8506bf14ddb82509ffa7115` に（一覧の版 PATTERNS-0.2.1 と語形は不変）。例文③は空白ありの形に戻し、TUTORIAL の注意書きを外した。LIMITS は再測値を追記し版は 3.1.0 のまま（上限の値は不変） | 著者の指示（closing6 の報告①） | `tools._strip_boundary_spaces`・`scripts/build_patterns.py --write`／`test_t11_boundary_space_is_optional`・`test_t11_other_spaces_are_kept`・`test_boundary_space_does_not_change_verify_quote`／再測 14.1 ms（2000字） | 確定（数字をはさむ空白を除かない扱いは提案） |
+| 2026-09-19 | 配置段階二 | PROMPTS-0.2.1 | mekiki_start（ja／en）の資料の読み方を「最初に get_reading_guide(part="all") を呼んでください。資料（llms.txt・THEORY_MAP.md）を読めるクライアントではそれも読んでください。」に改めた（文面の手直しなので PATCH）。案内ページ（「最初に送る一言」を新設し、`prompts.py` の定数から描く）・README「三分で試す」・TUTORIAL §2 に同じ文面を載せた | 著者の指示（closing6 の報告④。resources を扱えない接続先がある） | `mekiki_reader/prompts.py`・`guide_page.py`／`test_prompts_are_approved_with_guard`・`test_s01_guide_page_is_static` | 確定（英訳は著者の確認待ち） |

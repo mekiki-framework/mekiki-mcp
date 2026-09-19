@@ -18,7 +18,7 @@ from .schema import SOURCE_KIND_BY_PATH
 
 PATTERNS_VERSION = "PATTERNS-0.2.1"
 APPROVED_ON = "2026-09-18"
-MATCH_RULE = "PATTERNS-MATCH-1.1.0"
+MATCH_RULE = "PATTERNS-MATCH-2.0.0"
 RELATED_KINDS = frozenset({"paper_md", "theory_map", "reading_guide"})
 
 _ID_RE = re.compile(r"^P[0-9A-Z-]{1,16}$")
@@ -981,6 +981,6 @@ def table_sha256() -> str:
 
 
 # 表の正準 JSON の SHA-256（Q49）。表を変えたら版を上げ、この値と docs/rules/PATTERNS.md を更新する。
-PATTERNS_TABLE_SHA256 = "bd18a58fb7ad6f3c7e2cf18428d354a826aecbf9acb824fac1ca9d757f8aa4bc"
+PATTERNS_TABLE_SHA256 = "7b7574c2dc915afd5626016d3280a5b5e29c4db7a8506bf14ddb82509ffa7115"
 if table_sha256() != PATTERNS_TABLE_SHA256:  # pragma: no cover - 表と定数の食い違いは import 時に止める
     raise RuntimeError(f"PATTERNS table hash mismatch: {table_sha256()}")

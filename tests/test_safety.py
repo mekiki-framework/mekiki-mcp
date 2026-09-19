@@ -5,6 +5,7 @@ from __future__ import annotations
 import http.client
 import json
 import os
+import re
 import socket
 import subprocess
 import sys
@@ -17,6 +18,7 @@ import pytest
 
 import app
 from mekiki_reader import corpus as C
+from mekiki_reader import guide_page
 from mekiki_reader import prompts as PR
 from mekiki_reader import schema as S
 from mekiki_reader import tools as T
@@ -1348,6 +1350,7 @@ def test_s01_spaces_mode_refuses_bad_settings(tmp_path, env, word):
 
 def test_s01_spaces_mode_server(tmp_path):
     """spaces モードで起動：許可 Host・`/` の Host 不問・ツール名に接頭辞なし・pwa なし・変数の除去（M01）。
+    `/` は、許可外 Host には固定の HTML、内部（loopback）には Gradio、外部の許可 Host には案内ページ。
 
     待ち受けは試験のため loopback（MEKIKI_TEST_BIND）。起動表示にモードと許可 Host が出る。
     """
@@ -1382,6 +1385,32 @@ def test_s01_spaces_mode_server(tmp_path):
         page = conn.getresponse().read().decode("utf-8")
         conn.close()
         assert page == app.HEALTH_HTML and "marker-host" not in page  # 許可していない Host には固定の HTML だけ
+
+        def fetch(method, host):
+            conn = http.client.HTTPConnection("127.0.0.1", srv.port, timeout=30)
+            try:
+                conn.putrequest(method, "/", skip_host=True)
+                conn.putheader("Host", host)
+                conn.endheaders()
+                resp = conn.getresponse()
+                return resp.status, {k.lower(): v for k, v in resp.getheaders()}, resp.read().decode("utf-8")
+            finally:
+                conn.close()
+
+        # 外部の許可 Host（SPACE_HOST）には案内ページ。URL は起動時に読んだ最初の SPACE_HOST から作る
+        guide = guide_page.render("https://owner-mekiki-reader.hf.space/gradio_api/mcp/")
+        for host in ("owner-mekiki-reader.hf.space", "Reader.Example.org:443"):
+            code, headers, page = fetch("GET", host)
+            assert code == 200 and page == guide, host
+            assert headers["content-type"] == "text/html; charset=utf-8"
+            assert "default-src 'none'" in headers["content-security-policy"]
+            assert headers["x-content-type-options"] == "nosniff"
+        code, headers, page = fetch("HEAD", "owner-mekiki-reader.hf.space")
+        assert code == 200 and page == "" and int(headers["content-length"]) == len(guide.encode("utf-8"))
+        # 内部（loopback）には従来どおり Gradio の HTML（内部クライアントが設定を読む）
+        for host in (f"127.0.0.1:{srv.port}", f"localhost:{srv.port}"):
+            code, _headers, page = fetch("GET", host)
+            assert code == 200 and "gradio_config" in page and page != guide, host
         long_port = "owner-mekiki-reader.hf.space:" + "9" * 5000  # 長い数字のポート（Codex④ F4）
         assert status("GET", "/", long_port) == 200                 # 健康検査の例外は壊れない
         assert status("GET", "/gradio_api/info", long_port) == 400
@@ -1404,6 +1433,34 @@ def test_s01_spaces_mode_server(tmp_path):
     assert set(SPACES_ENV) - {"MEKIKI_READER_MODE", "SPACE_HOST"} <= set(audit["removed_env"])
     display = [line for line in srv.lines if line.startswith("モード ")]
     assert display and "spaces" in display[0] and "owner-mekiki-reader.hf.space" in display[0], display
+
+
+def test_s03_tool_annotations_check_detects_missing_patch():
+    """起動後の確認は、tools/list の差し替えが無ければ止める（上流の差し替え⑦）。"""
+    assert app.check_tool_annotations(object()) == ["tool-annotations=unpatched"]
+    assert app.TOOL_NAMES == ("list_papers", "get_section", "search_passages", "get_claim_record",
+                              "verify_quote", "check_compressions", "get_reading_guide")
+
+
+def test_s01_guide_page_is_static():
+    """案内ページ：JS なし・外部の資産なし（リンクだけ）・英日併記・七項目。URL は属性に入れる前に escape する。"""
+    page = guide_page.render("https://owner-mekiki-reader.hf.space/gradio_api/mcp/")
+    lower = page.lower()
+    for banned in ("<script", "javascript:", " on", "<link", "<img", "<iframe", "@import", "url(", " src="):
+        if banned == " on":
+            assert not re.search(r"\son[a-z]+\s*=", lower), "event handler"
+            continue
+        assert banned not in lower, banned
+    for heading in ("Mekiki とは / What Mekiki is", "しないこと / What it does not do", "MCP の URL / MCP URL",
+                    "つなぐ / Connect", "最初に打つ三つ / Three things to try first",
+                    "読み方 / How to read the answers", "リンク / Links"):
+        assert f"<h2>{heading}</h2>" in page, heading
+    for name in ("Claude", "ChatGPT", "Grok", "Claude Code"):
+        assert f"<strong>{name}</strong>" in page, name
+    assert "T5 §4.4 L171" in page and "T1 §2.1 L54" in page and "T2 §2.1 L37" in page
+    assert "AIは遊べないので人間の尊厳が守られる" in page  # check_compressions で P30 が該当する形（空白なし）
+    hostile = guide_page.render('https://x.example/"><b>x</b>')
+    assert '"><b>' not in hostile and "&quot;&gt;&lt;b&gt;" in hostile
 
 
 def test_s03_app_launch_arguments():

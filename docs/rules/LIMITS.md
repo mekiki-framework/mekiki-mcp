@@ -42,7 +42,7 @@
 | 接続そのもの（既知の制約） | 接続の数と、ヘッダを送り切らない接続の時間には、こちらでは上限を置いていない（HTTP の層〔uvicorn〕の既定に従う）。受付枠・長時間接続の上限は、ヘッダを受け取った後の要求を数える | — |
 | CORS | `Origin` 付きの要求には許可ヘッダを一切返さない（上流の CORS 中間層を通しに差し替え、起動後に自分自身へ当てて確認） | 許可を返さない（要求自体は通る） |
 | 待ち受け | local：127.0.0.1 のみ。spaces（3.1.0）：0.0.0.0:7860（ポートは固定。`MEKIKI_READER_PORT` に 7860 以外があれば起動しない。SPEC v2.4.2・Codex④ F7）。変えられるのは配置モード（`MEKIKI_READER_MODE`）だけ。`max_threads=8` | — |
-| 配置モード（3.1.0） | `MEKIKI_READER_MODE` は local（既定）か spaces。spaces で変わるのは待ち受け・許可 Host・`/` の Host 不問の三つだけ。`SYSTEM`・`SPACE_ID`・`SPACE_AUTHOR_NAME`・`SPACE_REPO_NAME`・`SPACES_ZERO_GPU`・`OAUTH_*`・`HF_TOKEN`・`WEB_CONCURRENCY`・`FORWARDED_ALLOW_IPS` は `SPACE_HOST` を読んだ後に gradio の import 前に消す（どちらのモードでも。起動表示に名前を出す）。`pwa=False` を明示 | 値が二値のどちらでもなければ起動しない |
+| 配置モード（3.1.0） | `MEKIKI_READER_MODE` は local（既定）か spaces。spaces で変わるのは待ち受け・許可 Host・`/` の Host 不問と、外部の許可 Host 宛ての `GET`・`HEAD /` に返す案内ページ（静的 HTML・JS なし。loopback には従来どおり Gradio の HTML。3.1.0 の追記・2026-09-19）の四つだけ。`SYSTEM`・`SPACE_ID`・`SPACE_AUTHOR_NAME`・`SPACE_REPO_NAME`・`SPACES_ZERO_GPU`・`OAUTH_*`・`HF_TOKEN`・`WEB_CONCURRENCY`・`FORWARDED_ALLOW_IPS` は `SPACE_HOST` を読んだ後に gradio の import 前に消す（どちらのモードでも。起動表示に名前を出す）。`pwa=False` を明示 | 値が二値のどちらでもなければ起動しない |
 
 ## 最小長の実測（2026-09-18・data/ のコミット 6748061）
 

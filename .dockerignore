@@ -1,0 +1,10 @@
+# Docker の組み立てに渡さないもの（Dockerfile が COPY するのは requirements.txt・app.py・mekiki_reader/・data/ だけ）
+**/.DS_Store
+**/__pycache__
+.venv
+.git
+.claude
+.pytest_cache
+tests
+docs
+scripts

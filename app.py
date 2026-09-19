@@ -10,6 +10,7 @@ import http.client
 import logging
 import os
 import re
+import signal
 import sys
 import threading
 import time
@@ -31,10 +32,46 @@ KEEP_OTHER_ENV = {"HF_HUB_DISABLE_TELEMETRY": "1", "HF_HUB_DISABLE_IMPLICIT_TOKE
                   "NO_PROXY": NO_PROXY_VALUE, "no_proxy": NO_PROXY_VALUE}
 
 
-def sanitize_environ(env=None) -> list[str]:
-    """GRADIO_* とプロキシ系を全部消してから、許可した値だけを入れ直す。消した変数名を返す。"""
+# ---- 配置モード（SPEC v2.4 §2.10） ----
+# local（既定）と spaces の二値。spaces で変わるのは三つだけ：bind が 0.0.0.0、許可 Host が起動時に読んだ
+# SPACE_HOST（カンマ区切りは各値）と localhost・127.0.0.1、`/` だけは健康検査のために Host を問わない。
+MODE_ENV = "MEKIKI_READER_MODE"
+MODES = ("local", "spaces")
+LOCAL_HOSTS = ("127.0.0.1", "localhost", "::1", "[::1]")
+# Spaces が入れる変数のうち、Gradio と依存の分岐を変えるもの（Spaces 用の監視スレッド・pwa の既定・ツール名の
+# 接頭辞・spaces パッケージの関数包装・OAuth・トークン・ワーカー数・転送元の信用）。SPACE_HOST を読んだ後に消す。
+# local でも同じく消す（どのモードでも、これらの変数で挙動が変わらないように）。
+SPACES_ENV_NAMES = ("SYSTEM", "SPACE_ID", "SPACE_AUTHOR_NAME", "SPACE_REPO_NAME", "SPACES_ZERO_GPU",
+                    "HF_TOKEN", "WEB_CONCURRENCY", "FORWARDED_ALLOW_IPS")
+SPACES_ENV_PREFIXES = ("OAUTH_",)
+_DNS_NAME = re.compile(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*")
+
+
+def read_deploy(env=None) -> dict:
+    """配置モードと、待ち受けるアドレス・許可 Host を読む（import gradio の前）。誤りは error に入れる。
+
+    誤りがあっても import は止めない（試験が app を import するため）。起動は verify_blocks が止める。
+    """
     env = os.environ if env is None else env
-    removed = sorted(k for k in env if k.startswith("GRADIO_") or k in PROXY_ENV_NAMES)
+    mode = env.get(MODE_ENV, "") or "local"
+    if mode not in MODES:
+        return {"mode": mode, "bind": "127.0.0.1", "hosts": LOCAL_HOSTS,
+                "error": f"{MODE_ENV} は local か spaces（受け取った値の形が違う）"}
+    if mode == "local":
+        return {"mode": mode, "bind": "127.0.0.1", "hosts": LOCAL_HOSTS, "error": None}
+    hosts = [h.strip().lower() for h in env.get("SPACE_HOST", "").split(",") if h.strip()]
+    if not hosts or not all(len(h) <= 253 and _DNS_NAME.fullmatch(h) for h in hosts):
+        return {"mode": mode, "bind": "0.0.0.0", "hosts": ("localhost", "127.0.0.1"),
+                "error": "spaces では SPACE_HOST（ホスト名。カンマ区切り可）が要る"}
+    return {"mode": mode, "bind": "0.0.0.0", "hosts": tuple(dict.fromkeys([*hosts, "localhost", "127.0.0.1"])),
+            "error": None}
+
+
+def sanitize_environ(env=None) -> list[str]:
+    """GRADIO_*・プロキシ系・Spaces の分岐を変える変数を消してから、許可した値だけを入れ直す。消した変数名を返す。"""
+    env = os.environ if env is None else env
+    removed = sorted(k for k in env if k.startswith("GRADIO_") or k in PROXY_ENV_NAMES
+                     or k in SPACES_ENV_NAMES or k.startswith(SPACES_ENV_PREFIXES))
     for key in removed:
         del env[key]
     env.update(KEEP_GRADIO_ENV)
@@ -42,6 +79,7 @@ def sanitize_environ(env=None) -> list[str]:
     return removed
 
 
+DEPLOY = read_deploy()  # SPACE_HOST は消す前に読む
 REMOVED_GRADIO_ENV = sanitize_environ()
 
 import gradio as gr  # noqa: E402  （環境を整えた後に読み込む）
@@ -62,7 +100,10 @@ from mekiki_reader import tools as T  # noqa: E402
 TITLE = "Mekiki Reader"
 PORT_ENV = "MEKIKI_READER_PORT"
 DEFAULT_PORT = 7860
-SERVER_NAME = "127.0.0.1"  # 環境変数では変えない（Q67）
+SERVER_NAME = DEPLOY["bind"]  # local は "127.0.0.1"。変えられるのは配置モードだけ（Q67・SPEC v2.4 §2.10）
+LOOPBACK = "127.0.0.1"         # 自分自身に当てる確認（check_cors）の宛先（どのモードでも許可 Host に入る）
+# spaces で Host を問わない `/`（健康検査）に返す固定の HTML（要求の中身を写さない）
+HEALTH_HTML = "<!doctype html><title>Mekiki Reader</title><p>Mekiki Reader (MCP): /gradio_api/mcp/</p>\n"
 
 # ---- 同時実行（Q65。上限超過は status ではなく通信層で返す） ----
 
@@ -155,7 +196,7 @@ def mark_ready() -> None:
 
 # ---- 標準経路の遮断（Q66） ----
 
-ALLOWED_HOSTS = frozenset({"127.0.0.1", "localhost", "::1", "[::1]"})
+ALLOWED_HOSTS = frozenset(DEPLOY["hosts"])  # local は 127.0.0.1・localhost・::1。spaces は SPACE_HOST と loopback
 MAX_BODY_BYTES = 64 * 1024
 # 明示して拒む経路（403）。UI が無くても登録される。
 BLOCKED_MARKS = ("file=", "proxy=", "/upload", "/run-history", "/vibe", "/dev/reload",
@@ -433,6 +474,7 @@ def install_queue_hooks(demo) -> None:
         original(event, event_message)
         _BORN[id(event_message)] = [time.monotonic(), event_message, None]
 
+    send_message.mekiki_stamp = True  # verify_blocks が差し替えを確かめる印
     queue.send_message = send_message
 
 
@@ -514,7 +556,7 @@ def start_sweeper(demo) -> None:
 
 def check_cors(port: int) -> list[str]:
     """Origin 付きの要求に CORS の許可ヘッダが付かないことを、自分自身に当てて確かめる。"""
-    conn = http.client.HTTPConnection(SERVER_NAME, port, timeout=5)
+    conn = http.client.HTTPConnection(LOOPBACK, port, timeout=5)
     try:
         conn.request("GET", "/gradio_api/info", headers={"Origin": "http://localhost:1"})  # 開いている経路で確かめる
         response = conn.getresponse()
@@ -678,6 +720,14 @@ def _guard_middleware():
                     "headers": [(b"content-type", b"text/plain; charset=utf-8"), (b"connection", b"close")]})
         await send({"type": "http.response.body", "body": text.encode("utf-8")})
 
+    async def _health(send, method: str, receive) -> None:
+        await _drain(receive)
+        body = HEALTH_HTML.encode("utf-8")
+        await send({"type": "http.response.start", "status": 200,
+                    "headers": [(b"content-type", b"text/html; charset=utf-8"),
+                                (b"content-length", str(len(body)).encode("ascii")), (b"connection", b"close")]})
+        await send({"type": "http.response.body", "body": b"" if method == "HEAD" else body})
+
     async def _finish_read(send, read, path: str) -> None:
         if read[0] == "reply":
             return await _reply(send, read[1], read[2], path)
@@ -700,7 +750,14 @@ def _guard_middleware():
                 send = _no_cors(send)
             hosts = [v.decode("latin-1", "replace") for k, v in raw if k.lower() == b"host"]
             if len(hosts) != 1 or _host_name(hosts[0]) not in ALLOWED_HOSTS:
-                return await _reply(send, 400, "bad host", path, receive)
+                # spaces では `/` だけ Host を問わない（健康検査が送る Host は決まっていない。SPEC v2.4 §2.10）
+                health = (DEPLOY["mode"] == "spaces" and path == "/"
+                          and scope.get("method", "GET").upper() in ("GET", "HEAD"))
+                if not health:
+                    return await _reply(send, 400, "bad host", path, receive)
+                # 健康検査には固定の短い HTML だけを返す（Gradio の画面は要求の Host から設定を組み立てるため、
+                # 許可していない Host には渡さない）
+                return await _health(send, scope.get("method", "GET").upper(), receive)
 
             # 本文の長さの表明（Codex① P1-2）：TE と CL の併記は拒み、CL は ASCII 数字だけを受ける。
             lengths = [v.decode("latin-1", "replace").strip() for k, v in raw if k.lower() == b"content-length"]
@@ -979,6 +1036,11 @@ def build_blocks() -> "gr.Blocks":
 def verify_blocks(demo, launched: bool = False, port: int | None = None) -> list[str]:
     """環境変数だけで有効になる経路が無効であることを確かめる（Q93・Codex① P1-3）。問題の一覧を返す。"""
     problems = []
+    if DEPLOY["error"]:
+        problems.append(f"mode={DEPLOY['error']}")
+    left = sorted(k for k in os.environ if k in SPACES_ENV_NAMES or k.startswith(SPACES_ENV_PREFIXES))
+    if left:
+        problems.append(f"spaces-env-left={','.join(left)}")
     checks: list[tuple[str, object]] = [("vibe_mode", False), ("dev_mode", False), ("analytics_enabled", False)]
     if launched:  # 起動してから決まる値
         checks += [("share", False), ("ssr_mode", False), ("enable_monitoring", False),
@@ -1007,13 +1069,16 @@ def verify_blocks(demo, launched: bool = False, port: int | None = None) -> list
     queue = getattr(demo, "_queue", None)
     if not isinstance(getattr(queue, "pending_messages_per_session", None), _SessionTable):
         problems.append("queue-session-table=unpatched")
+    if not getattr(getattr(queue, "send_message", None), "mekiki_stamp", False):
+        problems.append("queue-send-message=unpatched")
     if getattr(queue, "max_size", None) != QUEUE_MAX_SIZE:
         problems.append(f"queue.max_size={getattr(queue, 'max_size', 'missing')!r}")
     if getattr(queue, "default_concurrency_limit", None) != MAX_CONCURRENCY:
         problems.append(f"queue.concurrency={getattr(queue, 'default_concurrency_limit', 'missing')!r}")
     if launched:
         url = getattr(demo, "local_url", "") or ""
-        if not url.startswith(f"http://{SERVER_NAME}:"):
+        url_host = "localhost" if SERVER_NAME == "0.0.0.0" else SERVER_NAME  # 上流は 0.0.0.0 を localhost で表す
+        if not url.startswith(f"http://{url_host}:"):
             problems.append(f"local_url={url!r}")
         if port is not None:
             problems += check_cors(port)
@@ -1036,6 +1101,7 @@ def launch(demo, port: int):
         max_threads=MAX_THREADS,
         max_file_size="1kb",
         show_error=False,
+        pwa=False,  # 上流は Spaces 上で既定を True にする（SYSTEM を消しても明示する。SPEC v2.4 §2.10）
         inbrowser=False,
         allowed_paths=[],
         blocked_paths=[],
@@ -1048,8 +1114,26 @@ def launch(demo, port: int):
     return launched
 
 
+def _stop_requested(_signum, _frame) -> None:
+    """停止の合図（SIGTERM）。block_thread が KeyboardInterrupt を受けて待ち受けを閉じる。"""
+    raise KeyboardInterrupt
+
+
+def startup_lines(port: int) -> list[str]:
+    """起動表示（版・件数・消した環境変数の名前・モードと許可 Host）。値そのものは出さない。"""
+    return [
+        f"corpus {C.CORPUS_VERSION} ({C.CORPUS_COMMIT[:7]})・bundle {C.EXPECTED_BUNDLE_SHA256[:12]}…",
+        f"tools 7・resources {len(RESOURCES)}・prompts {len(PR.TEMPLATES)}（{PR.PROMPTS_VERSION}）",
+        f"消した環境変数：{'・'.join(REMOVED_GRADIO_ENV) or 'なし'}",
+        f"モード {DEPLOY['mode']}・待ち受け {SERVER_NAME}:{port}・許可 Host：{'・'.join(DEPLOY['hosts'])}",
+    ]
+
+
 def main() -> int:
     global READER
+    if DEPLOY["error"]:
+        print(f"起動しない：{DEPLOY['error']}", file=sys.stderr, flush=True)
+        return 7
     try:
         port = read_port(os.environ.get(PORT_ENV))
     except ValueError as exc:
@@ -1078,9 +1162,10 @@ def main() -> int:
         print("停止する：起動後の確認に失敗した：" + "・".join(problems), file=sys.stderr, flush=True)
         return 5
     mark_ready()
-    print(f"corpus {C.CORPUS_VERSION} ({C.CORPUS_COMMIT[:7]})・bundle {C.EXPECTED_BUNDLE_SHA256[:12]}…", flush=True)
-    print(f"tools 7・resources {len(RESOURCES)}・prompts {len(PR.TEMPLATES)}（{PR.PROMPTS_VERSION}）", flush=True)
-    print(f"消した環境変数：{'・'.join(REMOVED_GRADIO_ENV) or 'なし'}", flush=True)
+    for line in startup_lines(port):
+        print(line, flush=True)
+    # コンテナでは PID 1 になり、SIGTERM は処理を置かないと届かない。停止の合図は Ctrl-C と同じに扱う
+    signal.signal(signal.SIGTERM, _stop_requested)
     try:
         demo.block_thread()
     except KeyboardInterrupt:

@@ -1,8 +1,6 @@
 ---
-sdk: gradio
-sdk_version: "6.27.0"
-python_version: "3.13"
-app_file: app.py
+sdk: docker
+app_port: 7860
 license: mit
 ---
 
@@ -112,7 +110,7 @@ Mekiki Framework の論文 T1〜T5 を、**固定した版から・出典つき�
 
 ### 規則の版
 
-`SCHEMA-1.0.0`・`JSON-1.0.0`・`NORM-1.1.0`・`SEARCH-1.1.0`・`CAND-1.0.0`・`NEAR-1.0.0`・`GUIDE-1.0.0`・`LIMITS-3.0.0`・
+`SCHEMA-1.0.0`・`JSON-1.0.0`・`NORM-1.2.0`・`SEARCH-1.1.0`・`CAND-1.0.0`・`NEAR-1.0.0`・`GUIDE-1.0.0`・`LIMITS-3.1.0`・
 `LINES-1.0.0`・`LANG-1.0.0`・`SECTION-1.0.0`・`T4MAP-1.0.0`・`BUNDLE-1.0.0`・`TERMS-0.1.1`（30項目）・
 `PATTERNS-0.2.1`（50件）＋`PATTERNS-MATCH-1.1.0`・`PROMPTS-0.1.0`（6件）。本文は [docs/rules/](docs/rules/)。
 
@@ -137,7 +135,7 @@ uv pip install --python .venv/bin/python --require-hashes -r requirements-dev.tx
 
 インタプリタは明示する（システムの `python3` は要件を満たさないことがある）。ポートは環境変数
 `MEKIKI_READER_PORT`（1024〜65535・既定 7860。塞がっているときは `起動しない：ポート … で待ち受けられない` と出て終了する）。
-起動すると次の8行が出る。
+起動すると次の9行が出る。
 
 ```
 * Running on local URL:  http://127.0.0.1:7860
@@ -148,12 +146,41 @@ uv pip install --python .venv/bin/python --require-hashes -r requirements-dev.tx
 corpus 3.5.0 (6748061)・bundle 40a09c5ba422…
 tools 7・resources 12・prompts 6（PROMPTS-0.1.0）
 消した環境変数：なし
+モード local・待ち受け 127.0.0.1:7860・許可 Host：127.0.0.1・localhost・::1・[::1]
 ```
 
-最後の3行がこのサーバ自身の表示で、検収記録にはこの3行をそのまま写す。
+最後の4行がこのサーバ自身の表示で、検収記録にはこの4行をそのまま写す（消した環境変数は名前だけで、値は出さない）。
 
-待ち受けは `127.0.0.1` だけで、環境変数では変わらない。`GRADIO_*` は読み込み前に消す。
+待ち受けは `127.0.0.1` だけで、変えられるのは配置モード（下）だけ。`GRADIO_*` は読み込み前に消す。
 データ根は `data/` に固定で、環境変数でも引数でも変えられない。不要な環境変数（API キーなど）は子プロセスに渡さないこと。
+
+### 配置モード（local と spaces）
+
+環境変数 `MEKIKI_READER_MODE` は `local`（既定）か `spaces` のどちらか（それ以外なら起動しない）。
+`spaces` は Hugging Face の Docker Space で動かすためのもので、変わるのは次の三つだけ。
+
+| 項目 | local | spaces |
+|---|---|---|
+| 待ち受け | `127.0.0.1` | `0.0.0.0`（ポートは `MEKIKI_READER_PORT`・既定 7860） |
+| 許可する `Host` | `127.0.0.1`・`localhost`・`::1` | 起動時に読んだ `SPACE_HOST`（Space の公開ホスト名。カンマ区切りは各値）と `localhost`・`127.0.0.1`。`SPACE_HOST` が無ければ起動しない |
+| `/` の `Host` | 検査する | 許可していない `Host` にも 200 で答える（Space の健康検査のため。`GET`・`HEAD` だけ）。そのときは Gradio の画面ではなく、要求の中身を写さない固定の短い HTML を返す |
+
+どちらのモードでも、Spaces が入れる変数のうち Gradio と依存の動きを変えるもの（`SYSTEM`・`SPACE_ID`・`SPACE_AUTHOR_NAME`・
+`SPACE_REPO_NAME`・`SPACES_ZERO_GPU`・`OAUTH_*`・`HF_TOKEN`・`WEB_CONCURRENCY`・`FORWARDED_ALLOW_IPS`）は、`SPACE_HOST` を読んだ後に
+Gradio を読み込む前に消す。そのため Space の上でも Gradio はローカルと同じ分岐で動く（Spaces 用の監視スレッド・PWA・
+ツール名の接頭辞・`spaces` パッケージによる関数の包み直しは使わない）。`pwa=False` は明示している。Space に Secret は置かない。
+
+### Docker（Hugging Face の Docker Space）
+
+`Dockerfile` は Space 用。基底は `python:3.13.15-slim-trixie` をダイジェストで固定し（2026-09-19 に Docker Hub で確認）、
+依存は `pip install --require-hashes --only-binary=:all: -r requirements.txt`（ソースからの組み立てをしない）で入れる。
+`PYTHONUNBUFFERED=1`・`MEKIKI_READER_MODE=spaces`・`EXPOSE 7860`、実行は ID 1000 の利用者（コードと `data/` は root の持ち物で読むだけ）。
+
+施工側の確認（2026-09-19）：この機械には Docker が無いので、**イメージの組み立てと起動は未確認**（Docker を入れるのはローカル環境の
+変更で、著者の判断）。代わりに、`requirements.txt` の全項目が Linux（x86_64・CPython 3.13）の wheel としてハッシュつきで取得できる
+ことを `pip download --require-hashes --only-binary=:all: --platform manylinux…` で確かめた（63項目。Windows 専用の3項目を除く全部）。
+`spaces` モードの設定（待ち受け・許可 Host・変数の除去・`pwa`・接頭辞なし）は試験で確かめている（試験では手元の網に出さないため
+待ち受けだけ loopback にする）。実際の `0.0.0.0:7860` の待ち受けは Space の上で確かめる（SPEC §7 S04）。
 
 ### Claude Code
 
@@ -192,6 +219,26 @@ UI の Custom Connectors はリモートの URL を Anthropic 側から取りに
 橋渡し自体の動作は確認済み：`mcp-remote@0.14.2`（Node v24.13.1）を stdio で起動して MCP クライアントからつなぐと、
 ツール7件・resources 12件・**prompts 6件**（英語版を載せた後に取り直した）が見え、`list_papers` は `ok`、
 `four_modes_en` の文面も届いた。Claude Desktop 本体での確認は利用者が行い、`docs/acceptance/` に記録する。
+
+### 公開版（Space）への接続
+
+Space の MCP の URL は `https://<owner>-<space>.hf.space/gradio_api/mcp/`（`<owner>`・`<space>` は Space の持ち主と名前。
+英数字以外はハイフンになる）。遠隔の HTTPS なので `mcp-remote` は要らない。Space が公開（public）のときは、どのクライアントでも
+認証は「なし」で登録する。ツール名に接頭辞は付かない（`list_papers` など、ローカルと同じ名前）。
+
+Space が非公開（private）の間は、Hugging Face が要求ごとに持ち主の認証を求める。Claude Code なら持ち主のアクセストークンを
+要求のヘッダで送れる（`claude mcp add --transport http --header "Authorization: Bearer <HF のトークン>" mekiki-reader <URL>`。
+トークンは Space には置かない）。任意のヘッダを送れないクライアント（Claude の Custom Connector・ChatGPT）では、非公開の間は
+つながらない見込みで、これらでの確認（SPEC §7 P03）は公開の後になる。
+
+- **Claude Code**：`claude mcp add --transport http mekiki-reader https://<owner>-<space>.hf.space/gradio_api/mcp/`
+- **Claude Desktop・claude.ai**：設定の「コネクタ」から「カスタムコネクタを追加」を選び、名前と上の URL を入れる（遠隔 MCP サーバ。
+  組織のプランでは管理者が追加する）。画面の名前は執筆時点のもの。
+- **ChatGPT**：開発者モード（設定の「アプリとコネクタ」→詳細設定→開発者モード）を有効にし、コネクタを作成して上の URL を入れる
+  （認証なし）。画面の名前は執筆時点のもの。
+
+Hugging Face の MCP バッジと `hf.co/mcp` 経由の呼び出しは Hugging Face 側の機能で、このサーバは関知しない（検収の対象外）。
+各クライアントでの確認は `docs/acceptance/` に記録する（SPEC §7 P02・P03）。
 
 ### 遮断している経路（Gradio が UI 無しでも登録するもの）
 
@@ -298,15 +345,16 @@ D01〜D04（同梱データ）・T01〜T12 と R01（七ツールと再現性）
 - **制作工程と使用モデル**：方針（`SPEC.md`）→施工（Claude Code / Claude Opus 5）→独立検査（Codex。指摘と差分案のみ）→最終検査（Claude）→接続確認と公開判断（著者）。生成 AI を使って作った。<!-- 著者確認：独立検査・最終検査に使ったモデルの具体名 -->
 - **参照した型**：Paper2Agent（Miao et al., Nature 2026）から借りたのは型（資源・プロンプト・ツール・検証テスト・Spaces での公開）であって工程ではない。読解の対象は T1〜T5（題名・版・DOI は `data/CITATION.md`）。
 - **費用と休止**：ローカルで動かす分には追加の API 料金・ホスティング料金は要らない。公開（Spaces）での費用と休止からの復帰時間は、公開時に実測して記す。<!-- 配置段階二で記入 -->
-- **利用者入力の送信先と保存方針**：`verify_quote` と `check_compressions` の入力には未公開の情報が入りうる。実測では、起動から全ツール・全 resource・全 prompt の呼び出しまで loopback 以外への接続は0件。**配信中**は書き込みで開いたファイルも0件で、`data/` には一切触れない。起動の途中では、依存ライブラリ（filelock）が作業ディレクトリに `probe-source`・`probe-link` を作って消し、Gradio が一時領域に書く（どちらも利用者の入力とは関係がない）。サーバは入力をファイルに保存しない方針で、実測した範囲（外への接続と、書き込みで開いたファイル）では保存は確認されなかった。**標準出力・標準エラー**に出るのは、起動時の表示・遮断の記録（状態コードと理由だけ。経路は出さない）・例外の型と場所（ファイル名と行。例外の文は出さない）・ログの水準と名前と出した場所（文は出さない。文に値が埋め込まれることがあるため）だけにしてある。実測（2026-09-19・ローカル）では、正常・不正・例外の各要求（ツールの引数・未知のツール名・未知のメソッドと通知・応答やエラーの形の要求・URL でない URI・壊れた `_meta`・JSON でない本文・壊れた JSON・queue の入力検証のエラー・遮断した経路・ヘッダ・問い合わせ・待ち受け直後の例外）に入れた目印の文字列は、標準出力・標準エラーのどこにも出なかった（試した範囲。`tests/test_safety.py::test_s01_inputs_do_not_reach_the_logs`・`test_s01_logs_are_redacted_from_the_start`）。対策の前は、queue の入力検証のエラー・未知のツール名・JSON-RPC の中身がログに出ていた。**Spaces 側のログ**は実行中の標準出力・標準エラーで、公開の段階で Spaces 上で実測して記す。
+- **利用者入力の送信先と保存方針**：`verify_quote` と `check_compressions` の入力には未公開の情報が入りうる。実測では、起動から全ツール・全 resource・全 prompt の呼び出しまで loopback 以外への接続は0件。**配信中**は書き込みで開いたファイルも0件で、`data/` には一切触れない。起動の途中では、依存ライブラリ（filelock）が作業ディレクトリに `probe-source`・`probe-link` を作って消し、Gradio が一時領域に書く（どちらも利用者の入力とは関係がない）。サーバは入力をファイルに保存しない方針で、実測した範囲（外への接続と、書き込みで開いたファイル）では保存は確認されなかった。**標準出力・標準エラー**に出るのは、起動時の表示・遮断の記録（状態コードと理由だけ。経路は出さない）・例外の型と場所（ファイル名と行。例外の文は出さない）・ログの水準と名前と出した場所（文は出さない。文に値が埋め込まれることがあるため）だけにしてある。実測（2026-09-19・ローカル）では、正常・不正・例外の各要求（ツールの引数・未知のツール名・未知のメソッドと通知・応答やエラーの形の要求・URL でない URI・壊れた `_meta`・JSON でない本文・壊れた JSON・queue の入力検証のエラー・遮断した経路・ヘッダ・問い合わせ・待ち受け直後の例外）に入れた目印の文字列は、標準出力・標準エラーのどこにも出なかった（試した範囲。`tests/test_safety.py::test_s01_inputs_do_not_reach_the_logs`・`test_s01_logs_are_redacted_from_the_start`）。対策の前は、queue の入力検証のエラー・未知のツール名・JSON-RPC の中身がログに出ていた。**Spaces 側のログ**は、実行中の標準出力・標準エラーがそのまま出るもので、中身は上と同じ（Spaces 上で受信した値が出ないことは公開前に実測して記す。SPEC §7 S04）。閲覧できるのは Space に書き込み権限のある者で、保持は Space の再起動までで期間は保証されない。`hf.co/mcp` 経由の呼び出しは Hugging Face 側の機能で、このサーバは関知しない。
 - **外向きの資料取得**：起動後に取得する資料は同梱データだけ。
 - **既知の制約**：
   1. T4 の英訳は ChatGPT で作成された派生の言語版で、著者レビューの認証はない。英訳由来の結果には作成経緯（`preparation`・`authority`）を必ず添える。
   2. 英訳の manifest の `source.corpusVersion`（英訳が底本にした T4 の収録版）は `3.2.1` で、manifest 自身の `corpusVersion`（3.5.0）とは別。記録どおり `payload.source_corpus_version` に載せ、版どうしの比較はしない。
   3. 同梱物は `data/LICENSE`（CC BY 4.0）に従う。論文本文中に別の表記（T1 の figshare 寄託データについての `CC BY-NC 4.0`）があっても、同梱物には及ばない。原文は改変しない。
   4. 日本語の問いは英語の論文に当たりにくい（語句の照合であるため）。該当ゼロは記述が無いことを意味しない。
-  5. 未知の prompt 名は MCP のエラーとして返る（上流の実装の挙動。本文は §5 参照）。Spaces ではツール名に接頭辞が付く。
-  6. `/` に Gradio 標準のフロント HTML が返る。`resources/read` と `prompts/get` はサーバが自分自身に出す HTTP 要求で実行されるため、その経路（`/gradio_api/queue/join`・`/gradio_api/queue/data`）だけは通してある。外から同じ経路を叩くこともできるので、**受付8件・順番待ち64件まで**で受ける（本文を読む前に取る枠。超えると HTTP 503）。回収されない結果は、できてから120秒・同じセッションで64件・4 MiB（UTF-8 の JSON で数える）を超えた分を古いものから捨てる（取りに来ているセッションには手を付けない）。実行されるのは登録済みの七ツール・resources・prompts だけで、どれも同じ実行枠（同時4）を使う。`/gradio_api/call/*` は塞いである（実測で、自己呼び出しには要らないことを確かめた）。
+  5. 未知の prompt 名は MCP のエラーとして返る（上流の実装の挙動。本文は §5 参照）。Space でもツール名に接頭辞は付かない（`SYSTEM` を消して、Gradio をローカルと同じ分岐で動かすため）。
+  6. `/` に Gradio 標準のフロント HTML が返る。`resources/read` と `prompts/get` はサーバが自分自身に出す HTTP 要求で実行されるため、その経路（`/gradio_api/queue/join`・`/gradio_api/queue/data`）だけは通してある。外から同じ経路を叩くこともできるので、**受付8件・順番待ち64件まで**で受ける（本文を読む前に取る枠。超えると HTTP 503）。回収されない結果は、できてから120秒・同じセッションで64件・4 MiB（UTF-8 の JSON で数える）を超えた分を古いものから捨てる（取りに来ているセッションは期限では捨てない。内部クライアントのセッションには手を付けない）。実行されるのは登録済みの七ツール・resources・prompts だけで、どれも同じ実行枠（同時4）を使う。`/gradio_api/call/*` は塞いである（実測で、自己呼び出しには要らないことを確かめた）。
   7. 起動時に `HF_HUB_DISABLE_TELEMETRY=1`・`HF_HUB_DISABLE_IMPLICIT_TOKEN=1`・`HF_HUB_OFFLINE=1`・`HF_TOKEN_PATH=/dev/null` を設定している（依存ライブラリの利用状況送信を止め、利用者のトークンファイルを開かせないため）。
   8. **別オリジンのページに CORS の許可ヘッダを返さない**。`Origin` の付いた要求には `Access-Control-Allow-Origin` ほかを一切返さない（`http://localhost:<ポート>` など同じ機械からの Origin も含む。上流の既定では loopback に許可が出る）。ブラウザからの**別オリジンの読み取り**を防ぐだけで、同一オリジンでの取得や、URL を直接開いて表示することを禁じるものではない。MCP のクライアントは `Origin` を送らないので接続には影響しない。
   9. 同梱データの照合は事故の検出までで、改竄への耐性は主張しない。
+  10. **上流の差し替え**：Gradio 6.27.0・uvicorn 0.53.0 との互換と、守則を満たすために、上流の次の部分を差し替えている（どれも起動後の確認で差し替えが効いていることを確かめ、外れていれば起動しない）。①CORS の中間層（許可ヘッダを返さない）／②待ち行列の例外の印字（型と場所だけ）／③ログの出口（水準・名前・出した場所だけ。uvicorn がログを設定した直後にも差し替える）／④待ち行列のセッションの表（追い出すときに関連する記録も消す・内部と処理中と回収中は追い出さない）／⑤結果の送り出し（できた時刻を記録する）／⑥uvicorn の要求ごとの処理（送信期限を過ぎた接続をすぐ切る手段をガードへ渡す）。あわせて、内部クライアントは上流の遅延作成を使わず起動の直後に一つ作る。上流を別の版にするときは、この一覧をすべて見直す。

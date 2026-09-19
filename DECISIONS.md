@@ -379,3 +379,12 @@
 | 2026-09-19 | 配置段階二 | mekiki_start_en の承認 | PROMPTS-0.2.1 の `mekiki_start_en`（施工の訳）を著者が承認した。文面は変えていない。PROMPTS.md と規則一覧の状態欄を更新 | 著者の承認 | 著者の返事（2026-09-19）・`mekiki_reader/prompts.py` の `MEKIKI_START_EN` | 確定 |
 | 2026-09-19 | 配置段階二 | mekiki_start の見出しと定型文 | mekiki_start（ja／en）に見出し（`【名前】`）とガード文を付けない扱い（`prompts.py` の `UTTERANCES`）を著者が確定した | 著者の確定 | 著者の返事（2026-09-19）・`docs/rules/PROMPTS.md` | 確定 |
 | 2026-09-19 | 公開後の保守 | PATTERNS-MATCH-2.1.0（予定） | 境界の空白を除く対象を、英字から英数字（ASCII `a`–`z`・`0`–`9`）と仮名・漢字の境界に広げる（`T5 の` なども任意になる）。今は実装しない。2.0.0 のまま公開する | 著者の指示（公開後の保守で扱う） | 著者の返事（2026-09-19）・`tools._strip_boundary_spaces` | 提案 |
+
+## 公開後の保守 maint1（2026-09-20）
+
+| 日付 | 段階 | 項目 | 判断 | 理由 | 根拠 | 状態 |
+|---|---|---|---|---|---|---|
+| 2026-09-20 | 公開後の保守 | verify_quote の入力上限の確認 | 現物は 2,000字（`tools.TEXT_MAX = 2000`。数えるのは受け取った文字列の文字数〔コードポイント〕）。2,000字は受け付け、2,001字は `invalid_input`（`INPUT: text は2000字までの文字列`）。LIMITS の「text（verify_quote・check_compressions）2000字」と一致。変更なし | 記事の記述を合わせるため（著者の指示） | `mekiki_reader/tools.py` L27・`docs/rules/LIMITS.md` L13・2,000／2,001字の実呼び出し | 確定 |
+| 2026-09-20 | 公開後の保守 | PROMPTS-0.2.2 | mekiki_start（ja／en）の「あなたの解釈を分けて書き」の直後に「著者が記録した位置づけがない場合は、記録がないと明記してください。」（英 "If the author recorded no positioning for a claim, say so explicitly."）を足した。元の一文が「〜書き、〜照合し、〜残してください。」と続くため、足した文で文を切った（日本語は「書き、」の後に新しい文、英語は `separately.` で終えて `Check quotations …` から新しい文）。文面の追加なので PATCH。案内ページ（定数から描く）・README・TUTORIAL の開始文も同文 | 著者の指示（日英とも著者の文面） | `mekiki_reader/prompts.py`・`test_prompts_are_approved_with_guard` | 確定（句読点の切り方は提案） |
+| 2026-09-20 | 公開後の保守 | 「最初に打つ四つ」とレンズの橋渡し | 案内ページと TUTORIAL の先頭に「そもそもMekiki Frameworkとは何か…」を足して四つにした。実行記録がないので、返り値ではなく材料の位置（読解ガイド L1–73、各論文の要旨の行。T4 は独立した要旨の節が無く `paper-t4` L1–24 の中の L17〜、英語の Abstract は L256〜）だけを書いた。TUTORIAL に「レンズを指定して聞く」を足し、勧めは答え手の読みであって原文の主張ではないと添えた。README の「三分で試す」は三つのまま（指示の範囲外） | 推定で書かない | `get_section`・`get_reading_guide` の実応答（2026-09-20）／`test_s01_guide_page_is_static` | 確定 |
+| 2026-09-20 | 公開後の保守 | Gemini（Spark）の bundle_hash | README の Gemini の行、検収記録 §10、`docs/acceptance/README.md` に「`bundle_hash` は未照合のまま」と明記した | 著者の報告は `list_papers` ok まで | 同 §10 | 確定 |

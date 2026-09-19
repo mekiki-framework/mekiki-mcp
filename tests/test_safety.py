@@ -238,7 +238,7 @@ def test_s01_allowlist_is_pinned():
     open_rows = {line.split("|")[1].strip() for line in table("| 経路 | 通す理由 |")}
     assert open_rows == {"`/`", "`/gradio_api/startup-events`", "`/gradio_api/info`（末尾 `/` 付きも）",
                          "`/gradio_api/queue/join`", "`/gradio_api/queue/data`", "`/gradio_api/heartbeat/*`",
-                         "`/gradio_api/mcp/`", "`/gradio_api/mcp/schema`"}, open_rows
+                         "`/gradio_api/mcp/`（末尾 `/` なしも）", "`/gradio_api/mcp/schema`"}, open_rows
     closed = [line for line in table("| 経路 | 応答 |") if "`/gradio_api/mcp/sse`" in line]
     assert len(closed) == 1 and closed[0].endswith("| 404 |") and "`/gradio_api/mcp/http`" in closed[0]
     assert [line.split("|")[1:3] for line in table("| 種類 | 同時数 | 実測（2026-09-19） |")] == [
@@ -247,6 +247,8 @@ def test_s01_allowlist_is_pinned():
     open_cell = next(line for line in limits.splitlines() if line.startswith("| 開放経路 |"))
     assert "`/gradio_api/mcp/sse`・`/gradio_api/mcp/messages/`・`/gradio_api/mcp/http`" in open_cell
     assert "を閉じた" in open_cell
+    assert "307" not in open_cell and "転送（3xx）は一切返さない" in open_cell
+    assert "307 |" not in readme and "**転送は返さない**" in readme
     stream_cell = next(line for line in limits.splitlines() if line.startswith("| 長時間接続"))
     assert all(s in stream_cell for s in ("`/gradio_api/heartbeat/*` 8", "`/gradio_api/queue/data` 8",
                                           "`GET /gradio_api/mcp/` 32"))
@@ -259,6 +261,41 @@ def test_s01_standard_routes_are_blocked(server):
         seen.append((method, path, status))
         assert status == want, (method, path, status)
     assert all(s in (200, 403, 404) for _m, _p, s in seen)
+
+
+REDIRECT_PROBES = ("/", "/gradio_api/info", "/gradio_api/info/", "/gradio_api/startup-events",
+                   "/gradio_api/startup-events/", "/gradio_api/queue/join", "/gradio_api/queue/join/",
+                   "/gradio_api/queue/data", "/gradio_api/queue/data/", "/gradio_api/mcp", "/gradio_api/mcp?x=1",
+                   "/gradio_api/mcp/", "/gradio_api/mcp//", "/gradio_api/mcp/schema", "/gradio_api/mcp/schema/",
+                   "/gradio_api/heartbeat/", "/gradio_api/heartbeat/abc", "/gradio_api/heartbeat/abc/")
+
+
+def test_s01_no_redirects(server):
+    """サーバは転送（3xx）を一切返さない（プロキシの裏では Location が http:// になるため）。
+    修正前の実測（2026-09-19）では /gradio_api/mcp（全メソッド）と /gradio_api/heartbeat/<id>/ が 307 だった。"""
+    init = json.dumps({"jsonrpc": "2.0", "id": 1, "method": "initialize",
+                       "params": {"protocolVersion": "2025-06-18", "capabilities": {},
+                                  "clientInfo": {"name": "s01", "version": "0"}}}).encode("utf-8")
+    seen = {}
+    for path in REDIRECT_PROBES:
+        for method in ("GET", "HEAD", "POST", "DELETE", "OPTIONS"):
+            conn = http.client.HTTPConnection("127.0.0.1", server.port, timeout=10)
+            try:
+                if method == "POST":
+                    conn.request(method, path, body=init, headers=MCP_HEADERS)
+                else:
+                    conn.request(method, path, headers={"Accept": "text/event-stream"})
+                resp = conn.getresponse()
+                seen[(method, path)] = resp.status
+                assert not 300 <= resp.status < 400, (method, path, resp.status)
+                assert resp.getheader("location") is None, (method, path)
+            finally:
+                conn.close()
+    # 末尾 / なしの MCP は / 付きと同じ本体として答える
+    for method in ("GET", "HEAD", "POST", "DELETE", "OPTIONS"):
+        assert seen[(method, "/gradio_api/mcp")] == seen[(method, "/gradio_api/mcp/")], method
+    assert seen[("POST", "/gradio_api/mcp")] == 200
+    assert seen[("GET", "/gradio_api/heartbeat/abc/")] == 404
 
 
 def test_s01_host_and_body_limits(server):

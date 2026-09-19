@@ -200,6 +200,7 @@ claude mcp add --transport http mekiki-reader http://127.0.0.1:7860/gradio_api/m
 ```
 
 ポートを変えるときは `MEKIKI_READER_PORT` と `.mcp.json`（または上の登録）の両方を直す。
+URL の末尾スラッシュは有無どちらでも可（`/gradio_api/mcp` も転送なしで同じ本体として扱う）。
 
 ### Claude Desktop
 
@@ -229,7 +230,7 @@ UI の Custom Connectors はリモートの URL を Anthropic 側から取りに
 ### 公開版（Space）への接続
 
 Space の MCP の URL は `https://<owner>-<space>.hf.space/gradio_api/mcp/`（`<owner>`・`<space>` は Space の持ち主と名前。
-英数字以外はハイフンになる）。この Space の URL は `https://kenngotm-mekiki-reader.hf.space/gradio_api/mcp/`。遠隔の HTTPS なので `mcp-remote` は要らない。Space が公開（public）のときは、どのクライアントでも
+英数字以外はハイフンになる）。この Space の URL は `https://kenngotm-mekiki-reader.hf.space/gradio_api/mcp/`。末尾スラッシュの有無どちらでも可（`…/gradio_api/mcp` も転送なしで同じ本体に届く。Claude の Custom Connector は末尾の `/` を落として送る）。遠隔の HTTPS なので `mcp-remote` は要らない。Space が公開（public）のときは、どのクライアントでも
 認証は「なし」で登録する。ツール名に接頭辞は付かない（`list_papers` など、ローカルと同じ名前）。
 
 Space が非公開（private）の間は、Hugging Face が要求ごとに持ち主の認証を求める。Claude Code なら持ち主のアクセストークンを
@@ -274,7 +275,7 @@ Hugging Face の MCP バッジと `hf.co/mcp` 経由の呼び出しは Hugging F
 | `/gradio_api/queue/join` | 同じく自己呼び出しの実行（受付8・待機64） |
 | `/gradio_api/queue/data` | 同じく自己呼び出しの結果の受け取り |
 | `/gradio_api/heartbeat/*` | 自己呼び出しの内部クライアントが使う。上流のクライアントは断られると間を置かずに再試行するので、塞がずに同時数で絞る（上流との互換のため） |
-| `/gradio_api/mcp/` | MCP 本体（Streamable HTTP）。`/gradio_api/mcp`（末尾 `/` なし）は `/gradio_api/mcp/` へ 307 |
+| `/gradio_api/mcp/`（末尾 `/` なしも） | MCP 本体（Streamable HTTP）。`/gradio_api/mcp`（末尾 `/` なし）も転送せず、サーバの中で `/gradio_api/mcp/` と同じ本体として扱う（許可一覧は両方を完全一致。2026-09-19 まで上流の 307 で転送していたが、プロキシの裏では `Location` が `http://` になり、末尾の `/` を落とす Custom Connector がつながらなかった） |
 | `/gradio_api/mcp/schema` | ツールの JSON スキーマ（上流が MCP 本体と同じ下に置く）。三機能には要らないが、著者の指示で開けてある |
 
 つながったままになる GET の流れ（塞げないもの）は、種類ごとに同時数を絞る。超えた分は通信層で 503。
@@ -307,7 +308,7 @@ Hugging Face の MCP バッジと `hf.co/mcp` 経由の呼び出しは Hugging F
 - `http://127.0.0.1:7860/` をブラウザで開くと Gradio 標準のフロント HTML が返る（UI は無く、静的資産は遮断してあるので画面は組み上がらない）。
 - Claude Code の Code タブでは、**prompts の一覧は一度サーバに触れてから現れる**（最初のツール呼び出しの前は空に見える）。
 - 原文の強調記号（`**…**`・`*…*`・`_…_`）を外して引用しても、NORM-1.1.0 からは `normalized` で一致する（それより前の版では `quote_not_found` になっていた。検収で観察）。
-- 旧 SSE の経路（`/gradio_api/mcp/sse`・`/gradio_api/mcp/messages/`）と別名 `/gradio_api/mcp/http` は閉じてある。接続先は `/gradio_api/mcp/`（Streamable HTTP）だけで、`mcp-remote` は `--transport http-only` で使う。
+- 旧 SSE の経路（`/gradio_api/mcp/sse`・`/gradio_api/mcp/messages/`）と別名 `/gradio_api/mcp/http` は閉じてある。接続先は `/gradio_api/mcp/`（末尾 `/` なしも可。Streamable HTTP）だけで、`mcp-remote` は `--transport http-only` で使う。
 - ChatGPT の開発者モードからの接続は、公開（Spaces）の段階で確かめる。ローカルの loopback には外から届かない。
 - 接続先ごとの確認の記録は [docs/acceptance/](docs/acceptance/) に置く。
 
@@ -364,3 +365,4 @@ D01〜D04（同梱データ）・T01〜T12 と R01（七ツールと再現性）
   8. **CORS の許可ヘッダ**：サーバは許可ヘッダを返さないが、Spaces のエッジが付与する（2026-09-19 実測）。サーバは利用者の状態を持たず公開データのみ。
   9. 同梱データの照合は事故の検出までで、改竄への耐性は主張しない。
   10. **上流の差し替え**：Gradio 6.27.0・uvicorn 0.53.0 との互換と、守則を満たすために、上流の次の部分を差し替えている（どれも起動後の確認で差し替えが効いていることを確かめ、外れていれば起動しない）。①CORS の中間層（許可ヘッダを返さない）／②待ち行列の例外の印字（型と場所だけ）／③ログの出口（水準・名前・出した場所だけ。uvicorn がログを設定した直後にも差し替える）／④待ち行列のセッションの表（追い出すときに関連する記録も消す・内部と処理中と回収中は追い出さない）／⑤結果の送り出し（できた時刻を記録する）／⑥uvicorn の要求ごとの処理（送信期限を過ぎた接続をすぐ切る手段をガードへ渡す）。あわせて、内部クライアントは上流の遅延作成を使わず起動の直後に一つ作る。上流を別の版にするときは、この一覧をすべて見直す。
+  11. **転送は返さない**：サーバは 3xx の転送を一切返さない（プロキシの裏では上流が組み立てる `Location` が `http://` になり、HTTPS の接続先に戻れないため）。`/gradio_api/mcp` は転送せず `/gradio_api/mcp/` と同じ本体として扱い、上流がほかに返す転送（末尾 `/` の付け外し。実測では `/gradio_api/heartbeat/<id>/`）は 404 に置き換える（`Location` を出さない）。

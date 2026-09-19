@@ -154,7 +154,7 @@ def _admission_kind(method: str, path: str) -> str:
     """受付枠の種類（長時間接続は別に数える）。"""
     if path == "/gradio_api/queue/join":
         return "queue_join"
-    if path in ("/gradio_api/mcp", "/gradio_api/mcp/") and method not in ("GET", "HEAD"):
+    if path == MCP_PATH and method not in ("GET", "HEAD"):  # 末尾 / なしは先に MCP_PATH へ書き換え済み
         return "mcp"
     return "other"
 
@@ -210,7 +210,9 @@ BLOCKED_MARKS = ("file=", "proxy=", "/upload", "/run-history", "/vibe", "/dev/re
 #   /gradio_api/startup-events  起動時の確認（塞ぐと起動しない）
 #   /gradio_api/info（と末尾 / 付き）  自己呼び出しが読む（塞ぐと McpError）
 #   /gradio_api/queue/join・/queue/data  同じく自己呼び出しの実行と結果の受け取り
-#   /gradio_api/mcp/            MCP 本体（Streamable HTTP）。/gradio_api/mcp は / 付きへ 307
+#   /gradio_api/mcp/            MCP 本体（Streamable HTTP）。/gradio_api/mcp（末尾 / なし）も転送せず同じ本体として扱う
+#                               （Claude の Custom Connector が末尾の / を落とす。上流の 307 は Location が http:// に
+#                               なり、プロキシ〔Spaces〕の裏では https の接続先に戻れない。実測・2026-09-19）
 #   /gradio_api/mcp/schema      ツールの JSON スキーマ（上流が同じ下に置く）
 #   （旧 SSE の /gradio_api/mcp/sse・/messages/ と、Streamable HTTP の別名 /gradio_api/mcp/http は閉じた。
 #    /gradio_api/mcp/ だけで三機能・SDK 検収・mcp-remote（http-only）が動くことを実測・2026-09-19。
@@ -222,6 +224,10 @@ ALLOWED_EXACT = frozenset({"/", "/gradio_api/info", "/gradio_api/info/", "/gradi
                            "/gradio_api/queue/join", "/gradio_api/queue/data",
                            "/gradio_api/mcp", "/gradio_api/mcp/", "/gradio_api/mcp/schema"})
 ALLOWED_PREFIXES = ("/gradio_api/heartbeat/",)
+MCP_PATH = "/gradio_api/mcp/"
+MCP_ALIAS = "/gradio_api/mcp"  # 許可一覧で完全一致を見た後、ガードの中で MCP_PATH に書き換えて渡す
+# 転送（3xx）は一切返さない：プロキシの裏では上流が組み立てる Location が http:// になるため。
+# 上流の転送（末尾 / の付け外し。実測では /gradio_api/mcp と /gradio_api/heartbeat/<id>/）は 404 に置き換える。
 # 自己呼び出しの経路（/gradio_api/queue/join）は、外から来た分も含めて受付枠で絞る（Codex① P2-4・Codex③ 1）。
 # 断るのではなく順番待ちにする：即 503 にすると、正規の resources/read・prompts/get が
 # 上流のクライアントの中で失敗する（検算で確かめた。上流との互換）。
@@ -584,13 +590,38 @@ def _no_cors(send):
     return wrapped
 
 
+def _no_redirect(send, on_redirect):
+    """上流が返す転送（3xx）を 404 に置き換える（Location を出さない）。本文は固定の短い文だけ。"""
+    state = {"redirect": False, "sent": False}
+    body = b"not found"
+
+    async def wrapped(message):
+        kind = message.get("type")
+        if kind == "http.response.start" and 300 <= int(message.get("status", 0)) < 400:
+            state["redirect"] = True
+            on_redirect()
+            await send({"type": "http.response.start", "status": 404,
+                        "headers": [(b"content-type", b"text/plain; charset=utf-8"),
+                                    (b"content-length", str(len(body)).encode("ascii")),
+                                    (b"connection", b"close")]})
+            return None
+        if state["redirect"]:
+            if kind == "http.response.body" and not state["sent"]:
+                state["sent"] = True
+                await send({"type": "http.response.body", "body": body})
+            return None  # 上流の転送の本文は捨てる
+        return await send(message)
+
+    return wrapped
+
+
 def _stream_kind(method: str, path: str) -> "str | None":
     """長時間つながったままになる経路の種類（上限を数える単位）。"""
     if path.startswith("/gradio_api/heartbeat/"):
         return "heartbeat"
     if path == "/gradio_api/queue/data":
         return "queue_data"
-    if path == "/gradio_api/mcp/" and method == "GET":  # Streamable HTTP の待ち受け（切られるまで続く）
+    if path == MCP_PATH and method == "GET":  # Streamable HTTP の待ち受け（切られるまで続く）
         return "mcp_get"
     return None
 
@@ -722,6 +753,12 @@ def _guard_middleware():
                     "headers": [(b"content-type", b"text/plain; charset=utf-8"), (b"connection", b"close")]})
         await send({"type": "http.response.body", "body": text.encode("utf-8")})
 
+    def _note_redirect(path: str) -> None:
+        safe = path.encode("unicode_escape").decode("ascii")[:200]
+        GUARD_LOG.append((404, safe))
+        GUARD_COUNTS[404] = GUARD_COUNTS.get(404, 0) + 1
+        print("blocked 404 redirect suppressed", file=sys.stderr, flush=True)  # 経路は出さない
+
     async def _health(send, method: str, receive) -> None:
         await _drain(receive)
         body = HEALTH_HTML.encode("utf-8")
@@ -782,6 +819,10 @@ def _guard_middleware():
                 return await _reply(send, 403, "route disabled", path, receive)
             if path not in ALLOWED_EXACT and not path.startswith(ALLOWED_PREFIXES):
                 return await _reply(send, 404, "not found", path, receive)
+            if path == MCP_ALIAS:  # 転送せず MCP 本体として扱う（上流の 307 を出さない）
+                path = MCP_PATH
+                scope = dict(scope, path=path, raw_path=path.encode("ascii"))
+            send = _no_redirect(send, lambda p=path: _note_redirect(p))
 
             method = scope.get("method", "GET").upper()
             if path.startswith("/gradio_api/mcp") and not _READY["mcp"]:  # 起動の確認が済むまで（Codex③ 5）

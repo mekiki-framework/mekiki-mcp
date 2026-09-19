@@ -51,6 +51,12 @@ RESOURCE_PATHS = ("llms.txt", "FOR_AI_READERS.md", "THEORY_MAP.md", "SOURCE_INDE
 LEAKS = ("/Users/", "Traceback", "site-packages", "mekiki_reader/", ".venv", "data/")
 
 
+@pytest.fixture(params=["/gradio_api/mcp/", "/gradio_api/mcp"], ids=["slash", "no-slash"])
+def mcp_url(server, request) -> str:
+    """M01〜M03 を末尾 / の有無の両方で通す（/gradio_api/mcp は転送せず同じ本体。SDK は転送をたどらない）。"""
+    return f"http://127.0.0.1:{server.port}{request.param}"
+
+
 def _bundle_hash(path: str) -> str:
     return next(f.sha256 for f in _CORPUS.bundle.files if f.path == path)
 
@@ -58,13 +64,13 @@ def _bundle_hash(path: str) -> str:
 # ---------------------------------------------------------------- M01
 
 
-def test_m01_tools_list_and_call(server):
+def test_m01_tools_list_and_call(server, mcp_url):
     async def body(s):
         tools = (await s.list_tools()).tools
         results = [await s.call_tool(name, args) for name, args, _ in CALLS]
         return tools, results
 
-    tools, results = MC.session(server.mcp_url, body)
+    tools, results = MC.session(mcp_url, body)
     # Spaces ではツール名に接頭辞が付く（Q69）。ローカルでは付かないことを確かめる。
     assert len(tools) == 7 and [t.name for t in tools] == list(TOOL_NAMES)
     by_name = {t.name: t for t in tools}
@@ -89,14 +95,14 @@ def test_m01_tools_list_and_call(server):
         assert env["status"] == want, (name, env["status"])
 
 
-def test_m01_same_bytes_as_local_call(server, reader):
+def test_m01_same_bytes_as_local_call(server, mcp_url, reader):
     """通信を通した結果が、同じ入力に対する関数の戻り値とバイト単位で同じ（R01 の延長）。"""
     from mekiki_reader import tools as T
 
     async def body(s):
         return [MC.payload(await s.call_tool(name, args)) for name, args, _ in CALLS]
 
-    over_mcp = MC.session(server.mcp_url, body)
+    over_mcp = MC.session(mcp_url, body)
     for (name, args, _want), env in zip(CALLS, over_mcp):
         local = S.to_json(getattr(T, name)(reader, *_positional(name, args)))
         assert S.to_json(env) == local, name
@@ -114,7 +120,7 @@ def _positional(name: str, args: dict) -> list:
 # ---------------------------------------------------------------- M02
 
 
-def test_m02_resources(server):
+def test_m02_resources(server, mcp_url):
     async def body(s):
         listed = (await s.list_resources()).resources
         templates = (await s.list_resource_templates()).resourceTemplates
@@ -124,7 +130,7 @@ def test_m02_resources(server):
             contents[path] = got.contents[0]
         return listed, templates, contents
 
-    listed, templates, contents = MC.session(server.mcp_url, body)
+    listed, templates, contents = MC.session(mcp_url, body)
     assert len(listed) == 12 and templates == []
     assert {str(r.uri) for r in listed} == {f"mekiki://v{C.CORPUS_VERSION}/{p}" for p in RESOURCE_PATHS}
     for resource in listed:
@@ -133,7 +139,7 @@ def test_m02_resources(server):
         assert hashlib.sha256(content.text.encode("utf-8")).hexdigest() == _bundle_hash(path), path
 
 
-def test_m02_unknown_resource_uri(server):
+def test_m02_unknown_resource_uri(server, mcp_url):
     async def body(s):
         out = []
         for uri in (f"mekiki://v{C.CORPUS_VERSION}/../app.py", "mekiki://v3.5.0/papers/T9.md",
@@ -145,11 +151,11 @@ def test_m02_unknown_resource_uri(server):
                 out.append((uri, type(exc).__name__))
         return out
 
-    for uri, outcome in MC.session(server.mcp_url, body):
+    for uri, outcome in MC.session(mcp_url, body):
         assert outcome != "returned", uri
 
 
-def test_m02_prompts(server):
+def test_m02_prompts(server, mcp_url):
     async def body(s):
         listed = (await s.list_prompts()).prompts
         got = {t.name: await s.get_prompt(t.name) for t in PR.TEMPLATES}
@@ -159,7 +165,7 @@ def test_m02_prompts(server):
             unknown = ("raised", f"{type(exc).__name__}: {exc}")
         return listed, got, unknown
 
-    listed, got, unknown = MC.session(server.mcp_url, body)
+    listed, got, unknown = MC.session(mcp_url, body)
     assert [p.name for p in listed] == [t.name for t in PR.TEMPLATES] and len(listed) == 6
     for template in PR.TEMPLATES:
         text = got[template.name].messages[0].content.text
@@ -173,14 +179,14 @@ def test_m02_prompts(server):
 # ---------------------------------------------------------------- M03
 
 
-def test_m03_schema_layer_violation(server):
+def test_m03_schema_layer_violation(server, mcp_url):
     async def body(s):
         bad_type = await s.call_tool("search_passages", {"query": "dignity", "k": "abc"})
         bad_arg = await s.call_tool("search_passages", {"query": "dignity", "no_such_arg": 1})
         after = await s.call_tool("list_papers", {})
         return bad_type, bad_arg, after
 
-    bad_type, bad_arg, after = MC.session(server.mcp_url, body)
+    bad_type, bad_arg, after = MC.session(mcp_url, body)
     for result in (bad_type, bad_arg):
         assert result.isError is True
         text = MC.error_text(result)
@@ -188,7 +194,7 @@ def test_m03_schema_layer_violation(server):
     assert after.isError is False and MC.payload(after)["status"] == "ok"
 
 
-def test_m03_app_layer_violation(server):
+def test_m03_app_layer_violation(server, mcp_url):
     async def body(s):
         return {
             "k0": await s.call_tool("search_passages", {"query": "dignity", "k": 0}),
@@ -198,7 +204,7 @@ def test_m03_app_layer_violation(server):
             "after": await s.call_tool("list_papers", {}),
         }
 
-    out = MC.session(server.mcp_url, body)
+    out = MC.session(mcp_url, body)
     want = {"k0": "invalid_input", "anchor": "unknown_id", "zero": "no_lexical_match",
             "path": "invalid_input", "after": "ok"}
     for key, status in want.items():

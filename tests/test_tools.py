@@ -401,7 +401,7 @@ def test_t04_term_map_via_fixture(reader):
     assert env["status"] == "ok"
     assert all(r["payload"]["match_via"] == ["term_map:M90"] for r in env["results"])
     assert {r["paper_id"] for r in env["results"]} >= {"T5"}
-    assert "RULES: SEARCH-1.1.0 NORM-1.1.0 TERMS-TEST LIMITS-2.0.0 LINES-1.0.0" in env["limitations"]
+    assert "RULES: SEARCH-1.1.0 NORM-1.1.0 TERMS-TEST LIMITS-3.0.0 LINES-1.0.0" in env["limitations"]
     direct = rt(T.search_passages(tr, "dignity", k=20))
     assert all("query" in r["payload"]["match_via"] for r in direct["results"])
     multi = rt(T.search_passages(tr, "Spec. cost", paper_id="T1", k=20))
@@ -521,7 +521,7 @@ def test_t08_normalized(reader, v):
         assert r["payload"]["normalization_applied"]
         for d in r["payload"]["diffs"]:
             assert d["source"] == line[d["source_char_start"]:d["source_char_start"] + len(d["source"])]
-    assert lims(env, "NORMALIZED") and "RULES: NORM-1.1.0 LIMITS-2.0.0 LINES-1.0.0" in env["limitations"]
+    assert lims(env, "NORMALIZED") and "RULES: NORM-1.1.0 LIMITS-3.0.0 LINES-1.0.0" in env["limitations"]
 
 
 def test_t08_rule_details():
@@ -604,6 +604,60 @@ def test_t08_quote_without_emphasis_marks(reader):
     # 片側の記号だけを外した形・斜体の記号でも同じ。
     half = rt(T.verify_quote(reader, "Specification cost** denotes the barrier arising"))
     assert half["status"] == "ok" and half["match"] in ("exact", "normalized")
+
+
+T4_EMPH_LINE = "従業員が遭遇から結晶化させた向きを"
+
+
+@pytest.mark.parametrize("quote", [
+    "従業員が **遭遇**から結晶化させた向きを",    # 空白の右に強調記号（Codex③ 10 の再現）
+    "従業員が** 遭遇**から結晶化させた向きを",    # 空白の左に強調記号
+    "従業員が ** 遭遇 ** から結晶化させた向きを",  # 両側
+    "**従業員が遭遇から結晶化させた向きを**",      # 先頭と末尾
+    " **従業員が遭遇から結晶化させた向きを** ",    # 先頭と末尾の空白の外側
+    "従業員が遭遇から結晶化させた向きを **",       # 末尾の空白の後に記号だけ
+])
+def test_t08_emphasis_next_to_whitespace(reader, quote):
+    """強調記号が空白の左右・先頭末尾にあっても、空白の扱いを変えない（NORM 規則8。Codex③ 10）。"""
+    assert any(T4_EMPH_LINE in line for line in _CORPUS.lines["papers/T4.md"])
+    env = rt(T.verify_quote(reader, quote))
+    assert env["status"] == "ok" and env["match"] == "normalized", (quote, env["status"], env.get("match"))
+    assert "MARK-EMPH" in env["normalization_applied"]
+    res = env["results"][0]
+    assert res["locator"]["path"] == "papers/T4.md"
+    line = _CORPUS.lines["papers/T4.md"][res["locator"]["line_start"] - 1]
+    assert line[res["locator"]["char_start"]:res["locator"]["char_end"]] == T4_EMPH_LINE
+
+
+def test_t08_emphasis_at_the_edges_is_in_diffs(reader):
+    """先頭・末尾で落とした強調記号も payload.diffs に MARK-EMPH として残る（NORM.md の MARK-EMPH の記述）。"""
+    env = rt(T.verify_quote(reader, "**" + T4_EMPH_LINE + "**"))
+    diffs = env["results"][0]["payload"]["diffs"]
+    assert [(d["input"], d["source"], d["rules"]) for d in diffs] == [("**", "", ["MARK-EMPH"])] * 2
+    spaced = rt(T.verify_quote(reader, " **" + T4_EMPH_LINE + "** "))
+    assert [(d["input"], d["rules"]) for d in spaced["results"][0]["payload"]["diffs"]] == [
+        (" **", ["MARK-EMPH", "WS-COLLAPSE"]), ("** ", ["MARK-EMPH", "WS-COLLAPSE"])]
+    # 空白だけの前後は、これまでどおり規則の一覧にだけ出る（差分には出さない）
+    plain = rt(T.verify_quote(reader, " " + T4_EMPH_LINE + " "))
+    assert plain["results"][0]["payload"]["diffs"] == [] and "WS-COLLAPSE" in plain["normalization_applied"]
+
+
+def test_t08_emphasis_and_zero_width_between_spaces():
+    """「空白 記号 ゼロ幅 記号 空白」も一つの空白に畳み、ゼロ幅文字は WS-ZW として残す（規則7・8）。"""
+    zw = chr(0x200B)
+    for text in ("x ** ** y", "x **" + zw + "** y", "x ** " + zw + " ** y"):
+        norm = N.normalize_quote(text, is_input=True)
+        assert norm.text == "x y", (text, norm.text)
+    tagged = N.normalize_quote("x **" + zw + " ** y", is_input=True)
+    assert any("WS-ZW" in d[3] for d in tagged.drops), tagged.drops
+
+
+def test_t08_emphasis_does_not_join_english_words(reader):
+    """英語の語の間の空白は、強調記号が挟まっても残る（語がつながって別の一致にならない）。"""
+    env = rt(T.verify_quote(reader, "Specification cost ** denotes the barrier arising from the domain"))
+    assert env["status"] == "ok" and env["match"] == "normalized"
+    joined = rt(T.verify_quote(reader, "Specification cost**denotes the barrier arising from the domain"))
+    assert joined["status"] == "quote_not_found"
 
 
 def test_t10_emphasis_only_input_is_invalid(reader):

@@ -143,14 +143,25 @@ def _normalize(s: str, *, nfc: bool, ws_cjk: bool, punct: bool, lower: bool, emp
         return 0 <= k < n and src[k] in DIGITS
 
     i = 0
+    last_space_end = -1  # 直前に空白一つとして出した並びの終わり（強調記号だけを挟んだ次の並びはそこへ畳む）
     while i < n:
         ch = src[i]
         if ch in WHITESPACE:
             j = i
             while j < n and (src[j] in WHITESPACE or src[j] in ZERO_WIDTH):
                 j += 1
+            if (emph and out and out[-1] == " " and last_space_end >= 0
+                    and all(src[k] in EMPHASIS_MARKS or src[k] in ZERO_WIDTH for k in range(last_space_end, i))):
+                # 「空白 記号 空白」：記号を落とすと空白が二つ並ぶので、後ろの並びを前の空白へ畳む（規則8）。
+                # 並びの中のゼロ幅文字は WS-ZW として記録する（規則7）
+                has_zw = any(c in ZERO_WIDTH for c in src[i:j])
+                drops.append((len(out), i, j, "WS-COLLAPSE" + ("+WS-ZW" if has_zw else "")))
+                last_space_end = j
+                i = j
+                continue
+            # 左右とも「意味のある文字」まで探す（強調記号は空白の文脈判定に数えない。規則8・Codex③ 10）
             prev = next((src[k] for k in range(i - 1, -1, -1) if significant(k)), None)
-            nxt = src[j] if j < n else None
+            nxt = next((src[k] for k in range(j, n) if significant(k)), None)
             run = src[i:j]
             ws_only = "".join(c for c in run if c not in ZERO_WIDTH)
             has_zw = len(ws_only) != len(run)
@@ -162,6 +173,7 @@ def _normalize(s: str, *, nfc: bool, ws_cjk: bool, punct: bool, lower: bool, emp
                 spans.append((i, j))
                 parts = ([] if ws_only == " " else ["WS-COLLAPSE"]) + (["WS-ZW"] if has_zw else [])
                 tags.append("+".join(parts))
+                last_space_end = j
             i = j
             continue
         if ch in ZERO_WIDTH:
@@ -274,10 +286,24 @@ def compare(inp: Normalized, src: Normalized, j0: int, diff_limit: int) -> tuple
                 "rules": sorted(r for r in extra_rules if r),
             })
 
-    # 先頭・末尾で入力側が落とした部分（前後の空白など）
-    for d in inp.drops:
-        if d[0] == 0 or d[0] == length:
-            rules.update(_split_tags(d[3]))
+    def edge(position: int) -> None:
+        """先頭・末尾で入力側が落とした部分（前後の空白など）。強調記号を含むときは差分にも残す（MARK-EMPH の記述）。"""
+        nonlocal total
+        dropped = [d for d in inp.drops if d[0] == position]
+        if not dropped:
+            return
+        edge_rules = _split_tags(*(d[3] for d in dropped))
+        rules.update(edge_rules)
+        if "MARK-EMPH" not in edge_rules or not length:
+            return
+        start, end = min(d[1] for d in dropped), max(d[2] for d in dropped)
+        source_at = src.spans[j0][0] if position == 0 else src.spans[j0 + length - 1][1]
+        total += 1
+        if len(diffs) < diff_limit:
+            diffs.append({"input": inp.source[start:end], "input_char_start": start,
+                          "source": "", "source_char_start": source_at, "rules": sorted(edge_rules)})
+
+    edge(0)
     for k in range(length):
         isp, ssp = inp.spans[k], src.spans[j0 + k]
         add(isp, ssp, _split_tags(inp.tags[k], src.tags[j0 + k]))
@@ -287,4 +313,5 @@ def compare(inp: Normalized, src: Normalized, j0: int, diff_limit: int) -> tuple
             gap_rules = _split_tags(*(d[3] for d in _drops_between(inp, k + 1)),
                                     *(d[3] for d in _drops_between(src, j0 + k + 1)))
             add(i_gap, s_gap, gap_rules)
+    edge(length)
     return sorted(rules), diffs, total

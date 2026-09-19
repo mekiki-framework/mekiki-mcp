@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import http.client
 import json
 import os
 import socket
@@ -327,7 +328,7 @@ def test_s01_queue_waiting_is_capped(tmp_path):
         assert srv.request("GET", "/gradio_api/info")[0] == 200  # ほかの経路は生きている
         assert MC.payload(MC.session(srv.mcp_url, lambda s: s.call_tool("list_papers", {})))["status"] == "ok"
         audit = srv.stop()
-    assert audit["queue_state"]["rejected"] == 6
+    assert audit["admission"]["queue_join"]["rejected"] == 6
     assert audit["guard_counts"].get("503") == 6 or audit["guard_counts"].get(503) == 6
 
 
@@ -403,7 +404,7 @@ def test_s01_stream_slots_are_released(tmp_path):
 
 
 def test_s01_one_internal_client(tmp_path):
-    """起動直後に resources/read・prompts/get が同時に80本来ても、すべて通り、内部クライアントは一つだけ。
+    """起動直後に resources/read・prompts/get が同時に100本来ても、すべて通り、内部クライアントは一つだけ（SPEC §7 S01）。
 
     上流は最初の呼び出しのときに鍵なしで作るため、同時に来ると複数でき（16本同時で2〜16個）、
     同時40本を超えると作成の自己要求が thread pool の空きを待って失敗した（検算）。起動時に作っておく。
@@ -424,15 +425,317 @@ def test_s01_one_internal_client(tmp_path):
                             results.append(bool(got.contents and got.contents[0].text))
             with anyio.fail_after(90):
                 async with anyio.create_task_group() as tg:
-                    for i in range(80):
+                    for i in range(100):
                         tg.start_soon(one, i)
         anyio.run(first_calls)
         time.sleep(1)
         audit = srv.stop()
-    assert results.count(True) == 80, results.count(True)
+    assert results.count(True) == 100, results.count(True)
+    assert audit["clients_created"] == 1, audit["clients_created"]
     streams = audit["streams"]
     assert streams["peak"]["heartbeat"] == 1 and streams["internal_peak"]["heartbeat"] == 1, streams
     assert streams["rejected"] == {"heartbeat": 0, "queue_data": 0, "mcp_get": 0}
+
+
+def _open_unfinished_body(port: int, path: str = "/gradio_api/mcp/") -> socket.socket:
+    """本文を送り切らない要求（表明 65,535 バイトのうち 1,000 バイトだけ送る）。"""
+    sock = socket.create_connection(("127.0.0.1", port), timeout=10)
+    sock.sendall(f"POST {path} HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\nContent-Type: application/json\r\n"
+                 f"Accept: application/json, text/event-stream\r\nContent-Length: 65535\r\n\r\n".encode()
+                 + b"x" * 1000)
+    return sock
+
+
+def _status_now(sock: socket.socket, wait: float) -> int:
+    """すでに応答が来ていれば状態コード、来ていなければ 0。"""
+    sock.settimeout(wait)
+    try:
+        head = sock.recv(64)
+    except (socket.timeout, TimeoutError):
+        return 0
+    return int(head.split(b" ")[1]) if head.startswith(b"HTTP/1.1 ") else -1
+
+
+def test_s01_admission_is_taken_before_the_body(tmp_path):
+    """受付枠は本文を読む前に取る。受付4・順番待ち4なら、送り切らない要求12本のうち4本はすぐ 503（Codex③ 1）。
+
+    切った要求の枠は返り、その後の呼び出しは通る。
+    """
+    with Server(tmp_path / "audit.json", env_extra={"MEKIKI_TEST_ADMISSION": "mcp=4:4"}) as srv:
+        socks = [_open_unfinished_body(srv.port) for _ in range(12)]
+        time.sleep(2.5)  # 断る前の読み捨て（1秒まで）を待つ
+        codes = [_status_now(s, 0.3) for s in socks]
+        assert sorted(codes) == [0] * 8 + [503] * 4, codes
+        for s in socks:
+            s.close()
+        time.sleep(1.5)
+        results = []
+
+        def call():
+            status, text = srv.request("POST", "/gradio_api/mcp/", CALL_BODY, MCP_HEADERS)
+            results.append((status, "busy" not in text))
+
+        threads = [threading.Thread(target=call) for _ in range(4)]
+        for th in threads:
+            th.start()
+        for th in threads:
+            th.join()
+        assert results == [(200, True)] * 4, results
+        audit = srv.stop()
+    mcp = audit["admission"]["mcp"]
+    assert (mcp["max_active"], mcp["max_waiting"], mcp["rejected"]) == (4, 4, 4), mcp
+    assert (mcp["active"], mcp["waiting"]) == (0, 0), mcp  # 切断で枠が返った
+
+
+def test_s01_unfinished_bodies_are_bounded(tmp_path):
+    """送り切らない本文130本：受付32・順番待ち96で止まり、残り2本は 503。本文を抱えるのは受付の分だけ（Codex③ 1）。"""
+    with Server(tmp_path / "audit.json") as srv:
+        socks = [_open_unfinished_body(srv.port) for _ in range(130)]
+        time.sleep(2.0)
+        codes = [_status_now(s, 0.05) for s in socks]
+        assert codes.count(503) == 2 and codes.count(0) == 128, sorted(set(codes))
+        for s in socks:
+            s.close()
+        time.sleep(2.0)
+        assert srv.request("POST", "/gradio_api/mcp/", CALL_BODY, MCP_HEADERS)[0] == 200
+        audit = srv.stop()
+    mcp = audit["admission"]["mcp"]
+    assert mcp["max_active"] == app.ADMISSION_LIMITS["mcp"][0] == 32, mcp
+    assert mcp["max_waiting"] == app.ADMISSION_LIMITS["mcp"][1] == 96, mcp
+    assert (mcp["active"], mcp["waiting"]) == (0, 0), mcp
+
+
+def test_s01_stalled_response_is_cut(tmp_path):
+    """応答を受け取らない相手：送信期限（試験では2秒）で切り、枠を返す（Codex③ 1）。"""
+    from mekiki_reader import patterns as PAT
+
+    forms = [min(p.surface_forms, key=len) for p in PAT.PATTERNS]
+    text = " ".join([" ".join(forms)] * 6)[:1990]  # 応答が大きくなる入力（約 218 KB の JSON）
+    body = json.dumps({"jsonrpc": "2.0", "id": 1, "method": "tools/call",
+                       "params": {"name": "check_compressions", "arguments": {"text": text}}}).encode()
+    with Server(tmp_path / "audit.json", env_extra={"MEKIKI_TEST_REQUEST_SECONDS": "2"}) as srv:
+        req = (f"POST /gradio_api/mcp/ HTTP/1.1\r\nHost: 127.0.0.1:{srv.port}\r\nContent-Type: application/json\r\n"
+               f"Accept: application/json, text/event-stream\r\nContent-Length: {len(body)}\r\n\r\n").encode() + body
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 1024)
+        sock.connect(("127.0.0.1", srv.port))
+        client_port = sock.getsockname()[1]
+        sock.sendall(req * 4)  # 受け取らずに4本（カーネルの送信枠を超える量）
+        time.sleep(6.0)
+        assert srv.request("POST", "/gradio_api/mcp/", CALL_BODY, MCP_HEADERS)[0] == 200  # 他の要求は動く
+        audit = srv.stop()  # 相手の側は読まず・閉じないまま、サーバ側に接続が残っていないかを見る
+        sock.close()
+    mcp = audit["admission"]["mcp"]
+    assert mcp["expired"] >= 1 and mcp["aborted"] >= 1, mcp
+    assert (mcp["active"], mcp["waiting"]) == (0, 0), mcp
+    assert client_port not in audit["queue_sizes"]["peer_ports"], audit["queue_sizes"]["peer_ports"]
+
+
+def test_s01_stream_routes_take_no_body(server):
+    """長時間接続の経路に本文は要らない（受付枠の外で本文を抱えない。Codex③ 1 の検算）。"""
+    for path in ("/gradio_api/mcp/", "/gradio_api/heartbeat/outsider", "/gradio_api/queue/data?session_hash=x"):
+        status, text = server.request("GET", path, body=b"x" * 1000, headers={"Accept": "text/event-stream"})
+        assert (status, text) == (400, "body not allowed"), (path, status, text)
+
+
+def test_s01_session_tables_stay_bounded(tmp_path):
+    """セッション名を変えて queue/join を2,100回：関連する表はどれも上限（2,000）を超えない（Codex③ 2）。
+
+    内部クライアントのセッションは追い出されず、その後の resources/read も通る。
+    """
+    with Server(tmp_path / "audit.json") as srv:
+        def flood(start: int, count: int) -> int:
+            conn = http.client.HTTPConnection("127.0.0.1", srv.port, timeout=30)
+            done = 0
+            try:
+                i = start
+                while done < count:
+                    body = json.dumps({"data": [], "fn_index": 0, "session_hash": f"flood-{i}",
+                                       "trigger_id": None, "event_data": None}).encode()
+                    conn.request("POST", "/gradio_api/queue/join", body=body,
+                                 headers={"Content-Type": "application/json"})
+                    resp = conn.getresponse()
+                    resp.read()
+                    if resp.status == 200:
+                        done += 1
+                        i += 1
+                    else:  # 待ち行列が一杯（503）なら少し待って同じ名前でやり直す
+                        time.sleep(0.05)
+            finally:
+                conn.close()
+            return done
+
+        counts = []
+        threads = [threading.Thread(target=lambda k=k: counts.append(flood(k * 1000, 525))) for k in range(4)]
+        for th in threads:
+            th.start()
+        for th in threads:
+            th.join()
+        assert sum(counts) == 2100, counts
+        read = MC.session(srv.mcp_url, lambda s: s.read_resource(f"mekiki://v{C.CORPUS_VERSION}/llms.txt"))
+        assert read.contents and read.contents[0].text
+        time.sleep(app.RESULT_SWEEP_SECONDS + 1.5)  # 掃除が一度回り、追い出した結果の記録が片づくのを待つ
+        audit = srv.stop()
+    sizes = audit["queue_sizes"]
+    assert sizes["pending_messages_per_session"] <= 2000, sizes
+    assert sizes["pending_event_ids_session"] <= 2000, sizes  # 追い出したセッションの ID は残らない
+    assert sizes["event_ids_to_events"] <= app.QUEUE_MAX_SIZE, sizes
+    assert sizes["state_session_data"] <= 2001 and sizes["state_time_last_used"] <= 2001, sizes
+    assert sizes["born"] <= sizes["queued_messages"], sizes  # 時刻の記録は待ち行列に残る結果の分だけ
+    assert audit["sweep"]["evicted"] >= 100, audit["sweep"]
+
+
+def test_s01_calls_across_the_result_deadline(tmp_path):
+    """結果の期限（試験では1秒）をまたぐ正常な呼び出しは消されない（処理中・回収中・空のセッション。Codex③ 3）。
+
+    実行を1.5秒遅らせ、掃除を0.2秒ごとに回す。以前の数え方（セッションを最初に見た時刻）では、
+    処理中のセッションが期限で消え、結果の書き込みが失敗した。
+    """
+    env = {"MEKIKI_TEST_SWEEP": "0.2", "MEKIKI_TEST_RESULT_TTL": "1", "MEKIKI_TEST_RESOURCE_DELAY": "1.5"}
+    with Server(tmp_path / "audit.json", env_extra=env) as srv:
+        async def body(s):
+            texts = []
+            for _ in range(2):
+                got = await s.read_resource(f"mekiki://v{C.CORPUS_VERSION}/llms.txt")
+                texts.append(got.contents[0].text)
+                await anyio.sleep(1.5)  # 空のセッションのまま期限を過ぎる
+            got = await s.get_prompt("four_modes")
+            texts.append(got.messages[0].content.text)
+            return texts
+
+        texts = MC.session(srv.mcp_url, body, timeout=90)
+        assert texts[0] == texts[1] and texts[2] == PR.FOUR_MODES.text
+        audit = srv.stop()
+    assert audit["sweep"]["runs"] >= 10, audit["sweep"]
+
+
+def test_s01_mcp_waits_for_ready(tmp_path):
+    """待ち受けの直後から同時に呼んでも、内部クライアントは1つ・残る heartbeat は無い（Codex③ 5）。
+
+    内部クライアントを作る前に1.5秒待たせ、その間の MCP は 503（starting）になることも確かめる。
+    """
+    srv = Server(tmp_path / "audit.json", env_extra={"MEKIKI_TEST_WARM_DELAY": "1.5"}).spawn()
+    try:
+        deadline = time.monotonic() + 60
+        while time.monotonic() < deadline:  # 待ち受けが始まるのを待つ
+            try:
+                socket.create_connection(("127.0.0.1", srv.port), timeout=0.2).close()
+                break
+            except OSError:
+                time.sleep(0.02)
+        starting = []
+
+        async def calls():
+            async def one(i):
+                while True:
+                    status, text = await anyio.to_thread.run_sync(
+                        lambda: srv.request("POST", "/gradio_api/mcp/", json.dumps(
+                            {"jsonrpc": "2.0", "id": i, "method": "resources/read",
+                             "params": {"uri": f"mekiki://v{C.CORPUS_VERSION}/llms.txt"}}).encode(), MCP_HEADERS))
+                    if status == 503 and "starting" in text:
+                        starting.append(i)
+                        await anyio.sleep(0.05)
+                        continue
+                    return status
+
+            with anyio.fail_after(90):
+                async with anyio.create_task_group() as tg:
+                    for i in range(40):
+                        tg.start_soon(one, i)
+
+        anyio.run(calls)
+        srv.wait_ready()
+        assert starting, "the window before ready was not exercised"
+        time.sleep(1.0)
+    finally:
+        audit = srv.stop()
+    assert audit["clients_created"] == 1, audit["clients_created"]
+    streams = audit["streams"]
+    assert streams["peak"]["heartbeat"] == 1, streams
+    assert streams["open"]["heartbeat"] - streams["internal_open"]["heartbeat"] == 0, streams
+
+
+MARKER = "mekiki-marker-7Q2Z"
+
+
+def test_s01_inputs_do_not_reach_the_logs(tmp_path):
+    """正常・不正・例外の各要求の入力が、標準出力・標準エラーに残らない（Codex③ 7）。
+
+    陽性対照として、引数の足りない queue/join（上流が受け取った値を例外文に入れる経路）が
+    実際に例外として記録されたことも確かめる。
+    """
+    get_section_index = 1  # 登録順（七ツールが先頭。audit の endpoints で確かめる）
+    with Server(tmp_path / "audit.json") as srv:
+        async def body(s):
+            await s.call_tool("search_passages", {"query": MARKER})                    # 正常（該当ゼロ）
+            await s.call_tool("verify_quote", {"text": MARKER * 200})                   # 上限超過（invalid_input）
+            await s.call_tool("search_passages", {"query": MARKER, "k": MARKER})       # 型の違反
+            await s.call_tool(MARKER, {"x": MARKER})                                    # 未知のツール
+            for call in (lambda: s.read_resource(f"mekiki://v{C.CORPUS_VERSION}/{MARKER}"),  # 未知の resource
+                         lambda: s.get_prompt(MARKER)):                                      # 未知の prompt（番兵）
+                try:
+                    await call()
+                except Exception:  # noqa: BLE001 - エラーで返ることは別の試験で見ている
+                    pass
+            return True
+
+        assert MC.session(srv.mcp_url, body) is True
+        headers = {"Content-Type": "application/json", "User-Agent": MARKER}
+        for data in ([MARKER], [MARKER, MARKER, MARKER], [MARKER] * 9):  # 足りない・正しい数・多すぎる
+            srv.request("POST", "/gradio_api/queue/join", json.dumps(
+                {"data": data, "fn_index": get_section_index, "session_hash": MARKER, "trigger_id": None,
+                 "event_data": None}).encode(), headers)
+        srv.request("POST", "/gradio_api/queue/join", json.dumps(
+            {"data": [MARKER], "fn_index": 999, "session_hash": MARKER}).encode(), headers)  # 無い関数
+        srv.request("POST", "/gradio_api/mcp/", f'{{"jsonrpc": "2.0", "id": "{MARKER}", "method": '.encode(),
+                    MCP_HEADERS)                                                        # 壊れた JSON
+        srv.request("GET", f"/gradio_api/file={MARKER}", headers=headers)               # 遮断（403）
+        srv.request("GET", f"/{MARKER}?q={MARKER}", headers=headers)                   # 遮断（404）
+        srv.request("GET", f"/gradio_api/queue/data?session_hash={MARKER}", headers=headers)
+        # MCP の層が文として組み立ててログに出す値（検算で見つかった経路）
+        for message in (
+            {"jsonrpc": "2.0", "id": MARKER, "method": MARKER, "params": {MARKER: MARKER}},       # 未知のメソッド
+            {"jsonrpc": "2.0", "method": MARKER, "params": {MARKER: MARKER}},                     # 未知の通知
+            {"jsonrpc": "2.0", "id": MARKER, "result": {MARKER: MARKER}},                         # 応答の形
+            {"jsonrpc": "2.0", "id": MARKER, "error": {"code": 1, "message": MARKER}},            # エラーの形
+            {"jsonrpc": "2.0", "id": 5, "method": "resources/read", "params": {"uri": MARKER}},   # URL でない URI
+            {"jsonrpc": "2.0", "id": 6, "method": "tools/list", "params": {"_meta": MARKER}},     # 壊れた _meta
+        ):
+            srv.request("POST", "/gradio_api/mcp/", json.dumps(message).encode(), MCP_HEADERS)
+        srv.request("POST", "/gradio_api/mcp/", MARKER.encode(),
+                    {"Content-Type": f"text/{MARKER}", "Accept": "application/json, text/event-stream"})
+        time.sleep(1.5)  # 待ち行列の処理（例外の記録）が終わるのを待つ
+        audit = srv.stop()
+    assert audit["endpoints"][get_section_index].endswith("get_section"), audit["endpoints"][:3]
+    log = srv.log()
+    assert MARKER not in log, [line for line in srv.lines if MARKER in line][:5]
+    assert "queue error: ValueError" in log, log[-2000:]  # 検証エラーの経路を実際に通った（陽性対照）
+
+
+def test_s01_logs_are_redacted_from_the_start(tmp_path):
+    """待ち受けの直後（準備が済む前）に来た要求の例外も、値を出さない（ログの出口は待ち受けの前に差し替える）。"""
+    marker_index = 987654321  # 例外の文に入る入力（関数の番号）
+    srv = Server(tmp_path / "audit.json", env_extra={"MEKIKI_TEST_WARM_DELAY": "1.5"}).spawn()
+    try:
+        sent = 0
+        deadline = time.monotonic() + 60
+        while time.monotonic() < deadline and not srv.ready_line:
+            try:
+                srv.request("POST", "/gradio_api/queue/join", json.dumps(
+                    {"data": [], "fn_index": marker_index, "session_hash": "early"}).encode(),
+                    {"Content-Type": "application/json"}, timeout=2)
+                sent += 1
+            except OSError:
+                time.sleep(0.02)
+            if any(line.startswith("READY ") for line in srv.lines):
+                break
+        srv.wait_ready()
+        assert sent >= 1
+    finally:
+        srv.stop()
+    log = srv.log()
+    assert str(marker_index) not in log, [line for line in srv.lines if str(marker_index) in line][:3]
+    assert "Exception in ASGI application" not in log  # 文そのものも出さない（水準・名前・場所だけ）
 
 
 def test_s01_uncollected_results_are_dropped(tmp_path):
@@ -451,33 +754,128 @@ def test_s01_uncollected_results_are_dropped(tmp_path):
     assert audit["sweep"]["dropped"] >= 1, audit["sweep"]
 
 
-def test_sweep_results_drops_by_count_size_and_age():
-    """掃除の判定（件数・大きさ・期限）を、作り物の待ち行列で確かめる。"""
+def _fake_queue(sessions: dict):
+    """掃除の判定を見るための作り物の待ち行列（中身は本物の asyncio.Queue と Gradio の結果）。"""
+    import asyncio
+
     class Fake:
         def __init__(self):
             self.pending_messages_per_session = {}
             self.pending_event_ids_session = {}
             self.event_ids_to_events = {}
 
-    class Pending:
-        def __init__(self, items):
-            self._queue = list(items)
-
-    app._SWEEP["first_seen"] = {}
     queue = Fake()
-    queue.pending_messages_per_session["fresh"] = Pending(["x"])
-    queue.pending_messages_per_session["many"] = Pending(["x"] * (app.RESULT_MESSAGES_MAX + 1))
-    queue.pending_messages_per_session["big"] = Pending(["y" * (app.RESULT_BYTES_MAX + 10)])
-    queue.pending_messages_per_session["old"] = Pending(["x"])
-    for session in queue.pending_messages_per_session:
-        queue.pending_event_ids_session[session] = {f"e-{session}"}
-        queue.event_ids_to_events[f"e-{session}"] = object()
-    assert app.sweep_results(queue, 0.0) == 2                     # many と big
-    app._SWEEP["first_seen"]["old"] = -(app.RESULT_TTL_SECONDS + 1)
-    assert app.sweep_results(queue, 0.0) == 1                     # old（期限）
-    assert list(queue.pending_messages_per_session) == ["fresh"]  # 新しいものは残る
-    assert list(queue.event_ids_to_events) == ["e-fresh"]
-    assert app.sweep_results(None, 0.0) == 0                      # 待ち行列が無くても落ちない
+    for name, items in sessions.items():
+        q = asyncio.Queue()
+        for item in items:
+            q.put_nowait(item)
+        queue.pending_messages_per_session[name] = q
+    return queue
+
+
+def _completed(text: str):
+    from gradio.server_messages import ProcessCompletedMessage
+    return ProcessCompletedMessage(output={"data": [text]}, success=True, event_id="e")
+
+
+def test_sweep_results_by_age_count_and_size(monkeypatch):
+    """掃除の判定（できた時刻からの経過・件数・大きさ）。セッションは消さない。回収中には期限を当てないが、
+    件数と大きさの上限は当てる。内部クライアントには手を付けない（Codex③ 2〜4 と検算）。"""
+    monkeypatch.setattr(app, "_BORN", {})
+    monkeypatch.setattr(app, "_COLLECTING", {"collecting": 1})
+    monkeypatch.setattr(app, "_internal_session", lambda demo=None: "internal")
+    fresh, old, stale_read = _completed("fresh"), _completed("old"), _completed("stale-but-collecting")
+    queue = _fake_queue({
+        "empty": [],
+        "fresh": [fresh],
+        "old": [old, _completed("newer")],
+        "many": [_completed(str(i)) for i in range(app.RESULT_MESSAGES_MAX + 3)],
+        "collecting": [stale_read] + [_completed("x") for _ in range(app.RESULT_MESSAGES_MAX + 2)],
+        "internal": [_completed("i") for _ in range(app.RESULT_MESSAGES_MAX + 5)],
+    })
+    app._BORN[id(old)] = [-(app.RESULT_TTL_SECONDS + 1), old, None]  # 期限を過ぎた結果
+    app._BORN[id(stale_read)] = [-(app.RESULT_TTL_SECONDS + 1), stale_read, None]
+    assert app.sweep_results(queue, 0.0) == 1 + 3 + 3  # old の1件・many の溢れた3件・collecting の溢れた3件
+    sessions = queue.pending_messages_per_session
+    assert set(sessions) == {"empty", "fresh", "old", "many", "collecting", "internal"}  # セッションは消さない
+    assert [m.output["data"][0] for m in sessions["old"]._queue] == ["newer"]
+    assert [m.output["data"][0] for m in sessions["many"]._queue][:1] == ["3"]
+    assert len(sessions["many"]._queue) == app.RESULT_MESSAGES_MAX
+    assert len(sessions["collecting"]._queue) == app.RESULT_MESSAGES_MAX  # 回収中でも件数の上限は当てる
+    assert stale_read not in sessions["collecting"]._queue  # 溢れた分として古いものから（期限では捨てない）
+    assert len(sessions["internal"]._queue) == app.RESULT_MESSAGES_MAX + 5  # 内部クライアントには手を付けない
+    assert sessions["fresh"]._queue[0] is fresh
+    assert app.sweep_results(None, 0.0) == 0  # 待ち行列が無くても落ちない
+    # 回収された結果の記録は片づく（持ち続けない）
+    sessions["fresh"].get_nowait()
+    app.sweep_results(queue, 0.0)
+    assert id(fresh) not in app._BORN
+
+
+def test_sweep_results_releases_finished_event_ids(monkeypatch):
+    """完了の結果を捨てたら、終わった呼び出しのイベント ID も持たない（同じセッションで増え続けない）。"""
+    from gradio.server_messages import ProcessCompletedMessage
+
+    monkeypatch.setattr(app, "_BORN", {})
+    monkeypatch.setattr(app, "_COLLECTING", {})
+    done = ProcessCompletedMessage(output={}, success=True, event_id="e-done")
+    queue = _fake_queue({"s": [done]})
+    queue.pending_event_ids_session["s"] = {"e-done", "e-running"}
+    queue.event_ids_to_events["e-running"] = object()  # 実行中の ID は残す
+    app._BORN[id(done)] = [-(app.RESULT_TTL_SECONDS + 1), done, None]
+    assert app.sweep_results(queue, 0.0) == 1
+    assert queue.pending_event_ids_session["s"] == {"e-running"}
+    queue.event_ids_to_events.clear()
+    again = ProcessCompletedMessage(output={}, success=True, event_id="e-running")
+    queue.pending_messages_per_session["s"].put_nowait(again)
+    app._BORN[id(again)] = [-(app.RESULT_TTL_SECONDS + 1), again, None]
+    app.sweep_results(queue, 0.0)
+    assert "s" not in queue.pending_event_ids_session  # 空になった集合は消す
+
+
+def test_session_table_releases_on_upstream_delete():
+    """上流が表から消したとき（queue/data の切断）も、ID の集合と状態・時刻の記録を一緒に消す（Codex③ 2 の検算）。"""
+    import threading as _threading
+
+    class Holder:
+        def __init__(self):
+            self.lock = _threading.Lock()
+            self.session_data = {"s": object(), "t": object()}
+            self.time_last_used = {"s": 1.0, "t": 1.0}
+
+    class Owner:
+        def __init__(self):
+            self.pending_event_ids_session = {"s": {"e1"}, "t": {"e2"}}
+            self.event_ids_to_events = {"e1": object(), "e2": object()}
+            self.blocks = type("B", (), {"state_holder": Holder()})()
+
+    owner = Owner()
+    table = app._SessionTable(2000, owner)
+    table["s"], table["t"] = object(), object()
+    del table["s"]
+    assert "s" not in owner.pending_event_ids_session and "s" not in owner.blocks.state_holder.session_data
+    assert "s" not in owner.blocks.state_holder.time_last_used
+    assert "e1" in owner.event_ids_to_events  # イベントは上流の clean_events が片づける（ここでは消さない）
+    assert "t" in owner.pending_event_ids_session
+
+
+@pytest.mark.parametrize("unit", ["あ", "😀", "a"])
+def test_sweep_results_counts_utf8_bytes(monkeypatch, unit):
+    """大きさは queue/data が送る UTF-8 の JSON で数える（日本語は3バイト・絵文字は4バイト。Codex③ 4）。"""
+    import orjson
+
+    message = _completed(unit * 300)
+    size = len(orjson.dumps(message.model_dump(), default=str))
+    assert app._message_bytes(message) == size
+    if unit != "a":  # 以前の数え方（repr の文字数）では、境界の手前に見えていた
+        assert len(repr(message)) < size
+    for limit, kept in ((size, 1), (size - 1, 0)):  # ちょうど上限なら残し、1バイト超えたら捨てる
+        monkeypatch.setattr(app, "_BORN", {})
+        monkeypatch.setattr(app, "_COLLECTING", {})
+        monkeypatch.setattr(app, "RESULT_BYTES_MAX", limit)
+        queue = _fake_queue({"s": [message]})
+        app.sweep_results(queue, 0.0)
+        assert len(queue.pending_messages_per_session["s"]._queue) == kept, (unit, limit)
 
 
 def test_s01_host_variants(server):
@@ -715,10 +1113,25 @@ def test_s03_no_outbound_traffic(tmp_path, reader):
     # 陽性対照：フックが効いていること（外向き・子プロセス・sendmsg・別の IPv6・data/ への rename は止まり、
     # 自己接続は通る）。検出漏れとして挙がった経路を一つずつ当てる（Codex② 4）。
     control = audit["control"]
-    for key in ("getaddrinfo", "connect", "child_process", "sendmsg", "ipv6_other_port", "rename_into_data"):
+    for key in ("getaddrinfo", "connect", "child_process", "sendmsg", "ipv6_other_port", "rename_into_data",
+                "relative_open_into_data", "fd_rename_into_data", "dirfd_open_into_data", "unresolved_dir_fd"):
         assert control[key].startswith("blocked"), (key, control[key])
     assert control["self"] == "allowed", control
     assert control["rename_did_nothing"] == "True" and control["rename_target_recorded"] == "True", control
+    # 相対 open・記述子宛ての rename は data/ の絶対パスで記録され、解決できない記述子は unresolved と記録される。
+    # 停止処理の中の操作も記録に入る（Codex③ 6）。
+    for key in ("relative_open_recorded", "fd_rename_recorded", "unresolved_recorded", "controls_did_nothing",
+                "stopping_recorded"):
+        assert control[key] == "True", (key, control)
+    control_names = {"control-relative-open", "control-fd-rename", "control-dirfd-open", "control-unresolved"}
+
+    def is_control(row) -> bool:  # 陽性対照が自分から試みた操作（停止処理の中・対照の名前か対照の作業場所）
+        return row[-1] == "stopping" and any(Path(str(p)).name in control_names or "mekiki-control" in str(p)
+                                             for p in row[:-1])
+
+    unresolved = [r for r in audit["opened"] + audit["mutated"]
+                  if any(str(p).startswith("unresolved:") for p in r) and not is_control(r)]
+    assert unresolved == [], unresolved[:3]  # 解決できないまま通した操作は無い
     assert {r[1] for r in audit["control_net"]} == {"mekiki-control.invalid:80", "203.0.113.1:80",
                                                     "203.0.113.2:9", "::1:9"}
     # 配信中に開くのは、遅延 import される Python 本体と site-packages のファイルだけ。
@@ -732,7 +1145,8 @@ def test_s03_no_outbound_traffic(tmp_path, reader):
     assert writes == [] and outside == [], (writes[:5], outside[:5])
     # どの段階でも、リポジトリの中（とくに data/）を書き込みで開かない。
     # 起動前に Gradio が一時領域へ書くこと自体はあるので、そこは対象にしない（記録には残る）。
-    every_write = [r[0] for r in audit["opened"] if any(c in r[1] for c in "wax+") or _write_flags(r[2])]
+    every_write = [r[0] for r in audit["opened"]
+                   if (any(c in r[1] for c in "wax+") or _write_flags(r[2])) and not is_control(r)]
     assert not [p for p in every_write if p.startswith(str(REPO_ROOT))], every_write[:5]
     # 子プロセス・open 以外の書き換え・記録の取りこぼしが無いこと（検算⑥・⑨）。
     # 子プロセスは起こさない（陽性対照で自分から試した分だけが "stopping" に残る）。
@@ -753,7 +1167,7 @@ def test_s03_no_outbound_traffic(tmp_path, reader):
     assert audit["open_dropped"] == 0
     assert any(b[1].startswith("('127.0.0.1'") for b in audit["bound"]), audit["bound"]
     # 自己呼び出しの内部クライアントが、塞いだ経路に再試行を繰り返していないこと（heartbeat を塞ぐと
-    # 毎秒約1,000回の 404 になり一時ポートを使い果たした。2026-09-18 の実測）。
+    # 上流のクライアントが間を置かずに再試行し、資源を使い果たした。2026-09-18 の実測）。
     assert sum(int(v) for v in audit["guard_counts"].values()) < 20, (audit["guard_counts"], audit["guard"][:5])
     assert audit["mcp_server"] is True and audit["share"] is False and audit["run_history"] is False
     assert audit["queue_max_size"] == app.QUEUE_MAX_SIZE and audit["queue_concurrency"] == app.MAX_CONCURRENCY

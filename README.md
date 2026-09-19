@@ -134,7 +134,7 @@ uv pip install --python .venv/bin/python --require-hashes -r requirements-dev.tx
 ```
 
 インタプリタは明示する（システムの `python3` は要件を満たさないことがある）。ポートは環境変数
-`MEKIKI_READER_PORT`（1024〜65535・既定 7860。塞がっているときは `起動しない：ポート … で待ち受けられない` と出て終了する）。
+`MEKIKI_READER_PORT`（1024〜65535・既定 7860。塞がっているときは `起動しない：ポート … で待ち受けられない` と出て終了する。spaces モードでは 7860 に固定で、別の値があれば起動しない）。
 起動すると次の9行が出る。
 
 ```
@@ -161,7 +161,7 @@ tools 7・resources 12・prompts 6（PROMPTS-0.1.0）
 
 | 項目 | local | spaces |
 |---|---|---|
-| 待ち受け | `127.0.0.1` | `0.0.0.0`（ポートは `MEKIKI_READER_PORT`・既定 7860） |
+| 待ち受け | `127.0.0.1`（ポートは `MEKIKI_READER_PORT`・既定 7860） | `0.0.0.0:7860`（ポートは固定。`MEKIKI_READER_PORT` に 7860 以外があれば起動しない） |
 | 許可する `Host` | `127.0.0.1`・`localhost`・`::1` | 起動時に読んだ `SPACE_HOST`（Space の公開ホスト名。カンマ区切りは各値）と `localhost`・`127.0.0.1`。`SPACE_HOST` が無ければ起動しない |
 | `/` の `Host` | 検査する | 許可していない `Host` にも 200 で答える（Space の健康検査のため。`GET`・`HEAD` だけ）。そのときは Gradio の画面ではなく、要求の中身を写さない固定の短い HTML を返す |
 
@@ -178,7 +178,7 @@ Gradio を読み込む前に消す。そのため Space の上でも Gradio は�
 
 施工側の確認（2026-09-19）：この機械には Docker が無いので、**イメージの組み立てと起動は未確認**（Docker を入れるのはローカル環境の
 変更で、著者の判断）。代わりに、`requirements.txt` の全項目が Linux（x86_64・CPython 3.13）の wheel としてハッシュつきで取得できる
-ことを `pip download --require-hashes --only-binary=:all: --platform manylinux…` で確かめた（63項目。Windows 専用の3項目を除く全部）。
+ことを `pip download --require-hashes --only-binary=:all: --platform manylinux…` で確かめた（63項目。Windows か emscripten でだけ入る3項目〔colorama・pywin32・tzdata〕を除く全部）。
 `spaces` モードの設定（待ち受け・許可 Host・変数の除去・`pwa`・接頭辞なし）は試験で確かめている（試験では手元の網に出さないため
 待ち受けだけ loopback にする）。実際の `0.0.0.0:7860` の待ち受けは Space の上で確かめる（SPEC §7 S04）。
 
@@ -262,7 +262,7 @@ Hugging Face の MCP バッジと `hf.co/mcp` 経由の呼び出しは Hugging F
 
 | 経路 | 通す理由 |
 |---|---|
-| `/` | Gradio が起動時に到達を確かめる（`HEAD /`。塞ぐと起動しない）。また自己呼び出しの内部クライアントは、`/config` が 404 のとき `GET /` の HTML に埋め込まれた設定（`window.gradio_config`）を読む（塞ぐと `resources/read`・`prompts/get` が失敗する）。つまり**設定は `/` から loopback 内で引き続き出ている**。静的資産は塞いであるので画面は組み上がらない |
+| `/` | Gradio が起動時に到達を確かめる（`HEAD /`。塞ぐと起動しない）。また自己呼び出しの内部クライアントは、`/config` が 404 のとき `GET /` の HTML に埋め込まれた設定（`window.gradio_config`）を読む（塞ぐと `resources/read`・`prompts/get` が失敗する）。つまり**設定は `/` から出ている**：local では loopback の中だけだが、spaces では許可した Host（`SPACE_HOST`）への `GET /` にも Gradio の画面と設定が返る（公開の Space では誰でも読める）。spaces で許可していない Host の `GET`・`HEAD /` には、設定を含まない固定の短い HTML を返す（健康検査用）。静的資産は塞いであるので画面は組み上がらない |
 | `/gradio_api/startup-events` | 起動時の確認（塞ぐと起動しない） |
 | `/gradio_api/info`（末尾 `/` 付きも） | `resources/read`・`prompts/get` の自己呼び出しが読む（塞ぐと McpError） |
 | `/gradio_api/queue/join` | 同じく自己呼び出しの実行（受付8・待機64） |
@@ -297,7 +297,7 @@ Hugging Face の MCP バッジと `hf.co/mcp` 経由の呼び出しは Hugging F
 ### 接続時に知っておくこと
 
 - **未知の prompt 名**は雛形を返さず、MCP のエラー（`McpError: 'data'`）として返る。引数を付けて呼んだときは、上流 Gradio の `Parameter … is not a valid key-word argument` という英文が返る。要求された名前は上流の実装からサーバ側の関数に渡らないため、エラー文に名前を入れられない。登録してある名前は `read_with_guards`・`four_modes`・`answer_format` と、その英語版 `…_en` の六つだけ。
-- Hugging Face Spaces に置いた場合、ツール名に Space 名の接頭辞が付く（`<Space名>_list_papers`）。
+- Hugging Face Spaces に置いても、ツール名・prompt 名に接頭辞は付かない（spaces モードは `SYSTEM`・`SPACE_ID` を読み込み前に消すので、ローカルと同じ `list_papers` などになる）。
 - `http://127.0.0.1:7860/` をブラウザで開くと Gradio 標準のフロント HTML が返る（UI は無く、静的資産は遮断してあるので画面は組み上がらない）。
 - Claude Code の Code タブでは、**prompts の一覧は一度サーバに触れてから現れる**（最初のツール呼び出しの前は空に見える）。
 - 原文の強調記号（`**…**`・`*…*`・`_…_`）を外して引用しても、NORM-1.1.0 からは `normalized` で一致する（それより前の版では `quote_not_found` になっていた。検収で観察）。
@@ -345,7 +345,7 @@ D01〜D04（同梱データ）・T01〜T12 と R01（七ツールと再現性）
 - **制作工程と使用モデル**：方針（`SPEC.md`）→施工（Claude Code / Claude Opus 5）→独立検査（Codex。指摘と差分案のみ）→最終検査（Claude）→接続確認と公開判断（著者）。生成 AI を使って作った。<!-- 著者確認：独立検査・最終検査に使ったモデルの具体名 -->
 - **参照した型**：Paper2Agent（Miao et al., Nature 2026）から借りたのは型（資源・プロンプト・ツール・検証テスト・Spaces での公開）であって工程ではない。読解の対象は T1〜T5（題名・版・DOI は `data/CITATION.md`）。
 - **費用と休止**：ローカルで動かす分には追加の API 料金・ホスティング料金は要らない。公開（Spaces）での費用と休止からの復帰時間は、公開時に実測して記す。<!-- 配置段階二で記入 -->
-- **利用者入力の送信先と保存方針**：`verify_quote` と `check_compressions` の入力には未公開の情報が入りうる。実測では、起動から全ツール・全 resource・全 prompt の呼び出しまで loopback 以外への接続は0件。**配信中**は書き込みで開いたファイルも0件で、`data/` には一切触れない。起動の途中では、依存ライブラリ（filelock）が作業ディレクトリに `probe-source`・`probe-link` を作って消し、Gradio が一時領域に書く（どちらも利用者の入力とは関係がない）。サーバは入力をファイルに保存しない方針で、実測した範囲（外への接続と、書き込みで開いたファイル）では保存は確認されなかった。**標準出力・標準エラー**に出るのは、起動時の表示・遮断の記録（状態コードと理由だけ。経路は出さない）・例外の型と場所（ファイル名と行。例外の文は出さない）・ログの水準と名前と出した場所（文は出さない。文に値が埋め込まれることがあるため）だけにしてある。実測（2026-09-19・ローカル）では、正常・不正・例外の各要求（ツールの引数・未知のツール名・未知のメソッドと通知・応答やエラーの形の要求・URL でない URI・壊れた `_meta`・JSON でない本文・壊れた JSON・queue の入力検証のエラー・遮断した経路・ヘッダ・問い合わせ・待ち受け直後の例外）に入れた目印の文字列は、標準出力・標準エラーのどこにも出なかった（試した範囲。`tests/test_safety.py::test_s01_inputs_do_not_reach_the_logs`・`test_s01_logs_are_redacted_from_the_start`）。対策の前は、queue の入力検証のエラー・未知のツール名・JSON-RPC の中身がログに出ていた。**Spaces 側のログ**は、実行中の標準出力・標準エラーがそのまま出るもので、中身は上と同じ（Spaces 上で受信した値が出ないことは公開前に実測して記す。SPEC §7 S04）。閲覧できるのは Space に書き込み権限のある者で、保持は Space の再起動までで期間は保証されない。`hf.co/mcp` 経由の呼び出しは Hugging Face 側の機能で、このサーバは関知しない。
+- **利用者入力の送信先と保存方針**：`verify_quote` と `check_compressions` の入力には未公開の情報が入りうる。実測では、起動から全ツール・全 resource・全 prompt の呼び出しまで loopback 以外への接続は0件。**配信中**は書き込みで開いたファイルも0件で、`data/` には一切触れない。起動の途中では、依存ライブラリ（filelock）が一時ディレクトリの中に `probe-source`・`probe-link` を作って消し、Gradio が一時領域に書く（どちらも利用者の入力とは関係がない）。サーバは入力をファイルに保存しない方針で、実測した範囲（外への接続と、書き込みで開いたファイル）では保存は確認されなかった。**標準出力・標準エラー**に出るのは、起動時の表示・遮断の記録（状態コードと理由だけ。経路は出さない）・例外の型と場所（ファイル名と行。例外の文は出さない）・ログの水準と名前と出した場所（文は出さない。文に値が埋め込まれることがあるため）だけにしてある。実測（2026-09-19・ローカル）では、正常・不正・例外の各要求（ツールの引数・未知のツール名・未知のメソッドと通知・応答やエラーの形の要求・URL でない URI・壊れた `_meta`・JSON でない本文・壊れた JSON・queue の入力検証のエラー・遮断した経路・ヘッダ・問い合わせ・待ち受け直後の例外）に入れた目印の文字列は、標準出力・標準エラーのどこにも出なかった（試した範囲。`tests/test_safety.py::test_s01_inputs_do_not_reach_the_logs`・`test_s01_logs_are_redacted_from_the_start`）。対策の前は、queue の入力検証のエラー・未知のツール名・JSON-RPC の中身がログに出ていた。**Spaces 側のログ**は、実行中の標準出力・標準エラーがそのまま出るもので、中身は上と同じ（Spaces 上で受信した値が出ないことは公開前に実測して記す。SPEC §7 S04）。閲覧できるのは Space に書き込み権限のある者で、保持は Space の再起動までで期間は保証されない。`hf.co/mcp` 経由の呼び出しは Hugging Face 側の機能で、このサーバは関知しない。
 - **外向きの資料取得**：起動後に取得する資料は同梱データだけ。
 - **既知の制約**：
   1. T4 の英訳は ChatGPT で作成された派生の言語版で、著者レビューの認証はない。英訳由来の結果には作成経緯（`preparation`・`authority`）を必ず添える。

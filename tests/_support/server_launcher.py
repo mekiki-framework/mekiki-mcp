@@ -9,8 +9,9 @@
   解決できないものは `unresolved:…` と記録し、書き換えなら止める（検出できたことにしない）。
 - 最後に陽性対照を行い、フック自体が効いていることを確かめる。
 
-環境変数：MEKIKI_AUDIT_LOG（記録の書き出し先）・MEKIKI_READER_PORT（app.py が読む）・
-MEKIKI_TEST_*（試験だけが上限や間隔を変える。main() を見る）。
+環境変数：MEKIKI_AUDIT_LOG（記録の書き出し先）・MEKIKI_TEST_*（試験だけが上限や間隔を変える。main() を見る）。
+ポートは起動器の内部引数 `--port N` で受ける（MEKIKI_READER_PORT は読まない。spaces は本番では 7860 固定なので、
+試験の空きポートは app の設定とは別に渡す。Codex④ F7）。
 """
 
 import fcntl
@@ -408,6 +409,16 @@ DEMO = None
 QUEUE_SIZES: dict[str, int] = {}
 
 
+def _internal_port(argv: list[str]) -> int:
+    """起動器の内部引数 `--port N`（試験用の空きポート）。無ければ止める。"""
+    if len(argv) != 2 or argv[0] != "--port" or not argv[1].isascii() or not argv[1].isdigit():
+        raise SystemExit("usage: server_launcher.py --port N")
+    port = int(argv[1])
+    if not 1024 <= port <= 65535:
+        raise SystemExit("port out of range")
+    return port
+
+
 def _queue_sizes() -> dict[str, int]:
     """セッションごとに増える表の大きさ（Codex③ 2 の上限の検査）。"""
     queue = getattr(DEMO, "_queue", None)
@@ -489,7 +500,7 @@ def main() -> int:
     ttl = os.environ.get("MEKIKI_TEST_RESULT_TTL")  # 期限だけを変える（Codex③ 3 の境界の試験）
     if ttl:
         app.RESULT_TTL_SECONDS = float(ttl)
-    port = app.read_port(os.environ.get(app.PORT_ENV))
+    port = _internal_port(sys.argv[1:])
     STATE["port"] = port
     app.READER = app.T.Reader(app.C.load_corpus())
     DEMO = app.build_blocks()

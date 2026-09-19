@@ -6,6 +6,7 @@ gradio 6.27.0・gradio_client 2.7.0・huggingface_hub 1.32.0・uvicorn 0.53.0 �
 
 根拠の区分：【文書】公式文書に書かれていること／【コード】インストール済みパッケージのソース／【実例】フォーラムや issue の
 報告（HF 職員か一般利用者かを添える）／【推論】施工側の推論。施工側で主要なコードの主張（下の b・c'・a の分岐）を読み直して確かめた。
+上流の挙動の詳細は、公開用に互換性の説明へ要約してある（2026-09-19・Codex④ F1）。
 
 **要点**
 
@@ -33,7 +34,7 @@ gradio 6.27.0・gradio_client 2.7.0・huggingface_hub 1.32.0・uvicorn 0.53.0 �
 | a | `http_server.py:152-162`、`utils.py:229-269`（SpacesReloader）、`utils.py:319-339` | 監視用のスレッドが一本増える。起動時に `GRADIO_HOT_RELOAD: …` を標準出力に出す。`spaces` パッケージが無いとスレッド内で例外になり、traceback がログに出る（サーバは動き続ける）。`spaces` 0.43 以上があると `spaces.reloading.start_reload_server` が動く | **影響あり**。`start_reload_server` の中身（待ち受けや外向き通信の有無）は未確認。リロードで Blocks が差し替わる経路もある。S03 は Spaces 上で測り直す必要がある |
 | b | `blocks.py:3007`（`pwa` 未指定なら Spaces 上で True） | `launch()` が `pwa` を渡していないので True になる | **起動が止まる**（コードから確実）。`verify_blocks` が `pwa=False` を確かめるので exit 5。`pwa=False` を明示すれば避けられる |
 | c | `mcp.py:384-385`・`mcp.py:545`・`mcp.py:532` | ツール名が `<Space名>_` 付きになる（英数字以外は `_`） | Q69 のとおり |
-| c' | `mcp.py:1042`（prompts/list は接頭辞付き）と `mcp.py:1059-1070`（prompts/get は接頭辞なしの名前で照合） | 一覧に出た名前で prompts/get を呼ぶと一致せず、最後の endpoint（番兵）に落ちる | **prompts は一覧どおりの名前では全部番兵のエラーになる**（コードからの推論。未実行）。resources は接頭辞なしの名前と URI で引くので影響なし |
+| c' | 上流の MCP の prompts の実装 | Spaces 用の分岐では、prompts の名前に互換性の制約がある（一覧の名前と取得の照合がそろわない） | **現構成（`SYSTEM` の除去）では該当しない**（Spaces 用の分岐に入らず、接頭辞が付かない。M01・M02 の期待値どおり）。resources は影響なし |
 | d | `blocks.py:1178` → `routes.py:1417` | queue=True の関数への直接 POST を拒む | 影響なし（関数は queue=False・経路はガードが塞ぐ） |
 | e | `blocks.py:1180, 2566`、`routes.py:682, 837-847` | config と `/gradio_api/info` のコード例に `space_id` が入る | 公開情報で影響は小さい |
 | f | `blocks.py:3343-3345` | share を強制的に False | 影響なし（もともと False） |
@@ -98,7 +99,7 @@ SSL・`root_path`・`max_file_size`・show_api・heartbeat には Spaces 専用�
 5. **`spaces` パッケージと SpacesReloader**：未検査のコードがツール関数を包み、リロードの経路を持つことを許すか。`SYSTEM` を消せば
    分岐ごと止まるが、接頭辞と pwa の既定も変わるので Q69 を見直すことになる。
 6. **`pwa=False` の明示**：施工の範囲で直せるが、SPEC の固定値の一覧に加えるか。
-7. **prompts/get と接頭辞**：Spaces では一覧に出た名前が番兵に落ちる。README での扱いと M02 の合格条件。
+7. **prompts と接頭辞**：Spaces 用の分岐では prompts の名前に互換性の制約がある。**現構成（`SYSTEM` の除去）では該当しない**（SPEC v2.4 で除去を採用し、接頭辞が付かない）。
 8. **MCP バッジ**：自動で付くバッジと `hf.co/mcp` 経由の呼び出しを、公開範囲と開示文でどう扱うか。
 9. **ログの開示文**：閲覧は書き込み権限者のみ（2021 年の記載）、保持期間は記載なし＝「保証しない」とするか。
 10. **CORS の検査**：エッジでの CORS の操作は `check_cors`（loopback で自分に当てる検査）では見つけられない。Spaces 上で外から当てる検査を検収に入れるか。

@@ -49,10 +49,11 @@ class Server:
     def spawn(self) -> "Server":
         """起動だけして、準備が済むのを待たない（待ち受け直後の要求を試すため。Codex③ 5）。"""
         env = {k: v for k, v in os.environ.items() if not k.startswith("GRADIO_")}
-        env.update({"MEKIKI_READER_PORT": str(self.port), "MEKIKI_AUDIT_LOG": str(self.audit_log),
-                    "PYTHONHASHSEED": "0"})
+        env.pop("MEKIKI_READER_PORT", None)  # ポートは起動器の内部引数で渡す（Codex④ F7）
+        env.update({"MEKIKI_AUDIT_LOG": str(self.audit_log), "PYTHONHASHSEED": "0"})
         env.update(self.env_extra)
-        self.proc = subprocess.Popen([sys.executable, "-u", str(LAUNCHER)], cwd=str(REPO_ROOT), env=env,
+        self.proc = subprocess.Popen([sys.executable, "-u", str(LAUNCHER), "--port", str(self.port)],
+                                     cwd=str(REPO_ROOT), env=env,
                                      stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
         self.reader = threading.Thread(target=self._read, daemon=True)
         self.reader.start()

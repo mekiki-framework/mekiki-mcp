@@ -1,7 +1,7 @@
 """Mekiki Reader — MCP サーバ（Gradio 6.27.0・gr.api・UI なし。SPEC §6・§9、docs/PLAN.md A-4）。
 
 起動：`.venv/bin/python app.py`（インタプリタを明示する。Q79）
-ポート：環境変数 `MEKIKI_READER_PORT`（1024〜65535。既定 7860。Q12）
+ポート：環境変数 `MEKIKI_READER_PORT`（1024〜65535。既定 7860。Q12）。配置モード spaces では 7860 固定（別の値があれば起動しない）
 読むデータ：リポジトリ内の `data/` だけ。環境変数でも引数でも変えられない（Q12）。
 """
 
@@ -100,6 +100,7 @@ from mekiki_reader import tools as T  # noqa: E402
 TITLE = "Mekiki Reader"
 PORT_ENV = "MEKIKI_READER_PORT"
 DEFAULT_PORT = 7860
+SPACES_PORT = 7860  # spaces は固定（SPEC v2.4.2）
 SERVER_NAME = DEPLOY["bind"]  # local は "127.0.0.1"。変えられるのは配置モードだけ（Q67・SPEC v2.4 §2.10）
 LOOPBACK = "127.0.0.1"         # 自分自身に当てる確認（check_cors）の宛先（どのモードでも許可 Host に入る）
 # spaces で Host を問わない `/`（健康検査）に返す固定の HTML（要求の中身を写さない）
@@ -286,7 +287,8 @@ def _host_name(value: str) -> str:
         host, rest = value, ""
     if rest:
         port = rest[1:]
-        if not (port.isascii() and port.isdigit() and 1 <= int(port) <= 65535):
+        # 桁数（5桁以内）を先に見てから整数にする（長い数字で int() が例外にならないように。Codex④ F4）
+        if not (port.isascii() and port.isdigit() and len(port) <= 5 and 1 <= int(port) <= 65535):
             return ""
     return host
 
@@ -853,8 +855,16 @@ def _guard_middleware():
     return Guard
 
 
-def read_port(raw: str | None) -> int:
-    """MEKIKI_READER_PORT を読む（Q12）。形式が違えば ValueError。"""
+def read_port(raw: str | None, mode: str | None = None) -> int:
+    """MEKIKI_READER_PORT を読む（Q12）。形式が違えば ValueError。
+
+    spaces では 7860 に固定する（Space の app_port・Dockerfile の EXPOSE と同じ。別の値があれば起動しない。
+    SPEC v2.4.2 §2.10・Codex④ F7）。試験は起動器の内部引数でポートを渡し、この関数を通らない。
+    """
+    if (DEPLOY["mode"] if mode is None else mode) == "spaces":
+        if raw not in (None, "") and raw != str(SPACES_PORT):
+            raise ValueError(f"spaces ではポートは {SPACES_PORT} に固定（{PORT_ENV} に別の値がある）")
+        return SPACES_PORT
     if raw is None or raw == "":
         return DEFAULT_PORT
     if not re.fullmatch(r"[0-9]{1,5}", raw):
@@ -1153,8 +1163,10 @@ def main() -> int:
     try:
         launch(demo, port)
     except OSError as exc:  # ポートが塞がっているなど
-        print(f"起動しない：ポート {port} で待ち受けられない（{type(exc).__name__}）。"
-              f"{PORT_ENV} で別のポートを指定する", file=sys.stderr, flush=True)
+        advice = (f"spaces ではポートは {SPACES_PORT} 固定（変えられない）" if DEPLOY["mode"] == "spaces"
+                  else f"{PORT_ENV} で別のポートを指定する")
+        print(f"起動しない：ポート {port} で待ち受けられない（{type(exc).__name__}）。{advice}",
+              file=sys.stderr, flush=True)
         return 6
     problems = verify_blocks(demo, launched=True, port=port)
     if problems:

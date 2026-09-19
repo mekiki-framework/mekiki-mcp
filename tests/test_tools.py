@@ -650,6 +650,22 @@ def test_t08_emphasis_and_zero_width_between_spaces():
         assert norm.text == "x y", (text, norm.text)
     tagged = N.normalize_quote("x **" + zw + " ** y", is_input=True)
     assert any("WS-ZW" in d[3] for d in tagged.drops), tagged.drops
+    # 畳み込む並びの中にゼロ幅文字があるときは、畳み込みの記録そのものに WS-ZW が付く（Codex③ の検算 #16）
+    inside = N.normalize_quote("x ** " + zw + " ** y", is_input=True)
+    assert "WS-COLLAPSE+WS-ZW" in [d[3] for d in inside.drops], inside.drops
+
+
+@pytest.mark.parametrize("zw", sorted(N.ZERO_WIDTH))
+def test_t08_zero_width_in_a_single_space(reader, zw):
+    """通常の空白一字の後にゼロ幅文字が続く並びも、WS-COLLAPSE と WS-ZW の両方を記録する（規則7・Codex④ F5）。"""
+    gap = " " + zw
+    env = rt(T.verify_quote(reader, "AI" + gap + "can assist play. It cannot take one's place in it."))
+    assert env["status"] == "ok" and env["match"] == "normalized"
+    assert env["normalization_applied"] == ["WS-COLLAPSE", "WS-ZW"]
+    res = env["results"][0]
+    assert [d["rules"] for d in res["payload"]["diffs"]] == [["WS-COLLAPSE", "WS-ZW"]]
+    assert res["payload"]["diffs"][0]["input"] == gap and res["payload"]["diffs"][0]["source"] == " "
+    assert res["section_anchor"] == "t5-5-4"
 
 
 def test_t08_emphasis_does_not_join_english_words(reader):

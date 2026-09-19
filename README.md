@@ -15,6 +15,8 @@ short_description: Read-only MCP for the Mekiki papers. No LLM inside.
 Mekiki Framework の論文 T1〜T5 を、**固定した版から・出典つきで・決定的に**読むための MCP サーバ。
 サーバの中に言語モデルは無い。取得・語句照合・記録の返却だけを行い、意味の判断はしない。
 
+制作記（Zenn）：<https://zenn.dev/kengotomita/articles/ca6d3d50287434>
+
 > **In short.** A read-only MCP server over a pinned snapshot (v3.5.0) of the Mekiki Framework corpus
 > (papers T1–T5). It fetches sections, matches strings, and returns what the author recorded — with a
 > citation, version and locator on every result. No model runs inside the server; after start-up, every

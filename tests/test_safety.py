@@ -1465,7 +1465,8 @@ def test_s01_guide_page_is_static():
     assert first.count("<li>") == 4 and first.index("そもそもMekiki Frameworkとは何か") < first.index("T5 の非移転性定理")
     # 外部リンクは新しいタブで開く（HF の Space ページは案内ページを iframe で表示し、GitHub は iframe 内表示を拒む）
     anchors = re.findall(r"<a [^>]*>", page)
-    assert len(anchors) == 7
+    assert len(anchors) == 8
+    assert f'href="{guide_page.ARTICLE_URL}"' in page  # 制作記（Zenn）
     for tag in anchors:
         assert re.search(r'href="https://', tag) and 'target="_blank"' in tag and 'rel="noopener"' in tag, tag
     for template in (PR.MEKIKI_START, PR.MEKIKI_START_EN):

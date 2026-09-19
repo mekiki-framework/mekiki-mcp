@@ -14,6 +14,7 @@ from .prompts import MEKIKI_START, MEKIKI_START_EN
 
 REPO_URL = "https://github.com/mekiki-framework/mekiki-mcp"
 CORPUS_URL = "https://mekiki-framework.github.io/"
+ARTICLE_URL = "https://zenn.dev/kengotomita/articles/ca6d3d50287434"  # 制作記（Zenn）
 
 _STYLE = """
 :root { color-scheme: light dark; --fg: #1d1d1f; --bg: #fbfbf8; --muted: #5a5a5a; --line: #d9d7cf; --code: #efede6; }
@@ -119,6 +120,7 @@ def render(mcp_url: str) -> str:
 <li><a href="{REPO_URL}" target="_blank" rel="noopener">GitHub</a></li>
 <li><a href="{CORPUS_URL}" target="_blank" rel="noopener">コーパス / Corpus</a></li>
 <li><a href="{REPO_URL}#8-開示" target="_blank" rel="noopener">開示 / Disclosure</a></li>
+<li><a href="{ARTICLE_URL}" target="_blank" rel="noopener">制作記（Zenn）/ Making-of article (Zenn, Japanese)</a></li>
 </ul>
 </main>
 </body>

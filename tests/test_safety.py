@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import html
 import http.client
 import json
 import os
@@ -1458,7 +1459,10 @@ def test_s01_guide_page_is_static():
     for name in ("Claude", "ChatGPT", "Grok", "Claude Code"):
         assert f"<strong>{name}</strong>" in page, name
     assert "T5 §4.4 L171" in page and "T1 §2.1 L54" in page and "T2 §2.1 L37" in page
-    assert "AIは遊べないので人間の尊厳が守られる" in page  # check_compressions で P30 が該当する形（空白なし）
+    assert "AI は遊べないので人間の尊厳が守られる" in page  # PATTERNS-MATCH-2.0.0 で P30 が該当する（空白あり）
+    assert "<h2>最初に送る一言 / First message</h2>" in page
+    for template in (PR.MEKIKI_START, PR.MEKIKI_START_EN):
+        assert f"<pre>{html.escape(template.text)}</pre>" in page
     hostile = guide_page.render('https://x.example/"><b>x</b>')
     assert '"><b>' not in hostile and "&quot;&gt;&lt;b&gt;" in hostile
 

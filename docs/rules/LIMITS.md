@@ -66,5 +66,6 @@
 
 関数の内部では時間で打ち切らない。上の上限で計算量を有界にし、最悪ケースを実測して記録する。
 実測（2026-09-18、CPython 3.13.15・arm64・5回の最大値）：起動（load_corpus と索引）0.47 秒。verify_quote（2000字・英語）44 ms、同（日本語）4 ms、同（language=en）13 ms、search_passages（8断片・k=20）36 ms、同（200字）15 ms、get_claim_record（query 8断片）13 ms、get_section（未登録・128字の NEAR）12 ms、check_compressions（2000字・試験パターン2件）1.1 ms、list_papers 1.9 ms。通信層の時間制限は施工段階3の実測後に判断する。
+PATTERNS-MATCH-2.0.0（英字と仮名・漢字の境界の空白を任意に）の再測（2026-09-19・承認済み50件・5回の最大）：check_compressions（境界の空白が最多の `a あ ` 反復・2000字）14.1 ms、同（`AI は遊べない。` 反復・2000字）7.5 ms、同（英語2000字）7.1 ms。結果数（関連原文の数まで・最大100件）と一致位置（1結果20件）の上限は変わらない（版は 3.1.0 のまま）。
 
 通信を含めた実測（2026-09-18・MCP の Streamable HTTP・同一機・5回の最大）：search_passages（8断片・k=20）80 ms、verify_quote（1990字・英語）21 ms、同（日本語2000字）14 ms、check_compressions（1200字）19 ms、list_papers 5 ms、get_reading_guide（all）3 ms。

@@ -10,6 +10,8 @@ from __future__ import annotations
 
 import html
 
+from .prompts import MEKIKI_START, MEKIKI_START_EN
+
 REPO_URL = "https://github.com/mekiki-framework/mekiki-mcp"
 CORPUS_URL = "https://mekiki-framework.github.io/"
 
@@ -81,6 +83,12 @@ def render(mcp_url: str) -> str:
 <li><strong>Claude Code</strong>：<code>claude mcp add --transport http mekiki-reader {url}</code></li>
 </ul>
 
+<h2>最初に送る一言 / First message</h2>
+<p>接続したら、雛形 <code>mekiki_start</code>（英語は <code>mekiki_start_en</code>）の文面を送る。<br>
+<span class="en">After connecting, send the text of the <code>mekiki_start</code> template (<code>mekiki_start_en</code> in English).</span></p>
+<pre>{html.escape(MEKIKI_START.text)}</pre>
+<pre>{html.escape(MEKIKI_START_EN.text)}</pre>
+
 <h2>最初に打つ三つ / Three things to try first</h2>
 <ol>
 <li>「T5 の非移転性定理は AI に代替できない人間の能力や尊厳を証明しているか、原文の位置を添えて」<br>
@@ -89,7 +97,7 @@ def render(mcp_url: str) -> str:
 <li>「Spec.cost とは何か。専門性や Spec. とどう違うか、原文で」<br>
 <span class="en">“What is Spec.cost, and how does it differ from expertise and from Spec.? Answer from the text.”</span><br>
 → T1 §2.1 L54 と T2 §2.1 L37。<span class="en">T1 §2.1 L54 and T2 §2.1 L37.</span></li>
-<li>「次の文を check_compressions に通して：『AIは遊べないので人間の尊厳が守られる』」<br>
+<li>「次の文を check_compressions に通して：『AI は遊べないので人間の尊厳が守られる』」<br>
 <span class="en">“Put this sentence through check_compressions: ‘AI cannot play, so human dignity is protected.’”</span><br>
 → 該当と関連原文（T5 §3.1・§3.4）。該当は判定ではなく、見比べる箇所。<span class="en">A match and the related text (T5 §3.1, §3.4). A match is not a verdict; it is a place to compare.</span></li>
 </ol>

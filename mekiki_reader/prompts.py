@@ -4,6 +4,7 @@ MCP の prompts と get_reading_guide(templates) の両方が同じ定数を返�
 文面は施工側の起草を著者が 2026-09-18 に承認したもの（PROMPTS-0.1.0）。日本語三つと、
 `_en` を付けた英語三つ（SPEC v2.2 §6。引数で言語を切り替える方式は採らない）の計六つ。
 PROMPTS-0.2.0（2026-09-19）で四つ目の mekiki_start（日本語は著者の文面、英語はその忠実訳）を足して計八つ。
+PROMPTS-0.2.1（同日）で mekiki_start の資料の読み方を「読めるクライアントでは」に改めた（resources を扱えない接続先のため）。
 mekiki_start は利用者が接続直後に送る発話そのものなので、見出しと定型文を付けない（ほかの六つと違う）。
 """
 
@@ -11,7 +12,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-PROMPTS_VERSION = "PROMPTS-0.2.0"
+PROMPTS_VERSION = "PROMPTS-0.2.1"
 PROMPTS_STATUS = "approved"  # 著者承認済み
 APPROVED_ON: str | None = "2026-09-19"  # 0.1.0 の六つは 2026-09-18、mekiki_start は 2026-09-19
 
@@ -104,8 +105,8 @@ MEKIKI_START = PromptTemplate(
     name="mekiki_start",
     title="接続直後に送る最初の依頼",
     text=(
-        "Mekiki Reader を接続しています。最初に get_reading_guide(part=\"all\") を呼び、"
-        "資料の llms.txt と THEORY_MAP.md を読んでから答えてください。"
+        "Mekiki Reader を接続しています。最初に get_reading_guide(part=\"all\") を呼んでください。"
+        "資料（llms.txt・THEORY_MAP.md）を読めるクライアントではそれも読んでください。"
         "以後の回答では、原文（出典つき）・著者が記録した位置づけ（status はラベル）・あなたの解釈を分けて書き、"
         "引用は verify_quote で照合し、自分の要約は check_compressions に一度通し、"
         "私の事例についての判断は私に残してください。"
@@ -192,8 +193,8 @@ MEKIKI_START_EN = PromptTemplate(
     title="First message after connecting",
     language="en",
     text=(
-        "I have connected Mekiki Reader. First call get_reading_guide(part=\"all\"), and read llms.txt and"
-        " THEORY_MAP.md from the material before you answer. In your answers from then on, write the text (with"
+        "I have connected Mekiki Reader. First call get_reading_guide(part=\"all\"). If your client can read the"
+        " material (llms.txt, THEORY_MAP.md), read those too. In your answers from then on, write the text (with"
         " its source), the position the author recorded (the status is a label) and your own interpretation"
         " separately; check quotations with verify_quote, put your own summaries through check_compressions"
         " once, and leave judgments about my own case to me."

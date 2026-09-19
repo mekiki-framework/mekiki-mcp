@@ -28,8 +28,12 @@ https://kenngotm-mekiki-reader.hf.space/gradio_api/mcp/
 | Grok | `grok.com/connectors` → 新しいコネクタ → Custom・認証なし。チャットでは `@Mekiki Reader`。/ New connector → Custom, no authentication. Call it with `@Mekiki Reader`. |
 | Claude Code | `claude mcp add --transport http mekiki-reader https://kenngotm-mekiki-reader.hf.space/gradio_api/mcp/` |
 
-接続の直後に雛形 `mekiki_start`（英語は `mekiki_start_en`）を送ると、読み方の約束から始められる（§6）。
-/ Right after connecting, you can send the `mekiki_start` template (`mekiki_start_en` in English) to set out how to read (§6).
+接続したら、最初に次の一言を送る（雛形 `mekiki_start`。英語は `mekiki_start_en`。§6）。
+/ After connecting, send this first (the `mekiki_start` template; `mekiki_start_en` in English; §6).
+
+> Mekiki Reader を接続しています。最初に get_reading_guide(part="all") を呼んでください。資料（llms.txt・THEORY_MAP.md）を読めるクライアントではそれも読んでください。以後の回答では、原文（出典つき）・著者が記録した位置づけ（status はラベル）・あなたの解釈を分けて書き、引用は verify_quote で照合し、自分の要約は check_compressions に一度通し、私の事例についての判断は私に残してください。
+
+> I have connected Mekiki Reader. First call get_reading_guide(part="all"). If your client can read the material (llms.txt, THEORY_MAP.md), read those too. In your answers from then on, write the text (with its source), the position the author recorded (the status is a label) and your own interpretation separately; check quotations with verify_quote, put your own summaries through check_compressions once, and leave judgments about my own case to me.
 
 ## 3. 最初に打つ三つ / Three things to try first
 
@@ -62,7 +66,7 @@ the locations and records come from the same server data.
 
 ### ③ 要約を検査する / Check a summary
 
-> 次の文を check_compressions に通して：『AIは遊べないので人間の尊厳が守られる』
+> 次の文を check_compressions に通して：『AI は遊べないので人間の尊厳が守られる』
 >
 > Put this sentence through check_compressions: ‘AI cannot play, so human dignity is protected.’
 
@@ -70,9 +74,7 @@ the locations and records come from the same server data.
 （T5 §3.1 L77–88・§3.4 L107–120・§3.1 L79）。**該当は判定ではなく、原文と見比べる箇所**。
 / `ok`, with the approved pattern P30 (form `AIは遊べない`; in English `AI cannot play`) and three related passages
 (T5 §3.1 L77–88, §3.4 L107–120, §3.1 L79). **A match is not a verdict; it is a place to compare with the text.**
-確認 / Checked：2026-09-19、`check_compressions` の実応答（PATTERNS-0.2.1・PATTERNS-MATCH-1.1.0）。
-「AI **は**」のように AI と「は」の間に空白を入れると、今の照合規則では該当しない（0件）。
-/ With a space between “AI” and “は”, the current matching rule finds nothing (0 matches).
+確認 / Checked：2026-09-19、`check_compressions` の実応答（PATTERNS-0.2.1・PATTERNS-MATCH-2.0.0）。
 
 ## 4. 自分の文で / With your own sentences
 

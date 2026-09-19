@@ -229,7 +229,7 @@ UI の Custom Connectors はリモートの URL を Anthropic 側から取りに
 ### 公開版（Space）への接続
 
 Space の MCP の URL は `https://<owner>-<space>.hf.space/gradio_api/mcp/`（`<owner>`・`<space>` は Space の持ち主と名前。
-英数字以外はハイフンになる）。遠隔の HTTPS なので `mcp-remote` は要らない。Space が公開（public）のときは、どのクライアントでも
+英数字以外はハイフンになる）。この Space の URL は `https://kenngotm-mekiki-reader.hf.space/gradio_api/mcp/`。遠隔の HTTPS なので `mcp-remote` は要らない。Space が公開（public）のときは、どのクライアントでも
 認証は「なし」で登録する。ツール名に接頭辞は付かない（`list_papers` など、ローカルと同じ名前）。
 
 Space が非公開（private）の間は、Hugging Face が要求ごとに持ち主の認証を求める。Claude Code なら持ち主のアクセストークンを
@@ -237,7 +237,7 @@ Space が非公開（private）の間は、Hugging Face が要求ごとに持ち
 トークンは Space には置かない）。任意のヘッダを送れないクライアント（Claude の Custom Connector・ChatGPT）では、非公開の間は
 つながらない見込みで、これらでの確認（SPEC §7 P03）は公開の後になる。
 
-- **Claude Code**：`claude mcp add --transport http mekiki-reader https://<owner>-<space>.hf.space/gradio_api/mcp/`
+- **Claude Code**：`claude mcp add --transport http mekiki-reader https://kenngotm-mekiki-reader.hf.space/gradio_api/mcp/`
 - **Claude Desktop・claude.ai**：設定の「コネクタ」から「カスタムコネクタを追加」を選び、名前と上の URL を入れる（遠隔 MCP サーバ。
   組織のプランでは管理者が追加する）。画面の名前は執筆時点のもの。
 - **ChatGPT**：開発者モード（設定の「アプリとコネクタ」→詳細設定→開発者モード）を有効にし、コネクタを作成して上の URL を入れる
@@ -338,15 +338,15 @@ D01〜D04（同梱データ）・T01〜T12 と R01（七ツールと再現性）
 学術的な引用先は各論文の DOI（`data/CITATION.md` の表）。リポジトリの Markdown・HTML は派生の読解ビューであって、
 正典の学術出典ではない。ガイド類と訳注の `canonical_doi` は `null`。
 
-## 8. 開示（下書き・著者の承認待ち）
+## 8. 開示
 
-> この節は施工側の下書きで、文面は著者の承認と署名を待っている。
+> この節は施工側が下書きし、文面を著者が承認・署名した（2026-09-19）。
 
 | 項目 | 記入欄 |
 |---|---|
-| 承認（この節の文面） | 承認者：＿＿＿＿＿＿／承認日：＿＿＿＿-＿＿-＿＿ |
-| 署名 | ＿＿＿＿＿＿＿＿＿＿＿＿ |
-| 公開の版 | 対象コミット：＿＿＿＿＿＿＿ |
+| 承認（この節の文面） | 承認者：Kengo Tomita／承認日：2026-09-19 |
+| 署名 | Kengo Tomita（2026-09-19） |
+| 公開の版 | 対象コミット：Space `KennGoTm/mekiki-reader` の `b8c4b38`（mekiki-mcp `main` `d6ae3ed` 相当） |
 
 - **制作工程と使用モデル**：方針（`SPEC.md`）→施工（Claude Code / Claude Opus 5）→独立検査（Codex。指摘と差分案のみ）→最終検査（Claude）→接続確認と公開判断（著者）。生成 AI を使って作った。<!-- 著者確認：独立検査・最終検査に使ったモデルの具体名 -->
 - **参照した型**：Paper2Agent（Miao et al., Nature 2026）から借りたのは型（資源・プロンプト・ツール・検証テスト・Spaces での公開）であって工程ではない。読解の対象は T1〜T5（題名・版・DOI は `data/CITATION.md`）。
@@ -361,6 +361,6 @@ D01〜D04（同梱データ）・T01〜T12 と R01（七ツールと再現性）
   5. 未知の prompt 名は MCP のエラーとして返る（上流の実装の挙動。本文は §5 参照）。Space でもツール名に接頭辞は付かない（`SYSTEM` を消して、Gradio をローカルと同じ分岐で動かすため）。
   6. `/` に Gradio 標準のフロント HTML が返る。`resources/read` と `prompts/get` はサーバが自分自身に出す HTTP 要求で実行されるため、その経路（`/gradio_api/queue/join`・`/gradio_api/queue/data`）だけは通してある。外から同じ経路を叩くこともできるので、**受付8件・順番待ち64件まで**で受ける（本文を読む前に取る枠。超えると HTTP 503）。回収されない結果は、できてから120秒・同じセッションで64件・4 MiB（UTF-8 の JSON で数える）を超えた分を古いものから捨てる（取りに来ているセッションは期限では捨てない。内部クライアントのセッションには手を付けない）。実行されるのは登録済みの七ツール・resources・prompts だけで、どれも同じ実行枠（同時4）を使う。`/gradio_api/call/*` は塞いである（実測で、自己呼び出しには要らないことを確かめた）。
   7. 起動時に `HF_HUB_DISABLE_TELEMETRY=1`・`HF_HUB_DISABLE_IMPLICIT_TOKEN=1`・`HF_HUB_OFFLINE=1`・`HF_TOKEN_PATH=/dev/null` を設定している（依存ライブラリの利用状況送信を止め、利用者のトークンファイルを開かせないため）。
-  8. **別オリジンのページに CORS の許可ヘッダを返さない**。`Origin` の付いた要求には `Access-Control-Allow-Origin` ほかを一切返さない（`http://localhost:<ポート>` など同じ機械からの Origin も含む。上流の既定では loopback に許可が出る）。ブラウザからの**別オリジンの読み取り**を防ぐだけで、同一オリジンでの取得や、URL を直接開いて表示することを禁じるものではない。MCP のクライアントは `Origin` を送らないので接続には影響しない。
+  8. **CORS の許可ヘッダ**：サーバは許可ヘッダを返さないが、Spaces のエッジが付与する（2026-09-19 実測）。サーバは利用者の状態を持たず公開データのみ。
   9. 同梱データの照合は事故の検出までで、改竄への耐性は主張しない。
   10. **上流の差し替え**：Gradio 6.27.0・uvicorn 0.53.0 との互換と、守則を満たすために、上流の次の部分を差し替えている（どれも起動後の確認で差し替えが効いていることを確かめ、外れていれば起動しない）。①CORS の中間層（許可ヘッダを返さない）／②待ち行列の例外の印字（型と場所だけ）／③ログの出口（水準・名前・出した場所だけ。uvicorn がログを設定した直後にも差し替える）／④待ち行列のセッションの表（追い出すときに関連する記録も消す・内部と処理中と回収中は追い出さない）／⑤結果の送り出し（できた時刻を記録する）／⑥uvicorn の要求ごとの処理（送信期限を過ぎた接続をすぐ切る手段をガードへ渡す）。あわせて、内部クライアントは上流の遅延作成を使わず起動の直後に一つ作る。上流を別の版にするときは、この一覧をすべて見直す。

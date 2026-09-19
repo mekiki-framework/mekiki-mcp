@@ -235,14 +235,20 @@ Space の MCP の URL は `https://<owner>-<space>.hf.space/gradio_api/mcp/`（`
 
 Space が非公開（private）の間は、Hugging Face が要求ごとに持ち主の認証を求める。Claude Code なら持ち主のアクセストークンを
 要求のヘッダで送れる（`claude mcp add --transport http --header "Authorization: Bearer <HF のトークン>" mekiki-reader <URL>`。
-トークンは Space には置かない）。任意のヘッダを送れないクライアント（Claude の Custom Connector・ChatGPT）では、非公開の間は
-つながらない見込みで、これらでの確認（SPEC §7 P03）は公開の後になる。
+トークンは Space には置かない）。任意のヘッダを送れないクライアント（Claude の Custom Connector・ChatGPT）は非公開の間はつながらない見込みだったので、
+これらと Grok での確認（SPEC §7 P03）は公開の後に行った。
 
-- **Claude Code**：`claude mcp add --transport http mekiki-reader https://kenngotm-mekiki-reader.hf.space/gradio_api/mcp/`
-- **Claude Desktop・claude.ai**：設定の「コネクタ」から「カスタムコネクタを追加」を選び、名前と上の URL を入れる（遠隔 MCP サーバ。
-  組織のプランでは管理者が追加する）。画面の名前は執筆時点のもの。
-- **ChatGPT**：開発者モード（設定の「アプリとコネクタ」→詳細設定→開発者モード）を有効にし、コネクタを作成して上の URL を入れる
-  （認証なし）。画面の名前は執筆時点のもの。
+対応クライアントは次の四系統（2026-09-19 に公開版で実測。どれも認証なしで登録し、`list_papers` が `ok`・`bundle_hash` 一致。
+記録は [docs/acceptance/2026-09-19-space-private.md](docs/acceptance/2026-09-19-space-private.md) §9・§10）。画面の名前は執筆時点のもの。
+
+| 系統 | 登録の仕方（実測どおり） |
+|---|---|
+| Claude Code | `claude mcp add --transport http mekiki-reader https://kenngotm-mekiki-reader.hf.space/gradio_api/mcp/`（公開後はヘッダ不要） |
+| Claude（Web／Desktop） | Custom Connector に上の URL を登録（認証なし）。実測は Web で、サインインなしでつながった |
+| ChatGPT | **Web** で Developer mode →Plugins →MCP URL を登録 →Personal plugin をインストール。Web で入れればデスクトップ版のチャットにも出る（デスクトップ版の設定にある「MCP サーバー」は Codex 系統で、通常のチャットには出ない） |
+| Grok | `grok.com/connectors` →新しいコネクタ →Custom・認証なし。チャットでは `@Mekiki Reader` で呼ぶ |
+
+Gemini は CLI と Enterprise に経路あり・個人向けアプリは未確認。
 
 Hugging Face の MCP バッジと `hf.co/mcp` 経由の呼び出しは Hugging Face 側の機能で、このサーバは関知しない（検収の対象外）。
 各クライアントでの確認は `docs/acceptance/` に記録する（SPEC §7 P02・P03）。
@@ -309,7 +315,7 @@ Hugging Face の MCP バッジと `hf.co/mcp` 経由の呼び出しは Hugging F
 - Claude Code の Code タブでは、**prompts の一覧は一度サーバに触れてから現れる**（最初のツール呼び出しの前は空に見える）。
 - 原文の強調記号（`**…**`・`*…*`・`_…_`）を外して引用しても、NORM-1.1.0 からは `normalized` で一致する（それより前の版では `quote_not_found` になっていた。検収で観察）。
 - 旧 SSE の経路（`/gradio_api/mcp/sse`・`/gradio_api/mcp/messages/`）と別名 `/gradio_api/mcp/http` は閉じてある。接続先は `/gradio_api/mcp/`（末尾 `/` なしも可。Streamable HTTP）だけで、`mcp-remote` は `--transport http-only` で使う。
-- ChatGPT の開発者モードからの接続は、公開（Spaces）の段階で確かめる。ローカルの loopback には外から届かない。
+- Claude（Web）・ChatGPT・Grok からの接続は公開版（Space）で確かめた（2026-09-19・上の対応表）。ローカルの loopback には外から届かない。
 - 接続先ごとの確認の記録は [docs/acceptance/](docs/acceptance/) に置く。
 
 ## 6. 試験と検収

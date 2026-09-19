@@ -10,7 +10,7 @@
 - [x] パターン一覧の版（`patterns.py`）と著者承認日（PATTERNS-0.2.1・50件・照合 PATTERNS-MATCH-1.1.0・2026-09-18。0.1.0＝47件は撤回）
 - [x] `translations/T4.en.manifest.json` の扱い（v3.5.0 に存在するか／Reader側で作るか）と理由
 - [x] 接続URL（実際の起動表示）：`http://127.0.0.1:7860/gradio_api/mcp/`（接続先ごとの検収は施工段階4）
-- [ ] 費用と休止復帰時間の実測値（配置段階二）
+- [x] 費用と休止復帰時間の実測値（配置段階二）（HF PRO 月9ドル・CPU basic・再起動からの復帰17秒〔目視〕・休止からの復帰は未実測）
 
 ## ログ
 
@@ -351,3 +351,11 @@
 | 2026-09-19 | 配置段階二 | Space（private）の検収 | `KennGoTm/mekiki-reader`（Space `b8c4b38`＝`main` `d6ae3ed` 相当）で S04 の一部・P02 の一部（`list_papers` ok・bundle_hash 一致）・P01 代替（Pause→Restart・復帰「<17>」単位未記載）を記録。S04 の `Origin` の項は期待と不一致（HF のエッジが `access-control-allow-origin` を付与。サーバは付与しない）で、著者の判断により README 既知の制約8で開示し、SPEC §7 S04 の文言は変えていない。開示は著者が承認・署名 | 著者の指示・実測 | `docs/acceptance/2026-09-19-space-private.md`・README §8 | 確定 |
 | 2026-09-19 | 配置段階二 | Space 検収の要確認四点への回答 | P01 代替＝再起動からの復帰17秒（目視・休止は未実測）。S04：Origin は記録そのまま（SPEC は方針側で v2.4.3 に改める）・Host 不一致は 404（エッジで拒否）・ログに目印の値も呼び出しの痕跡も出ない（目視）・監査は未実施（ローカル S03 のみ）。開示の費用と休止・使用モデルを記入し、Spaces 側のログの「公開前に実測」の文を実測結果に置き換えた | 著者の回答 | `docs/acceptance/2026-09-19-space-private.md`・README §8 | 確定 |
 | 2026-09-19 | 配置段階二 | `/gradio_api/mcp` の 307 の廃止と転送の全面禁止 | Custom Connector が末尾の `/` を落とし、上流の 307 の `Location` が `http://` になってつながらなかった（著者の実測）。`/gradio_api/mcp` は許可一覧の完全一致のまま、ガードの中で `/gradio_api/mcp/` に書き換えて同じ本体として扱う。あわせて上流が返す 3xx はすべて 404 に置き換える（修正前の実測で、ほかに `/gradio_api/heartbeat/<id>/` が 307 だった）。LIMITS は開放経路の行に追記したが、版は 3.1.0 のまま（応答の `limitations` と正本の参照を変えないため。F7 と同じ扱い）。SPEC §2.10 の「`/gradio_api/mcp` は 307」の文言は変えていない（改版は著者判断）。試験用の MCP クライアントは 3xx を受けたら失敗させる（SDK は同じオリジン内の転送を自分でたどるため） | 著者の指示・実測 | `app.py` の `MCP_ALIAS`・`_no_redirect`・`test_s01_no_redirects`・M01〜M03 の `[no-slash]` | 提案 |
+
+## 配置段階二（2026-09-19 締め）
+
+| 日付 | 段階 | 項目 | 判断 | 理由 | 根拠 | 状態 |
+|---|---|---|---|---|---|---|
+| 2026-09-19 | 配置段階二 | 検収完了 | 配置段階二の検収を完了とする（著者の指示）。済み：S04（Origin はエッジ付与を開示・Host 不一致はエッジで 404・ログに受信値なし）、P01 代替（再起動からの復帰17秒）、P02（Claude Code から `list_papers`）、public 後の確認（`/` 200・CORS の再確認・`--header` なしの Claude Code・転送廃止 mekiki-mcp `0dca79f`→Space `b6b9de3`・README 更新 Space `7484bb2`・`b6b9de3`）、P03。記録に「未実施」として残るもの：休止からの復帰、Space 上の M01〜M03 と E01 二問（R01・R14）、Space ログでの S03 相当の監査 | 著者の実測と指示 | `docs/acceptance/2026-09-19-space-private.md` §1〜§10 | 確定 |
+| 2026-09-19 | 配置段階二 | P03 と対応クライアント（四系統） | Claude Code・Claude（Web の Custom Connector）・ChatGPT（Web の Developer mode→Plugins→Personal plugin。デスクトップ版のチャットにも出る。デスクトップ版の「MCP サーバー」設定は Codex 系統）・Grok（`grok.com/connectors` の Custom・認証なし）の四系統を対応とし、README の接続手順を書き分けた。三つの接続先で `list_papers` が ok・3.5.0・6748061・bundle_hash 一致。Gemini は CLI と Enterprise に経路あり・個人向けアプリは未確認 | 著者の実測 | 同 §10・README §5「公開版（Space）への接続」 | 確定 |
+| 2026-09-19 | 配置段階二 | ツール注釈（readOnlyHint ほか） | 実装しない。Gradio 6.27.0 の `list_tools` は `types.Tool` を `name`・`description`・`inputSchema`・`_meta` だけで組み立て、`annotations` を渡す経路がない（`gr.mcp.tool` の引数も `name`・`description`・`structured_output`・`_meta` だけ）。PyPI の最新 6.28.0（タグ `gradio@6.28.0`）と GitHub の main（`15ce43720d`・2026-09-19）の `gradio/mcp.py` にも `annotations` は0件。mcp 1.30.0 の `types.Tool` には `annotations: ToolAnnotations` 欄があるので、代替は二つ：①上流が対応した版に上げる（未対応。上流への要望は外部への投稿なので著者判断）／②登録後の `ListToolsRequest` の処理を包み、返す各 Tool に注釈を足す差し替え（技術的には可能。README 既知の制約10 の差し替えが一つ増え、起動後の確認と M01 の検査を足す）。どちらにするかは著者判断 | 指示「出せなければ理由と代替を報告して実装しない」 | `.venv/…/gradio/mcp.py` L838–871・L1616–1640／`mcp/types.py` `class ToolAnnotations`・`Tool.annotations`／`curl https://pypi.org/pypi/gradio/json` → 6.28.0／raw.githubusercontent.com の `gradio@6.28.0` と main の `gradio/mcp.py` を `grep -c annotations` → 0 | 提案 |

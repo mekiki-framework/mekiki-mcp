@@ -81,3 +81,24 @@ P02 は SPEC §7 では「M01〜M03 と E01 二問（R01・R14）」。今回は
 
 - 未対応の機能：なし（今回使ったのは `list_papers` と `verify_quote`（マーカー試験））。
 - 次にやること：P01 の休止からの復帰、P02 の残り（M01〜M03・R01・R14）。S04 の監査は Space 上では未実施（ローカル S03 のみ）。
+
+## 9. public 切り替え後（2026-09-19・著者の実測）
+
+| 項目 | 実測 | 備考 |
+|---|---|---|
+| `GET /` | 200 | |
+| `Origin` 付きの要求 | HF のエッジが `access-control-allow-origin` を付与（再確認）。サーバは付与しない | 開示済み（README §8 既知の制約 8） |
+| Claude Code（`--header` なし） | ✔ つながる | public になり、トークンのヘッダは不要 |
+| 転送の廃止 | `/gradio_api/mcp`（末尾 `/` なし）も転送なしで本体に届く | mekiki-mcp `0dca79f` → Space `b6b9de3` |
+| README 更新の Space コミット | `7484bb2`・`b6b9de3` | |
+
+## 10. P03（認証なしの接続先・2026-09-19・著者の実測）
+
+| 接続先 | 登録の手順（実測どおり） | 結果 |
+|---|---|---|
+| Claude（Web） | Custom Connector に URL を登録（サインインなし） | ok |
+| ChatGPT（Web） | Developer mode →Plugins →MCP URL を登録 →Personal plugin をインストール。デスクトップ版の「MCP サーバー」設定は Codex 系統で、通常のチャットには出ない。Web で入れればデスクトップ版のチャットにも出る | ok |
+| Grok | `grok.com/connectors` →新しいコネクタ →Custom・認証なし。チャットでは `@Mekiki Reader` で呼ぶ | ok |
+
+三つとも `list_papers` が `ok`・`corpus_version` 3.5.0・`source_commit` 6748061・`bundle_hash` が
+`data/bundle_manifest.json` の SHA-256（`40a09c5b…24d5`）と一致。

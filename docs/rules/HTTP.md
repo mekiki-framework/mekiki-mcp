@@ -2,8 +2,8 @@
 
 | 項目 | 値 |
 |---|---|
-| 規則ID・版 | HTTP-1.2.0（2026-09-27・SPEC v2.5.2・Codex⑤ の反映。1.1.0 に要求行の上限〔16 KiB・414〕と同名ヘッダ〔`Accept`・`If-None-Match`〕の結合を足した〔MINOR〕。あわせて、メソッドの大小を区別し〔`get`・`Post` は 405〕、早期拒否にも共通ヘッダを付け、本文の JSON キーのエラー文を固定文にし、空文字の説明を引数ごとに直した。配置前なので同じ 1.x の中の修正として扱う＝規則一覧の版運用）。HTTP-1.1.0（2026-09-27・SPEC v2.5.1。1.0.0 に verify の `language` を足した〔MINOR〕。あわせて、崩れた `%` を 400 にし〔1.0.0 はそのまま残していた〕、生の非 ASCII のバイト列が HTTP の層で断られる実測を記した）。HTTP-1.0.0（2026-09-27・SPEC v2.5 §2.12 の施工） |
-| 状態 | 確定（1.2.0 の各項は SPEC v2.5.2 が定めた。経路・応答・上限・`HEAD`／`OPTIONS` の 405・パス形の値の 404・未知／重複引数の 400・304 は SPEC v2.5.1 が採用。版の付け方〔崩れた `%` の 400 を 1.1.0 に含める。Space に配置された版を基準に判定するため〕と、Markdown の形・ETag の算式の細部は 2026-09-27 著者確定） |
+| 規則ID・版 | HTTP-1.3.0（2026-09-28・SPEC v2.5.4。HTML 表現〔ブラウザの `Accept` か `format=html`〕と、九経路で受ける引数 `format=json|markdown|html` を足した〔MINOR〕。あわせて、400・404 を表現に関わらず JSON にした〔1.2.0 までは Markdown を求められれば Markdown で返していた。配置前の修正〕）。HTTP-1.2.0（2026-09-27・SPEC v2.5.2・Codex⑤ の反映。1.1.0 に要求行の上限〔16 KiB・414〕と同名ヘッダ〔`Accept`・`If-None-Match`〕の結合を足した〔MINOR〕。あわせて、メソッドの大小を区別し〔`get`・`Post` は 405〕、早期拒否にも共通ヘッダを付け、本文の JSON キーのエラー文を固定文にし、空文字の説明を引数ごとに直した。配置前なので同じ 1.x の中の修正として扱う＝規則一覧の版運用）。HTTP-1.1.0（2026-09-27・SPEC v2.5.1。1.0.0 に verify の `language` を足した〔MINOR〕。あわせて、崩れた `%` を 400 にし〔1.0.0 はそのまま残していた〕、生の非 ASCII のバイト列が HTTP の層で断られる実測を記した）。HTTP-1.0.0（2026-09-27・SPEC v2.5 §2.12 の施工） |
+| 状態 | 確定（1.3.0 の HTML 表現・`format`・エスケープ・CSP・誤りの JSON は SPEC v2.5.4 が定めた。POST の HTML にリンクの代わりに注記を置くこと、Guard の早期拒否を素の文のままにすること、表現の選び方の細部〔q の降順・書かれた順で最初が text/html〕は施工判断〔DECISIONS〕。1.2.0 の各項は SPEC v2.5.2 が定めた。経路・応答・上限・`HEAD`／`OPTIONS` の 405・パス形の値の 404・未知／重複引数の 400・304 は SPEC v2.5.1 が採用。版の付け方〔崩れた `%` の 400 を 1.1.0 に含める。Space に配置された版を基準に判定するため〕と、Markdown の形・ETag の算式の細部は 2026-09-27 著者確定） |
 | 実装 | `mekiki_reader/http_api.py`（経路の表・引数の読み取り・Markdown・ETag。通信に触れない）と `app.py` の Guard（受付枠・本文・送信・ツールの呼び出し） |
 | 試験 | `tests/test_http.py`（H01〜H04。local と spaces の両モード）・`tests/test_safety.py::test_s01_allowlist_is_pinned` |
 
@@ -49,13 +49,21 @@ MCP の置き換えではなく追加。七ツールは MCP に登録したの�
 | 項目 | 内容 |
 |---|---|
 | 既定の表現 | JSON。本文は MCP のツールの応答と同じ文字列（JSON-1.0.0 の直列化・同じ schema・`status`・`results`・`candidates`・`limitations`・`corpus_version`・`source_commit`・`bundle_hash`・`schema_version`）。`Content-Type: application/json; charset=utf-8` |
-| 状態コード | `invalid_input` → 400、`unknown_id` → 404、ほか（`ok`・`quote_not_found`・`no_lexical_match`・`ledger_not_available`）→ 200。本文は同じ JSON |
-| 表現の選択 | `Accept` のどれかの項目が `text/markdown`（大小は区別しない・`q` が 0 でない）なら Markdown、ほか（省略・`*/*`・`application/json` など）は JSON。`Vary: Accept` |
+| 状態コード | `invalid_input` → 400、`unknown_id` → 404、ほか（`ok`・`quote_not_found`・`no_lexical_match`・`ledger_not_available`）→ 200。**400・404 は表現に関わらず JSON**（Markdown・HTML を求められても。1.3.0）。200 の状態（`ok` 以外も）は選んだ表現で返す |
+| 表現の選択 | 三つ：JSON（既定）・Markdown・HTML（1.3.0）。①引数 `format`（問い合わせ。値は `json`・`markdown`・`html` だけ・大小を区別・ほかの値や空・重複は 400）があればそれ。九経路すべてで受け、POST でも問い合わせに置ける引数は `format` だけ。②無ければ `Accept`（同名の行は結合）：`q` の降順・書かれた順で最初の項目が `text/html`（`q` が 0 でない）なら HTML（ブラウザの既定の `Accept`＝`text/html,application/xhtml+xml,…,*/*;q=0.8` が当たる）。そうでなければ、どこかに `text/markdown`（`q` が 0 でない）があれば Markdown、ほか（省略・`*/*`・`text/*`・`application/json` など。curl の既定の `*/*` を含む）は JSON。`Vary: Accept` |
 | 経路の一覧（`/api/v1/`） | `api_version`・`schema_version`・`corpus_version`・`source_commit`・`bundle_hash`・`accept`・`routes`（上の九本。メソッド・経路・ツール・引数・置き場）。JSON-1.0.0 で直列化 |
 | 通信層の誤り | 素の文（`text/plain`）：404 `not found`・405 `method not allowed`・413・408・414 `request target too long`・503 `busy`／`request timeout`・400（Host・長さの表明）。`status` には混ぜない。`/api` と `/api/…` の名前空間では、これらの早期拒否にも `_send_api` と同じ共通ヘッダ（`Cache-Control: no-store`・`Vary: Accept`・`X-Content-Type-Options: nosniff`。ETag なし）を付ける（1.2.0・Codex⑤ F3。実装は `http_api.common_headers` を両方で使う）。**HTTP の層（uvicorn の h11）が Guard より前に返す応答**（要求行・ヘッダの形の誤り、値の違う `Content-Length` の重複、生の非 ASCII のバイト、分割送信で約16 KiB を超えたヘッダ部など）は Guard を通らないので、この共通ヘッダは付かない |
 | 同名ヘッダ | `Accept`・`If-None-Match` は、同名の全行を順序どおりカンマで結合してから解釈する（一行で送ったのと同じ表現・本文・ETag・304。1.2.0・Codex⑤ F2・RFC 9110 §5.2）。`Host` と `Content-Length` の重複の拒否は従来どおり |
 | メソッド | HTTP 併設の経路では、ASGI のメソッド文字列を大文字化せずに表と照合する（`get`・`Get`・`post`・`Post` は 405 と正しい `Allow`。1.2.0・Codex⑤ F4）。MCP 側の振り分けは変えていない |
 | 要求行の上限 | 経路＋問い合わせ（`?` を含む。`raw_path` と `query_string` のバイト数）が **16,384 バイト（16 KiB）まで**。16,385 から Guard が 414（本文より先。POST も）。**上限は `/api/v1/` に限らず Guard が受ける全経路に掛ける**（SPEC v2.5.3。1.2.0 の中の配置前の修正。MCP・自己呼び出し・heartbeat・`/` も同じ。内部クライアントと MCP の要求行の最長は実測で queue/data 72・heartbeat 58・startup-events 26・queue/join 22・MCP 16・`/` 1 バイト（2026-09-27・両モード）で、上限に遠く及ばない。試験で固定）。HTTP の層が受ける長さは環境で変わる（Codex⑤ の実測で 260 KB が通った）ので、アプリ側で有界にした（1.2.0）。一括送信と分割送信の両方で境界を試験で固定。16 KiB を大きく超える分割送信は HTTP の層（h11）が先に 400 で断る（実測） |
+
+### HTML（ブラウザの `Accept` か `format=html`。1.3.0）
+
+- 中身は Markdown 表現と同じ：出典行（同じ文字列）・節とガイドの本文（`<pre>` に行のまま）・結果と候補の表（同じ列・同じセルの文。表のセルでも改行や `|` は変えない）・雛形・`status`・`limitations`。静的な HTML 一枚で、JavaScript・外部資産（画像・フォント・スタイルシート）・フォーム・イベント属性を置かない。スタイルは `<style>` の中だけ。
+- **ページに入る値は、利用者由来（引用文・検索語・ID・エラー文）もコーパス由来も、すべて一つのエスケープ関数 `http_api.esc`（`& < > " '`）を通す**。リンクの URL も属性に入れる前に通す。ページの中のタグは固定の組（`html`・`head`・`meta`・`title`・`style`・`body`・`main`・`h1`〜`h3`・`p`・`pre`・`hr`・`table`・`tr`・`th`・`td`・`ul`・`li`・`nav`・`a`・`code`）だけ。
+- ヘッダ：`Content-Type: text/html; charset=utf-8`・`Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'`・`Referrer-Policy: no-referrer`（と共通ヘッダ）。
+- 末尾に同じ内容の JSON と Markdown への link：受け取った経路と問い合わせのまま、`format=` だけを `json`／`markdown` に替えた相対 URL。**POST の結果**は URL で再現できない（`check` の文章を URL に載せない方針とも衝突する）ので、link の代わりに「同じ本文を `?format=json`／`?format=markdown` を付けて送り直す」注記を置く。
+- 400・404 は HTML にしない（JSON）。Guard の早期拒否（405・413・414 など）は従来どおり素の文。
 
 ### Markdown（`Accept: text/markdown`）
 
@@ -69,7 +77,7 @@ MCP の置き換えではなく追加。七ツールは MCP に登録したの�
 | 項目 | 内容 |
 |---|---|
 | GET の 200 | `Cache-Control: public, max-age=3600` と `ETag`（強い ETag） |
-| ETag | `sha256(JSON[規則の版, bundle_hash, 経路の名前, ツールに渡す引数（既定を埋めた後）, 表現])` の先頭32桁を `"` で囲む。**表現（JSON／Markdown）ごとに別の ETag**で、応答には必ず `Vary: Accept`（304・400・404 も）。同じ URL でも `Accept` が違えば ETag が違い、別の表現の ETag では 304 にならない。同じ意味の要求（`k` の省略と `k=5`・空の `paper_id` と省略）は同じ ETag |
+| ETag | `sha256(JSON[規則の版, bundle_hash, 経路の名前, ツールに渡す引数（既定を埋めた後）, 表現])` の先頭32桁を `"` で囲む。**表現（JSON／Markdown／HTML）ごとに別の ETag**（`format` で選んでも `Accept` で選んでも、同じ表現なら同じ ETag。規則の版が入るので 1.3.0 で全 ETag が変わった）で、応答には必ず `Vary: Accept`（304・400・404 も）。同じ URL でも `Accept` が違えば ETag が違い、別の表現の ETag では 304 にならない。同じ意味の要求（`k` の省略と `k=5`・空の `paper_id` と省略）は同じ ETag |
 | 条件付き GET | `If-None-Match` に同じ ETag（`W/` を外した弱い比較・`*` を含む）があれば 304（本文なし・同じ `ETag`・`Cache-Control`）。応答を作ってから比べる（400・404 になる要求には 304 を返さない）。304 は転送ではない |
 | POST・400・404 | `Cache-Control: no-store`・ETag なし |
 | そのほか | `X-Content-Type-Options: nosniff`。CORS の許可ヘッダは返さない（`Origin` 付きでも。Guard の既存の扱い） |

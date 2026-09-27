@@ -317,7 +317,7 @@ curl -s -G https://kenngotm-mekiki-reader.hf.space/api/v1/verify --data-urlencod
 
 - 状態コード：`invalid_input` は 400、`unknown_id` は 404（本文は同じ JSON）、ほかの `status` は 200。未知の経路は 404、
   経路に無いメソッドは 405（`HEAD`・`OPTIONS` も。メソッドは大小を区別し、`get`・`Post` も 405）。要求行（経路＋問い合わせ）は
-  16 KiB まで（超過は 414）。転送は返さない。上限・受付枠・本文の上限（64 KiB）・受信期限（10秒）・Host・
+  16 KiB まで（超過は 414。この上限は HTTP 併設に限らず、MCP を含む全経路に掛かる）。転送は返さない。上限・受付枠・本文の上限（64 KiB）・受信期限（10秒）・Host・
   `Origin` の扱いは MCP と同じ Guard のまま（受付枠は「そのほか」）。入力の上限はツールと同じ関数で検査する。
 - 自分の文章を検査する `check` は **POST のみ**（`curl … -d '{"text":"…"}'`）。利用者自身の文章を URL に載せないため
   （URL は前段のエッジのログに残りうる）。`verify` の GET は、引用が公開の原文なので許している（照合結果を URL で共有できる）。

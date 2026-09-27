@@ -55,7 +55,7 @@ MCP の置き換えではなく追加。七ツールは MCP に登録したの�
 | 通信層の誤り | 素の文（`text/plain`）：404 `not found`・405 `method not allowed`・413・408・414 `request target too long`・503 `busy`／`request timeout`・400（Host・長さの表明）。`status` には混ぜない。`/api` と `/api/…` の名前空間では、これらの早期拒否にも `_send_api` と同じ共通ヘッダ（`Cache-Control: no-store`・`Vary: Accept`・`X-Content-Type-Options: nosniff`。ETag なし）を付ける（1.2.0・Codex⑤ F3。実装は `http_api.common_headers` を両方で使う）。**HTTP の層（uvicorn の h11）が Guard より前に返す応答**（要求行・ヘッダの形の誤り、値の違う `Content-Length` の重複、生の非 ASCII のバイト、分割送信で約16 KiB を超えたヘッダ部など）は Guard を通らないので、この共通ヘッダは付かない |
 | 同名ヘッダ | `Accept`・`If-None-Match` は、同名の全行を順序どおりカンマで結合してから解釈する（一行で送ったのと同じ表現・本文・ETag・304。1.2.0・Codex⑤ F2・RFC 9110 §5.2）。`Host` と `Content-Length` の重複の拒否は従来どおり |
 | メソッド | HTTP 併設の経路では、ASGI のメソッド文字列を大文字化せずに表と照合する（`get`・`Get`・`post`・`Post` は 405 と正しい `Allow`。1.2.0・Codex⑤ F4）。MCP 側の振り分けは変えていない |
-| 要求行の上限 | 経路＋問い合わせ（`?` を含む。`raw_path` と `query_string` のバイト数）が **16,384 バイト（16 KiB）まで**。16,385 から Guard が 414（本文より先。POST も）。HTTP の層が受ける長さは環境で変わる（Codex⑤ の実測で 260 KB が通った）ので、アプリ側で有界にした（1.2.0）。一括送信と分割送信の両方で境界を試験で固定。16 KiB を大きく超える分割送信は HTTP の層（h11）が先に 400 で断る（実測） |
+| 要求行の上限 | 経路＋問い合わせ（`?` を含む。`raw_path` と `query_string` のバイト数）が **16,384 バイト（16 KiB）まで**。16,385 から Guard が 414（本文より先。POST も）。**上限は `/api/v1/` に限らず Guard が受ける全経路に掛ける**（SPEC v2.5.3。1.2.0 の中の配置前の修正。MCP・自己呼び出し・heartbeat・`/` も同じ。内部クライアントと MCP の要求行の最長は実測で queue/data 72・heartbeat 58・startup-events 26・queue/join 22・MCP 16・`/` 1 バイト（2026-09-27・両モード）で、上限に遠く及ばない。試験で固定）。HTTP の層が受ける長さは環境で変わる（Codex⑤ の実測で 260 KB が通った）ので、アプリ側で有界にした（1.2.0）。一括送信と分割送信の両方で境界を試験で固定。16 KiB を大きく超える分割送信は HTTP の層（h11）が先に 400 で断る（実測） |
 
 ### Markdown（`Accept: text/markdown`）
 

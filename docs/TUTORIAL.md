@@ -35,6 +35,18 @@ https://kenngotm-mekiki-reader.hf.space/gradio_api/mcp/
 
 > I have connected Mekiki Reader. First call get_reading_guide(part="all"). If your client can read the material (llms.txt, THEORY_MAP.md), read those too. In your answers from then on, write the text (with its source), the position the author recorded (the status is a label) and your own interpretation separately. If the author recorded no positioning for a claim, say so explicitly. Check quotations with verify_quote, put your own summaries through check_compressions once, and leave judgments about my own case to me.
 
+### MCP なしで / Without MCP
+
+同じ七ツールは素の HTTP（`/api/v1/`）でも呼べる。返る JSON は MCP と同じで、`Accept: text/markdown` を付けると出典行つきの Markdown になる。引用の照合なら：
+/ The same seven tools are also available over plain HTTP (`/api/v1/`). The JSON is the same as over MCP; with `Accept: text/markdown` you get Markdown with a source line. To check a quotation:
+
+```bash
+curl -s -G https://kenngotm-mekiki-reader.hf.space/api/v1/verify --data-urlencode "text=AI can assist play. It cannot take one's place in it."
+```
+
+経路の一覧は `GET /api/v1/`、詳しくは README §5「MCP なしで使う」。GET の引用文は URL に載る（前段のログに残りうる）。自分の文章を検査する `check` は POST だけ。
+/ The list of routes is at `GET /api/v1/`; see README §5 for details. A quotation sent by GET is part of the URL (it may stay in the front-end logs). The `check` route, for your own text, is POST only.
+
 ## 3. 最初に打つ四つ / Four things to try first
 
 ②〜④の「返るもの」は、下に挙げた実測の記録で確かめたもの（推定ではない）。モデルの文章はクライアントとモデルで変わるが、

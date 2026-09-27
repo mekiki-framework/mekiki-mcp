@@ -6,7 +6,9 @@
 """
 
 import asyncio
+import functools
 import http.client
+import json
 import logging
 import os
 import re
@@ -87,6 +89,7 @@ import gradio.queueing  # noqa: E402
 import gradio.routes  # noqa: E402
 import gradio.utils  # noqa: E402
 import gradio_client  # noqa: E402
+import anyio.to_thread  # noqa: E402  （Gradio の依存。HTTP 併設の呼び出しを、上流と同じ thread の枠で動かす）
 import mcp.types as mcp_types  # noqa: E402  （gradio[mcp] の依存。ツール注釈を足すために使う）
 import orjson  # noqa: E402  （Gradio の依存。queue/data と同じ直列化で大きさを測る）
 import uvicorn  # noqa: E402
@@ -97,6 +100,7 @@ from starlette.middleware import Middleware  # noqa: E402
 
 from mekiki_reader import corpus as C  # noqa: E402
 from mekiki_reader import guide_page  # noqa: E402
+from mekiki_reader import http_api as H  # noqa: E402
 from mekiki_reader import prompts as PR  # noqa: E402
 from mekiki_reader import schema as S  # noqa: E402
 from mekiki_reader import tools as T  # noqa: E402
@@ -243,7 +247,10 @@ MCP_ALIAS = "/gradio_api/mcp"  # 許可一覧で完全一致を見た後、ガ�
 # 断るのではなく順番待ちにする：即 503 にすると、正規の resources/read・prompts/get が
 # 上流のクライアントの中で失敗する（検算で確かめた。上流との互換）。
 # 本文を読み切ってから渡す経路。ここ以外は本文に触れない（触ると送り切らない要求で待たされる）。
-PRE_READ_PREFIXES = ("/gradio_api/mcp", "/gradio_api/queue/join")
+# HTTP 併設の経路（/api/v1/。SPEC v2.5 §2.12）も、本文があれば同じ上限と期限で読み切る。
+PRE_READ_PREFIXES = ("/gradio_api/mcp", "/gradio_api/queue/join", H.PREFIX)
+# HTTP 併設の九経路は `mekiki_reader/http_api.py` の ROUTES（型で固定・試験で固定）。許可一覧の三つ目の口で、
+# 経路の形が当たったものだけを通す（{paper_id}・{anchor} の値は Guard の中で調べる）。
 # ブラウザからの読み取りを許さない（Codex① の反映後の点検で見つかった面）。
 # Gradio は http://localhost:<任意のポート> などの Origin に Access-Control-Allow-Origin を返すため、
 # 同じ機械の別のローカルサーバが配ったページから応答を読めてしまう。Origin 付きの要求には
@@ -751,7 +758,7 @@ def _guard_middleware():
             if not message.get("more_body", False):
                 return
 
-    async def _reply(send, status: int, text: str, path: str = "", drain=None) -> None:
+    async def _reply(send, status: int, text: str, path: str = "", drain=None, headers=()) -> None:
         if drain is not None:
             await _drain(drain)
         safe = path.encode("unicode_escape").decode("ascii")[:200]  # 記録に制御文字を通さない
@@ -761,7 +768,8 @@ def _guard_middleware():
         print(f"blocked {status} {text}", file=sys.stderr, flush=True)
         # 断った要求の接続は閉じる（HTTP の層が先に受け取った本文も一緒に手放す。Codex③ 1 の検算）
         await send({"type": "http.response.start", "status": status,
-                    "headers": [(b"content-type", b"text/plain; charset=utf-8"), (b"connection", b"close")]})
+                    "headers": [(b"content-type", b"text/plain; charset=utf-8"), *headers,
+                                (b"connection", b"close")]})
         await send({"type": "http.response.body", "body": text.encode("utf-8")})
 
     def _note_redirect(path: str) -> None:
@@ -786,6 +794,47 @@ def _guard_middleware():
                                 (b"content-length", str(len(body)).encode("ascii")), *GUIDE_HEADERS,
                                 (b"connection", b"close")]})
         await send({"type": "http.response.body", "body": b"" if method == "HEAD" else body})
+
+    async def _serve_api(route: "H.Route", path_values: dict, scope, receive, send) -> None:
+        """HTTP 併設の一経路を答える（受付枠・送信期限・本文の読み切りは Guard が済ませてある）。
+
+        ツールは MCP と同じ入口の関数（list_papers など。中で実行枠を取る）を worker thread で呼ぶので、
+        同じ入力なら MCP と同じ JSON 文字列になる。実行枠が埋まっていれば 503（status には混ぜない）。
+        """
+        headers = {k.decode("latin-1").lower(): v.decode("latin-1", "replace") for k, v in scope.get("headers", [])}
+        markdown = H.wants_markdown(headers.get("accept"))
+        try:
+            if route.method == "POST":
+                if scope.get("query_string"):
+                    raise H.HttpInputError("POST の引数は本文の JSON で送る（問い合わせは使わない）")
+                body = b""
+                while True:  # Guard が読み切った本文（上限と期限は済み）
+                    message = await receive()
+                    if message["type"] != "http.request":
+                        return None
+                    body += message.get("body", b"")
+                    if not message.get("more_body", False):
+                        break
+                values = H.parse_body(body, route.params)
+            else:
+                values = H.parse_query(scope.get("query_string", b""), route.params)
+            name, args = _api_call(route, path_values, values)
+        except H.HttpInputError as exc:
+            return await _send_api(send, route, _api_invalid(str(exc)), None, None, markdown, None)
+        if name is None:
+            text = S.to_json(H.index(_api_meta()))
+        else:
+            try:
+                text = await anyio.to_thread.run_sync(functools.partial(API_TOOLS[name], *args))
+            except RuntimeError as exc:
+                if str(exc) != BUSY_MESSAGE:
+                    raise
+                return await _reply(send, 503, "busy", scope.get("path", ""))
+        tag = None
+        if route.method == "GET":
+            tag = H.etag(READER.corpus.bundle.bundle_hash, route.name, args, markdown)
+        return await _send_api(send, route, text, name, args, markdown, tag,
+                               headers.get("if-none-match"))
 
     async def _finish_read(send, read, path: str) -> None:
         if read[0] == "reply":
@@ -840,14 +889,24 @@ def _guard_middleware():
 
             if any(mark in path for mark in BLOCKED_MARKS):
                 return await _reply(send, 403, "route disabled", path, receive)
-            if path not in ALLOWED_EXACT and not path.startswith(ALLOWED_PREFIXES):
+            api = H.match(path)
+            if path not in ALLOWED_EXACT and not path.startswith(ALLOWED_PREFIXES) and api is None:
                 return await _reply(send, 404, "not found", path, receive)
-            if path == MCP_ALIAS:  # 転送せず MCP 本体として扱う（上流の 307 を出さない）
-                path = MCP_PATH
-                scope = dict(scope, path=path, raw_path=path.encode("ascii"))
-            send = _no_redirect(send, lambda p=path: _note_redirect(p))
-
             method = scope.get("method", "GET").upper()
+            if api is not None:  # HTTP 併設（SPEC v2.5 §2.12）：上流へは渡さない。転送もしない
+                if any(T._classify_id(v) == "invalid" for v in api[1].values()):  # パスや URL の形は登録値でない
+                    return await _reply(send, 404, "not found", path, receive)
+                allowed = H.methods(api[0])
+                if method not in allowed:
+                    return await _reply(send, 405, "method not allowed", path, receive,
+                                        headers=((b"allow", ", ".join(allowed).encode("ascii")),))
+                target = functools.partial(_serve_api, H.route(api[0], method), api[1])
+            else:
+                if path == MCP_ALIAS:  # 転送せず MCP 本体として扱う（上流の 307 を出さない）
+                    path = MCP_PATH
+                    scope = dict(scope, path=path, raw_path=path.encode("ascii"))
+                send = _no_redirect(send, lambda p=path: _note_redirect(p))
+                target = self.app
             if path.startswith("/gradio_api/mcp") and not _READY["mcp"]:  # 起動の確認が済むまで（Codex③ 5）
                 return await _reply(send, 503, "starting", path, receive)
             takes_body = (declared is not None or chunked or method in BODY_METHODS)
@@ -871,7 +930,7 @@ def _guard_middleware():
                 if kind == "queue_data" and session is not None:
                     _COLLECTING[session] = _COLLECTING.get(session, 0) + 1
                 try:
-                    return await self.app(scope, receive, send)
+                    return await self.app(scope, receive, send)  # 長時間接続は上流の経路だけ（API は当たらない）
                 finally:
                     _STREAMS["open"][kind] -= 1
                     if internal:
@@ -903,7 +962,7 @@ def _guard_middleware():
                         if read[0] != "ok":
                             return await _finish_read(tracked, read, path)
                         forward = read[1]
-                    return await self.app(scope, forward, tracked)
+                    return await target(scope, forward, tracked)
             except TimeoutError:  # 期限までに送り終わらない（受け取りを止めた相手など）。枠を返して切る
                 _ADMISSION[admission]["expired"] += 1
                 if not started:
@@ -917,6 +976,71 @@ def _guard_middleware():
                 _release(admission)
 
     return Guard
+
+
+def _api_meta() -> dict:
+    return {"schema_version": S.SCHEMA_VERSION, "corpus_version": C.CORPUS_VERSION,
+            "source_commit": C.CORPUS_COMMIT, "bundle_hash": READER.corpus.bundle.bundle_hash}
+
+
+def _api_invalid(reason: str) -> str:
+    """HTTP の形の誤り（引数の名前・重複・文字コード・本文）を、ツールと同じ形の invalid_input で返す。"""
+    return S.to_json(S.envelope(READER.corpus, "invalid_input",
+                                limitations=("INPUT: " + reason, "RULES: " + H.HTTP_VERSION)))
+
+
+def _api_call(route: "H.Route", path_values: dict, values: dict) -> "tuple[str | None, tuple]":
+    """経路と引数から、呼ぶ入口の名前と引数（既定を埋めたもの）。引数の意味は MCP の入口と同じ（空文字＝省略）。"""
+    get = values.get
+    if route.name == "index":
+        return None, ()
+    if route.name == "papers":
+        return "list_papers", ()
+    if route.name == "section":
+        return "get_section", (path_values["paper_id"], path_values["anchor"], get("language", ""))
+    if route.name == "search":
+        return "search_passages", (get("q", ""), get("paper_id", ""), H.parse_k(get("k")))
+    if route.name == "claims":
+        return "get_claim_record", (get("claim_id", ""), get("query", ""))
+    if route.name == "guide":
+        return "get_reading_guide", (get("part", "all"),)
+    if route.name == "verify":
+        return "verify_quote", (get("text", ""), get("paper_id", ""), "")
+    if route.name == "check":
+        return "check_compressions", (get("text", ""),)
+    raise KeyError(route.name)
+
+
+async def _send_api(send, route: "H.Route", text: str, name: "str | None", args, markdown: bool,
+                    tag: "str | None", if_none_match: "str | None" = None) -> None:
+    """応答を送る。JSON の本文は MCP と同じ文字列。Markdown は同じ外枠から組み立てる。
+
+    GET の 200 には Cache-Control と ETag（If-None-Match が一致すれば 304・本文なし）。POST と 400・404 は no-store。
+    """
+    env = json.loads(text)
+    index = "routes" in env  # 経路の一覧（ツールの外枠ではない）
+    code = 200 if index else H.http_status(env["status"])
+    if markdown:
+        body_text = H.render_index_markdown(env) if index else H.render_markdown(env, name)
+        ctype = H.MARKDOWN_TYPE
+    else:
+        body_text, ctype = text, H.JSON_TYPE
+    headers = [(b"vary", b"Accept"), (b"x-content-type-options", b"nosniff")]
+    cacheable = route.method == "GET" and code == 200 and tag is not None
+    if cacheable:
+        headers += [(b"cache-control", H.CACHE_GET.encode("ascii")), (b"etag", tag.encode("ascii"))]
+    else:
+        headers.append((b"cache-control", H.CACHE_NONE.encode("ascii")))
+    if cacheable and H.not_modified(if_none_match, tag):
+        await send({"type": "http.response.start", "status": 304, "headers": headers})
+        await send({"type": "http.response.body", "body": b""})
+        return None
+    body = body_text.encode("utf-8")
+    headers = [(b"content-type", ctype.encode("ascii")), (b"content-length", str(len(body)).encode("ascii")),
+               *headers]
+    await send({"type": "http.response.start", "status": code, "headers": headers})
+    await send({"type": "http.response.body", "body": body})
+    return None
 
 
 def read_port(raw: str | None, mode: str | None = None) -> int:
@@ -1046,6 +1170,7 @@ def get_reading_guide(part: str = "all") -> str:
 TOOLS = (list_papers, get_section, search_passages, get_claim_record,
          verify_quote, check_compressions, get_reading_guide)
 TOOL_NAMES = tuple(fn.__name__ for fn in TOOLS)
+API_TOOLS = {fn.__name__: fn for fn in TOOLS}  # HTTP 併設が呼ぶ入口（MCP に登録したものと同じ関数）
 
 # ---- ツール注釈（上流の差し替え⑦） ----
 # 七ツールはどれも読むだけで、同じ入力には同じ結果を返し、外の世界に触れない（SPEC §2.2〜§2.4）。

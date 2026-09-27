@@ -818,12 +818,13 @@ def _guard_middleware():
         同じ入力なら MCP と同じ JSON 文字列になる。実行枠が埋まっていれば 503（status には混ぜない）。
         """
         raw_headers = scope.get("headers", [])
+        query_string = scope.get("query_string", b"")
         # 同名の Accept・If-None-Match は全行を順序どおり結合して解釈する（Codex⑤ F2。最後の一行に潰さない）
-        markdown = H.wants_markdown(H.joined(raw_headers, b"accept"))
+        accept = H.joined(raw_headers, b"accept")
         try:
+            # format は九経路とも問い合わせで受け、Accept より優先（HTTP-1.3.0）。POST の問い合わせは format だけ
+            fmt_only = H.parse_query(query_string, (H.FORMAT,)) if route.method == "POST" else None
             if route.method == "POST":
-                if scope.get("query_string"):
-                    raise H.HttpInputError("POST の引数は本文の JSON で送る（問い合わせは使わない）")
                 body = b""
                 while True:  # Guard が読み切った本文（上限と期限は済み）
                     message = await receive()
@@ -833,11 +834,14 @@ def _guard_middleware():
                     if not message.get("more_body", False):
                         break
                 values = H.parse_body(body, route.params)
+                fmt = fmt_only.get(H.FORMAT)
             else:
-                values = H.parse_query(scope.get("query_string", b""), route.params)
+                values = H.parse_query(query_string, (*route.params, H.FORMAT))
+                fmt = values.pop(H.FORMAT, None)
+            representation = H.choose(accept, fmt)
             name, args = _api_call(route, path_values, values)
-        except H.HttpInputError as exc:
-            return await _send_api(send, route, _api_invalid(str(exc)), None, None, markdown, None)
+        except H.HttpInputError as exc:  # 誤りは表現に関わらず JSON（HTTP-1.3.0）
+            return await _send_api(send, route, _api_invalid(str(exc)), None, None, "json", None)
         if name is None:
             text = S.to_json(H.index(_api_meta()))
         else:
@@ -849,9 +853,10 @@ def _guard_middleware():
                 return await _reply(send, 503, "busy", scope.get("path", ""))
         tag = None
         if route.method == "GET":
-            tag = H.etag(READER.corpus.bundle.bundle_hash, route.name, args, markdown)
-        return await _send_api(send, route, text, name, args, markdown, tag,
-                               H.joined(raw_headers, b"if-none-match"))
+            tag = H.etag(READER.corpus.bundle.bundle_hash, route.name, args, representation)
+        links = H.alternate_links(scope.get("raw_path") or scope.get("path", "").encode("utf-8"), query_string)
+        return await _send_api(send, route, text, name, args, representation, tag,
+                               H.joined(raw_headers, b"if-none-match"), links)
 
     async def _finish_read(send, read, path: str) -> None:
         if read[0] == "reply":
@@ -1035,22 +1040,34 @@ def _api_call(route: "H.Route", path_values: dict, values: dict) -> "tuple[str |
     raise KeyError(route.name)
 
 
-async def _send_api(send, route: "H.Route", text: str, name: "str | None", args, markdown: bool,
-                    tag: "str | None", if_none_match: "str | None" = None) -> None:
-    """応答を送る。JSON の本文は MCP と同じ文字列。Markdown は同じ外枠から組み立てる。
+async def _send_api(send, route: "H.Route", text: str, name: "str | None", args, representation: str,
+                    tag: "str | None", if_none_match: "str | None" = None, links=None) -> None:
+    """応答を送る。JSON の本文は MCP と同じ文字列。Markdown と HTML は同じ外枠から組み立てる。
 
+    400・404（invalid_input・unknown_id）は表現に関わらず JSON（HTTP-1.3.0）。
     GET の 200 には Cache-Control と ETag（If-None-Match が一致すれば 304・本文なし）。POST と 400・404 は no-store。
+    HTML には CSP と Referrer-Policy を付ける。
     """
     env = json.loads(text)
     index = "routes" in env  # 経路の一覧（ツールの外枠ではない）
     code = 200 if index else H.http_status(env["status"])
-    if markdown:
+    if code != 200:
+        representation = "json"
+    extra = []
+    if representation == "markdown":
         body_text = H.render_index_markdown(env) if index else H.render_markdown(env, name)
         ctype = H.MARKDOWN_TYPE
+    elif representation == "html":
+        post = route.method == "POST"
+        page_links = None if post else links
+        body_text = (H.render_index_html(env, page_links) if index
+                     else H.render_html(env, name, page_links, post_note=post))
+        ctype = H.HTML_TYPE
+        extra = list(H.HTML_HEADERS)
     else:
         body_text, ctype = text, H.JSON_TYPE
     cacheable = route.method == "GET" and code == 200 and tag is not None
-    headers = H.common_headers(H.CACHE_GET if cacheable else H.CACHE_NONE)  # 早期拒否と共通（Codex⑤ F3）
+    headers = H.common_headers(H.CACHE_GET if cacheable else H.CACHE_NONE) + extra  # 早期拒否と共通（Codex⑤ F3）
     if cacheable:
         headers.append((b"etag", tag.encode("ascii")))
     if cacheable and H.not_modified(if_none_match, tag):

@@ -44,6 +44,8 @@ https://kenngotm-mekiki-reader.hf.space/gradio_api/mcp/
 curl -s -G https://kenngotm-mekiki-reader.hf.space/api/v1/verify --data-urlencode "text=AI can assist play. It cannot take one's place in it."
 ```
 
+ブラウザで開くとそのまま読める（HTML）。`?format=markdown` で Markdown。/ Open it in a browser and it reads as a page (HTML); add `?format=markdown` for Markdown.
+
 経路の一覧は `GET /api/v1/`、詳しくは README §5「MCP なしで使う」。GET の引用文は URL に載る（前段のログに残りうる）。自分の文章を検査する `check` は POST だけ。
 / The list of routes is at `GET /api/v1/`; see README §5 for details. A quotation sent by GET is part of the URL (it may stay in the front-end logs). The `check` route, for your own text, is POST only.
 

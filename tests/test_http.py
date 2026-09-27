@@ -99,7 +99,7 @@ NINE = (("GET", "/api/v1/"), ("GET", "/api/v1/papers"), ("GET", "/api/v1/papers/
 def test_h_routes_are_pinned():
     assert tuple((r.method, r.path) for r in H.ROUTES) == NINE
     assert {r.tool for r in H.ROUTES} - {None} == set(app.TOOL_NAMES)  # 七ツールがどれも HTTP から呼べる
-    assert H.HTTP_VERSION == "HTTP-1.2.0"
+    assert H.HTTP_VERSION == "HTTP-1.3.0"
     assert app.T.LIMITS_VERSION == "LIMITS-3.3.0"
     assert H.PREFIX in app.PRE_READ_PREFIXES
     assert app._admission_kind("POST", "/api/v1/check") == "other"  # 受付枠は「その他」
@@ -319,11 +319,15 @@ def test_h02_tables_for_search_verify_check_claims(api):
 
 
 def test_h02_non_ok_and_negotiation(api):
+    # 400・404 は表現に関わらず JSON（HTTP-1.3.0。1.2.0 までは Markdown で返していた）
     status, headers, data = api.call("GET", "/api/v1/papers/T9/sections/x", headers=MD)
-    text = data.decode("utf-8")
-    assert status == 404 and "status=unknown_id" in text.split("\n", 1)[0] and "\ncandidates:\n" in text
-    status, _h, data = api.call("GET", "/api/v1/search?q=answerability&k=0", headers=MD)
-    assert status == 400 and "status: invalid_input" in data.decode("utf-8")
+    assert status == 404 and headers["content-type"] == "application/json; charset=utf-8"
+    assert _env(data)["status"] == "unknown_id"
+    status, headers, data = api.call("GET", "/api/v1/search?q=answerability&k=0", headers=MD)
+    assert status == 400 and _env(data)["status"] == "invalid_input" and headers["content-type"].startswith("application/json")
+    # ok 以外でも 200 の状態（no_lexical_match など）は Markdown の表の文書
+    status, headers, data = api.call("GET", "/api/v1/search?q=zzqxjvw", headers=MD)
+    assert status == 200 and "status=no_lexical_match" in data.decode("utf-8").split("\n", 1)[0]
     # 交渉：text/markdown が q>0 で含まれれば Markdown、ほかは JSON
     for accept, markdown in (("text/markdown", True), ("application/json, text/markdown;q=0.5", True),
                              ("text/markdown;q=0", False), ("*/*", False), ("application/json", False),
@@ -660,9 +664,8 @@ def test_h03_json_key_errors_are_fixed_and_utf8(api):
                 assert status == 400, (path, body, status)
                 text = data.decode("utf-8")  # 厳格に読めること（孤立サロゲートが出ない）
                 assert "\\ud8" not in text.lower() and "\\udc" not in text.lower() and "zz" not in text
-                if accept:
-                    assert headers["content-type"].startswith("text/markdown") and "status: invalid_input" in text
-                else:
+                assert headers["content-type"].startswith("application/json")  # 誤りは表現に関わらず JSON
+                if True:
                     env = _env(data)
                     assert env["status"] == "invalid_input", (path, body)
                     assert any(lim in ("INPUT: 本文の JSON に重複したキーがある", "INPUT: 本文の JSON の値は文字列か null")
@@ -925,3 +928,192 @@ def test_h03_request_target_limit_on_every_route(tmp_path, mode):
     assert not over, over
     assert audit["guard_counts"].get("414", audit["guard_counts"].get(414, 0)) >= 10
     print(f"要求行の最長（{mode}）：", seen)
+
+
+# ---------------------------------------------------------------- H02：HTML 表現と format（HTTP-1.3.0）
+
+import html as _html  # noqa: E402
+import re as _re  # noqa: E402
+
+BROWSER = {"Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"}
+CURL = {"Accept": "*/*"}
+CSP = "default-src 'none'; style-src 'unsafe-inline'"
+HOSTILE = ("<script>alert(1)</script>", '"onerror=alert(1)', "</pre><b>x</b>", "a&b&amp;c")
+ALLOWED_TAGS = {"!doctype", "html", "head", "meta", "title", "style", "body", "main", "h1", "h2", "h3", "p", "pre",
+                "hr", "table", "tr", "th", "td", "ul", "li", "nav", "a", "code"}
+
+
+def _assert_safe_html(page: str, where) -> None:
+    """ページの中のタグはすべて固定の組のものだけで、イベント属性も script も無い。"""
+    tags = {m.group(1).lower() for m in _re.finditer(r"</?([!A-Za-z][A-Za-z0-9]*)", page)}
+    assert tags <= ALLOWED_TAGS, (where, tags - ALLOWED_TAGS)
+    assert not _re.search(r"<[^>]*\son[a-z]+\s*=", page, _re.I), where
+    assert "<script" not in page.lower() and '"onerror' not in page, where
+    assert page.count("<pre>") == page.count("</pre>"), where
+    for tag in _re.findall(r"<a [^>]*>", page):
+        assert _re.fullmatch(r'<a href="[^"<>]*">', tag), (where, tag)
+
+
+# (経路, 入力位置, 要求を作る関数(payload, raw)) 。raw=True は百分率符号化せずに URL へ入れる
+def _q(v: str, raw: bool) -> str:
+    return v if raw else urllib.parse.quote(v, safe="")
+
+
+POSITIONS = (
+    ("GET /api/v1/", "format", lambda v, raw: ("GET", "/api/v1/?format=" + _q(v, raw), None)),
+    ("GET /api/v1/papers", "format", lambda v, raw: ("GET", "/api/v1/papers?format=" + _q(v, raw), None)),
+    ("GET section", "anchor", lambda v, raw: ("GET", "/api/v1/papers/T1/sections/" + _q(v, False), None)),
+    ("GET section", "paper_id", lambda v, raw: ("GET", "/api/v1/papers/" + _q(v, False) + "/sections/t1-2", None)),
+    ("GET section", "language", lambda v, raw: ("GET", "/api/v1/papers/T4/sections/t4-2-4?language=" + _q(v, raw), None)),
+    ("GET search", "q", lambda v, raw: ("GET", "/api/v1/search?q=" + _q(v, raw), None)),
+    ("GET search", "paper_id", lambda v, raw: ("GET", "/api/v1/search?q=answerability&paper_id=" + _q(v, raw), None)),
+    ("GET claims", "claim_id", lambda v, raw: ("GET", "/api/v1/claims?claim_id=" + _q(v, raw), None)),
+    ("GET claims", "query", lambda v, raw: ("GET", "/api/v1/claims?query=" + _q(v, raw), None)),
+    ("GET guide", "part", lambda v, raw: ("GET", "/api/v1/guide?part=" + _q(v, raw), None)),
+    ("GET verify", "text", lambda v, raw: ("GET", "/api/v1/verify?text=" + _q(v + "-quote-text", raw), None)),
+    ("GET verify", "paper_id", lambda v, raw: ("GET", "/api/v1/verify?text=" + _q(T5_QUOTE, False) + "&paper_id=" + _q(v, raw), None)),
+    ("POST verify", "text", lambda v, raw: ("POST", "/api/v1/verify", json.dumps({"text": v + " quote text"}).encode())),
+    ("POST verify", "paper_id", lambda v, raw: ("POST", "/api/v1/verify", json.dumps({"text": T5_QUOTE, "paper_id": v}).encode())),
+    ("POST check", "text", lambda v, raw: ("POST", "/api/v1/check", json.dumps({"text": v}).encode())),
+)
+ECHOED = {("GET search", "q"), ("GET claims", "query")}
+# 入力が QUERY: の行に断片として出るときのエスケープ後の形（`(`・`)`・`"` は検索の区切り文字で断片から落ちる）
+ESCAPED_MARK = {"<script>alert(1)</script>": "&lt;script&gt;alert", '"onerror=alert(1)': "onerror=alert",
+                "</pre><b>x</b>": "&lt;/pre&gt;&lt;b&gt;x&lt;/b&gt;", "a&b&amp;c": "a&amp;b&amp;amp"}  # `;` も区切り
+
+
+def test_h02_html_escapes_user_strings(api):
+    """九経路×入力位置に <script>・"onerror=・</pre>・& を入れる。HTML になる応答では文字のままエスケープされ、
+    誤りの応答は表現に関わらず JSON（か Guard の素の文）。5xx は出ない。"""
+    seen_routes = set()
+    for route, position, build in POSITIONS:
+        for payload in HOSTILE:
+            for raw in (False, True):
+                if raw and ("&" in payload or position in ("anchor", "paper_id") and route == "GET section"
+                            or build(payload, raw)[0] == "POST"):
+                    continue  # 生の & は区切りになる・経路の値と本文は符号化の対象外
+                for how in ("format", "accept"):
+                    method, path, body = build(payload, raw)
+                    if how == "format" and position != "format":
+                        path += ("&" if "?" in path else "?") + "format=html"
+                    headers = BROWSER if how == "accept" else {}
+                    status, h, data = api.call(method, path, body, headers)
+                    where = (route, position, payload, raw, how, status)
+                    assert status < 500, where
+                    text = data.decode("utf-8")
+                    ctype = h.get("content-type", "")
+                    if ctype.startswith("text/html"):
+                        assert status == 200, where
+                        _assert_safe_html(text, where)
+                        assert h["content-security-policy"] == CSP and h["referrer-policy"] == "no-referrer"
+                        if (route, position) in ECHOED:  # 断片（区切り文字で分かれる）がエスケープされて文字のまま出る
+                            assert ESCAPED_MARK[payload] in text, where
+                    else:
+                        assert status >= 400 or position == "format", where
+                        assert ctype.startswith(("application/json", "text/plain")), where
+                        if ctype.startswith("application/json"):
+                            assert _env(data)["status"] in ("invalid_input", "unknown_id"), where
+                        assert payload not in text, where  # 誤りの文に入力を写さない
+                    if (route, position) in ECHOED:
+                        assert ctype.startswith("text/html"), where
+                    seen_routes.add(route)
+    assert len({r for r, *_ in POSITIONS}) == len(seen_routes) == 9 - 1 + 1  # 八つの経路名（verify は GET と POST）
+
+
+def test_h02_html_carries_the_same_content(api):
+    env = _env(api.get("/api/v1/papers/T5/sections/t5-5-4")[2])
+    r = env["results"][0]
+    for how in ({"headers": BROWSER, "path": "/api/v1/papers/T5/sections/t5-5-4"},
+                {"headers": {}, "path": "/api/v1/papers/T5/sections/t5-5-4?format=html"}):
+        status, h, data = api.call("GET", how["path"], headers=how["headers"])
+        page = data.decode("utf-8")
+        assert status == 200 and h["content-type"] == "text/html; charset=utf-8"
+        assert h["content-security-policy"] == CSP and h["referrer-policy"] == "no-referrer"
+        assert h["vary"] == "Accept" and h["cache-control"] == "public, max-age=3600" and h["x-content-type-options"] == "nosniff"
+        _assert_safe_html(page, how["path"])
+        source = _re.search(r'<p class="source">(.*?)</p>', page).group(1)
+        assert _html.unescape(source) == H.source_line(r, env)  # 出典行は Markdown と同じ
+        pre = _re.search(r"<pre>(.*?)</pre>", page, _re.S).group(1)
+        assert _html.unescape(pre) == r["payload"]["text"].rstrip("\n")  # 本文は行のまま
+        links = dict((rep, _html.unescape(url)) for url, rep in _re.findall(r'<a href="([^"]*)">(JSON|Markdown)</a>', page))
+        assert set(links) == {"JSON", "Markdown"}
+        assert api.call("GET", links["JSON"])[2] == api.get("/api/v1/papers/T5/sections/t5-5-4")[2]
+        assert api.call("GET", links["Markdown"])[2] == api.call("GET", "/api/v1/papers/T5/sections/t5-5-4", headers=MD)[2]
+    # 表の経路：Markdown と同じ行数・同じ出典列
+    md = api.call("GET", "/api/v1/search?q=answerability&k=3", headers=MD)[2].decode("utf-8")
+    page = api.call("GET", "/api/v1/search?q=answerability&k=3&format=html")[2].decode("utf-8")
+    md_rows = [ln for ln in md.splitlines() if ln.startswith("| ") and not ln.startswith("| # ")]
+    assert page.count("<tr><td>") == len(md_rows) == 3
+    assert _html.unescape(_re.search(r'<p class="source">(.*?)</p>', page).group(1)) == md.split("\n", 1)[0]
+    assert "q=answerability&amp;k=3&amp;format=json" in page  # ほかの項目はそのまま・format だけ替える
+    # 一覧と POST（POST は URL で再現できないのでリンクの代わりに注記）
+    page = api.call("GET", "/api/v1/?format=html")[2].decode("utf-8")
+    _assert_safe_html(page, "index")
+    assert all(f"<td>{_html.escape(p)}</td>" in page for _m, p in NINE)
+    status, h, data = api.call("POST", "/api/v1/check?format=html", json.dumps({"text": "AIは遊べない"}).encode())
+    page = data.decode("utf-8")
+    assert status == 200 and h["content-type"].startswith("text/html") and h["cache-control"] == "no-store"
+    assert "<a href" not in page and "?format=json" in page and "P30" in page
+    _assert_safe_html(page, "check")
+
+
+def test_h02_format_wins_over_accept(api):
+    path = "/api/v1/papers/T5/sections/t5-5-4"
+    cases = (
+        ({}, None, "application/json"), (CURL, None, "application/json"), (BROWSER, None, "text/html"),
+        (MD, "html", "text/html"), (BROWSER, "json", "application/json"), (BROWSER, "markdown", "text/markdown"),
+        ({"Accept": "text/html"}, "markdown", "text/markdown"), (CURL, "html", "text/html"),
+        ({"Accept": "text/html;q=0.5, text/markdown"}, None, "text/markdown"),
+        ({"Accept": "application/json, text/html"}, None, "application/json"),
+        ({"Accept": "text/html;q=0"}, None, "application/json"),
+        ({"Accept": "text/*"}, None, "application/json"),
+    )
+    tags = {}
+    for headers, fmt, want in cases:
+        status, h, _ = api.call("GET", path + (f"?format={fmt}" if fmt else ""), headers=headers)
+        assert status == 200 and h["content-type"].startswith(want), (headers, fmt, h["content-type"])
+        tags.setdefault(want, set()).add(h["etag"])
+    assert all(len(v) == 1 for v in tags.values()) and len({next(iter(v)) for v in tags.values()}) == 3  # 表現ごと
+    html_tag = next(iter(tags["text/html"]))
+    status, h, data = api.call("GET", path + "?format=html", headers={"If-None-Match": html_tag})
+    assert status == 304 and data == b""
+    assert api.call("GET", path + "?format=json", headers={"If-None-Match": html_tag})[0] == 200
+    for bad in ("HTML", "", "xml", "html&format=html", "json%00"):
+        status, h, data = api.call("GET", path + "?format=" + bad)
+        assert status == 400 and h["content-type"].startswith("application/json"), bad
+        assert _env(data)["status"] == "invalid_input"
+    # POST の問い合わせに置けるのは format だけ
+    assert api.call("POST", "/api/v1/verify?format=markdown", json.dumps({"text": T5_QUOTE}).encode())[1][
+        "content-type"].startswith("text/markdown")
+    assert api.call("POST", "/api/v1/check?format=html&text=x", b'{"text":"a"}')[0] == 400
+    # 誤りは表現に関わらず JSON
+    for req in (("GET", "/api/v1/papers/T9/sections/x?format=html", None, BROWSER),
+                ("GET", "/api/v1/search?q=answerability&k=0&format=markdown", None, {}),
+                ("POST", "/api/v1/check?format=html", b"not json", BROWSER)):
+        status, h, data = api.call(*req)
+        assert status in (400, 404) and h["content-type"].startswith("application/json"), req
+        assert "content-security-policy" not in h
+
+
+def test_h03_known_input_kinds_with_html(api):
+    """規則12：既知の入力の種類を、HTML 表現（format=html とブラウザの Accept）で九経路に当てる。5xx なし・UTF-8。"""
+    for method, path in NINE:
+        concrete = path.replace("{paper_id}", "T1").replace("{anchor}", "t1-2")
+        name = H.match(concrete)[0]
+        params = H.route(name, method).params
+        first = params[0] if params else "x"
+        for headers, suffix in ((BROWSER, ""), ({}, "format=html")):
+            if method == "GET":
+                reqs = [(concrete + "?" + "&".join(x for x in (q, suffix) if x), None)
+                        for q in (f"{first}=%ED%A0%80abcdefghij", f"{first}=%G1", f"{first}=a&{first}=b",
+                                  f"{first}=" + "a" * 3000, "")]
+            else:
+                reqs = [(concrete + ("?" + suffix if suffix else ""), b)
+                        for b in (b'{"text":"\\ud800abcdefghijk"}', b'{"\\ud800":1,"\\ud800":2}', b"\xff\xfe",
+                                  json.dumps({"text": "a" * 3000}).encode(), b'{"text":"<script>"}')]
+            for target, body in reqs:
+                status, h, data = api.call(method, target, body, headers)
+                assert status < 500, (method, target[:60], status)
+                data.decode("utf-8")
+                if h.get("content-type", "").startswith("text/html"):
+                    _assert_safe_html(data.decode("utf-8"), target[:60])

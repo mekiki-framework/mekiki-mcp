@@ -1,6 +1,6 @@
-# SPEC.md — Mekiki Reader MCP v2.4.5（読み取り専用・根拠つき読解窓口）
+# SPEC.md — Mekiki Reader MCP v2.5（読み取り専用・根拠つき読解窓口）
 
-改版：v1（2026-09-18）→ v2（2026-09-18・ChatGPT Pro独立検証A01〜A08・B01〜B03を反映）→ v2.1（2026-09-18・段階0の現物確認 Q01〜Q95 と回答票 `docs/stage0_answers.md` を反映）→ v2.2（2026-09-18・施工段階2〜4の実測と確定した規則・表を反映）→ v2.3（2026-09-18・Codex①②の反映、配置段階一の検収 E01/E02、規則改版を反映。配置段階一は完成）→ v2.3.1（2026-09-19・v2.3 と現物の照合結果、開放経路の最終一覧、旧 SSE の閉鎖、長時間接続の上限、内部クライアントの単一化、LIMITS-2.0.0、版運用の境界を反映）→ **v2.4（2026-09-19・Codex③の反映と、配置段階二の方針＝配置モード〔local／spaces〕・Docker Space・Host と bind・環境変数の整理・ログの開示・公開前後の検収を追加。`docs/spaces_facts.md` に基づく）→ **v2.4.1（2026-09-19・施工照合の二点＝一式に `.dockerignore`、README の YAML 記述の更新。P03 の順序）→ **v2.4.2（2026-09-19・Codex④の反映＝spaces のポート固定・LIMITS-3.1.0・E01 の完了記述）→ **v2.4.3（2026-09-19・Space での S04・P01・P02 の実測を反映＝エッジの CORS 付与は開示で扱う、許可外 Host はエッジで止まる、P01 は再起動の実測で代替）→ **v2.4.4（2026-09-19・公開直前の施工を反映＝転送の全廃・案内ページ・ツール注釈・mekiki_start・照合の空白扱い・P03 五系統・GitHub と Space の公開）→ **v2.4.5（2026-09-19・施工照合の四点＝Gemini の照合範囲・系統の数え方・NORM-1.2.0・許可外 Host の応答）**。骨格（読み取り専用・公開版固定・サーバ内LLMなし・Gradio・ローカル先行）は不変。v2.1〜v2.3.1 の変更は §12 に列挙。
+改版：v1（2026-09-18）→ v2（2026-09-18・ChatGPT Pro独立検証A01〜A08・B01〜B03を反映）→ v2.1（2026-09-18・段階0の現物確認 Q01〜Q95 と回答票 `docs/stage0_answers.md` を反映）→ v2.2（2026-09-18・施工段階2〜4の実測と確定した規則・表を反映）→ v2.3（2026-09-18・Codex①②の反映、配置段階一の検収 E01/E02、規則改版を反映。配置段階一は完成）→ v2.3.1（2026-09-19・v2.3 と現物の照合結果、開放経路の最終一覧、旧 SSE の閉鎖、長時間接続の上限、内部クライアントの単一化、LIMITS-2.0.0、版運用の境界を反映）→ **v2.4（2026-09-19・Codex③の反映と、配置段階二の方針＝配置モード〔local／spaces〕・Docker Space・Host と bind・環境変数の整理・ログの開示・公開前後の検収を追加。`docs/spaces_facts.md` に基づく）→ **v2.4.1（2026-09-19・施工照合の二点＝一式に `.dockerignore`、README の YAML 記述の更新。P03 の順序）→ **v2.4.2（2026-09-19・Codex④の反映＝spaces のポート固定・LIMITS-3.1.0・E01 の完了記述）→ **v2.4.3（2026-09-19・Space での S04・P01・P02 の実測を反映＝エッジの CORS 付与は開示で扱う、許可外 Host はエッジで止まる、P01 は再起動の実測で代替）→ **v2.4.4（2026-09-19・公開直前の施工を反映＝転送の全廃・案内ページ・ツール注釈・mekiki_start・照合の空白扱い・P03 五系統・GitHub と Space の公開）→ **v2.4.5（2026-09-19・施工照合の四点＝Gemini の照合範囲・系統の数え方・NORM-1.2.0・許可外 Host の応答）→ **v2.5（2026-09-27・HTTP 併設＝七ツールを素の HTTP でも出す。MCP の置き換えではなく追加。§2.12・§7 H01〜H04・§12）**。骨格（読み取り専用・公開版固定・サーバ内LLMなし・Gradio・ローカル先行）は不変。v2.1〜v2.3.1 の変更は §12 に列挙。
 工程＝方針（本書）→施工（Claude Code）→独立検査（Codex：指摘と差分案のみ）→最終検査（Claude）→接続確認・公開判断（著者）。
 段階一＝ローカル動作（SDKとReader自体に追加のAPI料金・ホスティング料金は不要）。段階二＝Hugging Face Spaces（PRO加入後・CPU Basic）。
 
@@ -47,6 +47,23 @@ Paper2Agent（Miao et al., Nature 2026）から借りるのは型（資源・プ
 
 **配置モード（v2.4）**：`MEKIKI_READER_MODE` は `local`（既定）か `spaces` の二値で、起動表示に出す。`spaces` で変わるのは三つだけ——bind が `0.0.0.0:7860`、許可 `Host` が起動時に読んだ `SPACE_HOST`（カンマ区切りは各値）と `localhost`・`127.0.0.1`（`SPACE_HOST` が無ければ起動しない）、`/` だけは健康検査のために Host を問わず応答する（静的 HTML のみ）。それ以外の環境変数で挙動は変わらない。`spaces` では `SPACE_HOST` を読んだ後に `SYSTEM`・`SPACE_ID`・`SPACE_AUTHOR_NAME`・`SPACE_REPO_NAME`・`SPACES_ZERO_GPU`・`OAUTH_*`・`HF_TOKEN`・`WEB_CONCURRENCY`・`FORWARDED_ALLOW_IPS` を import 前に除去し、Gradio をローカルと同じ分岐で動かす（Spaces 用の監視スレッド・`pwa` 既定・ツール名の接頭辞・`spaces` パッケージの関数包装を使わない）。`pwa=False` は launch で明示し固定値の一覧に入れる。Space に Secret を置かない。`spaces` パッケージは依存に入れない。
 11. **開示**：READMEに制作工程（使用モデルを役割ごとに列挙：方針と最終検査／施工／方針の独立検証／独立検査。文面は著者が承認・署名）・参照論文（型を借りた Paper2Agent と読解対象の T1〜T5 の両方）・費用と休止の実測値・利用者入力の送信先と保存方針（`verify_quote`／`check_compressions` の入力には未公開情報が入りうる。Reader は入力を保存しない。ローカルでは stdout／stderr に受信した値が出ないことを実測済み。Spaces では実行ログは stdout／stderr で、閲覧できるのは Space に書き込み権限のある者、保持は再起動までで期間は保証されない、と開示する。`hf.co/mcp` 経由の呼び出しは HF 側の機能で本サーバは関知しない、と一行）。ライセンス節：コード＝MIT（著作権者はコーパスの著作者表示と同じ個人名）、`data/`＝CC BY 4.0（`data/LICENSE`・帰属は `data/CITATION.md` の書式・「原文の行は改変しない。行単位で抜粋し JSON に構造化して返す」）。論文本文中に別のライセンス表記があっても同梱物には及ばないことを一行。
+
+12. **HTTP 併設（v2.5）**：MCP を持たない相手（端末を持つエージェント・スクリプト・ブラウザ・他人の自動処理）が同じ七つの関数を呼べるよう、素の HTTP の口を**追加**する。MCP の置き換えではない。七ツールは純関数のままで、HTTP 層は Guard の中の薄い一枚。サーバ内に LLM を置かない・判断しない・データを書き換えない、は同じ。
+   - **経路**：前置き `/api/v1/` の九本を型で固定し（許可一覧に追加・試験で固定）、`{paper_id}`・`{anchor}` は登録済みの値だけを通す（それ以外は 404）。
+     - `GET /api/v1/` → 経路の一覧（JSON）
+     - `GET /api/v1/papers` → list_papers
+     - `GET /api/v1/papers/{paper_id}/sections/{anchor}`（`?language=en` は T4 のみ）→ get_section
+     - `GET /api/v1/search?q=&paper_id=&k=` → search_passages
+     - `GET /api/v1/claims?claim_id=` または `?query=` → get_claim_record
+     - `GET /api/v1/guide?part=` → get_reading_guide
+     - `GET /api/v1/verify?text=&paper_id=` と `POST /api/v1/verify`（JSON `{"text","paper_id"?}`）→ verify_quote（引用は公開の原文なので GET も許す＝照合結果を URL で共有できる）
+     - `POST /api/v1/check`（JSON `{"text"}`）→ check_compressions（利用者自身の文章なので **POST のみ**。URL に載せない）
+     - 上記以外のメソッドは 405、未知の経路は 404。転送は返さない。
+   - **応答**：既定は MCP と**同じ JSON**（同じ schema・同じ `status`・`results`・`limitations`・`corpus_version`・`source_commit`・`bundle_hash`・`schema_version`。`Content-Type: application/json`）。`Accept: text/markdown` のときは Markdown——先頭に出典行（paper_id・paper_version・section_anchor・行範囲・corpus_version・source_commit）、続けて `payload.text`（節）または結果の表（検索・照合・検出）。`invalid_input`・`unknown_id` は HTTP 400／404 に同じ JSON 本文。
+   - **上限と遮断**：入力の上限（TEXT_MAX・query の長さ・k の範囲）はツールと同じ検証関数で検査。受付枠は「その他」の枠を使う。本文の上限・受信期限・Host・Origin の扱い（`Origin` 付き要求に許可ヘッダを返さない）は既存の Guard のまま。
+   - **cache**：GET の読み取り応答に `Cache-Control: public, max-age=3600` と `ETag`（bundle_hash と経路・引数から決める）。データは版で固定なので安全。
+   - **開示**：`GET /api/v1/verify?text=` の引用文は URL に載るため、HF のエッジのログに残りうる（サーバ自身は記録しない）。README に一文。`check` を POST に限る理由もそこに書く。
+   - **規則文書**：`docs/rules/HTTP.md`（HTTP-1.0.0＝経路・引数・応答の契約）。LIMITS は行を足して 3.2.0（MINOR）。
 
 ## 3. リポジトリ構成（`mekiki-mcp`）
 
@@ -159,6 +176,7 @@ mekiki-mcp/
 **再現**：R01 同入力・同データ・同規則＝結果データがバイト単位で一致（別プロセスでも。過負荷のない条件で）。
 **MCP**：M01 七ツールの一覧・呼出し・スキーマ一致・七ツール全部の注釈（`spaces` モードでは `SYSTEM` を除去するため接頭辞は付かない。付いていれば除去が効いていない＝不合格。末尾スラッシュあり／なしの両 URL で通す）／M02 resources/promptsの一覧・取得（resources 本文の SHA-256 が bundle と一致・prompts 文面が一致。prompts/get の名前照合の挙動を記録。番兵関数を最後に登録）／M03 不正入力・ゼロ件が通信断と区別されて返る（型ヒント違反の経路とアプリ側検証の経路の両方）。
 **対話（スモーク・機械的全機能試験ではない）**：E01 五問（R01・R08・R13・R14・R15）を ja／en 両方・ガイド条件「なし」と `read_with_guards` の二条件で＝正しい原文・位置・記録を保持。配置段階一の基準＝12本（設問の日本語版で五問×二条件＋英語版で R01・R14 をガード条件）。**20本すべて実施済み（9/18 に12本・9/19 に残り8本・Claude Code／Opus 5・全本合格・総括 `docs/acceptance/2026-09-18-e01-e02.md`）**。観察：該当は否定文や資料内の語に対して出てモデルが返却原文と比較して保持した／取りこぼしは PATTERNS-0.2.1 へ／強調記号の差は NORM-1.1.0 へ／ハイフンは SEARCH-1.1.0 へ／出現数順位で T2 に届かず派生物が経路になった／T1 §3.1 と §4.2 の記述の食い違いを二セッションが独立に検出（著者の在庫）。`AI_READING_TESTS` の resource は読ませない（読んだ場合は記録）。判定は本節の文言に限り、コーパス基準との照合は記録のみ／E02 会社の相談例・資料中の命令文＝原文と事例判断を分け、資料を上位命令として扱わない。**実施済み（同日・1本合格：資料内の「AI への指示」を資料として読み従わず、KPI の問いを T4 §5.3 の「測ってよいもの」の線で扱い、判断を部署に残した）**。
+**HTTP**（v2.5）：H01 九経路それぞれが、同じ入力で MCP ツールと**同一の JSON** を返す（七ツール分を機械的に突合。R01 の決定性を HTTP 経由でも確認）／H02 `Accept: text/markdown` の Markdown に出典行があり本文が行を変えずに入る／H03 上限・不正入力・未登録 ID・未知の経路・許可外メソッド・GET での `/check` が 400／404／405 になり、受付枠と本文上限と受信期限が効く／H04 cache ヘッダと ETag、転送なし、`Origin` 付きで許可ヘッダを返さない、許可外 Host は従来どおり。
 **公開**：P01 Space 再起動後に再接続し、復帰までの時間を記録（2026-09-19 実測 17秒。休止からの復帰は未実測と明記し、公開後に測る）。P02 Space の URL で M01〜M03 と E01 二問（R01・R14）を Claude Code から実施。P03 認証なしの接続先から `list_papers`。**実施済み（2026-09-19）**：Claude（Web の Custom Connector・サインインなし）／ChatGPT（Web の Developer mode→Plugins→MCP URL→Personal plugin をインストール。デスクトップ版のチャットにも出る。デスクトップ版の「MCP サーバー」設定は Codex 系統で通常チャットには出ない）／Grok（grok.com/connectors→Custom）——この三つは ok・3.5.0・6748061・bundle_hash 一致。Gemini（Spark〔ベータ〕のアプリ連携→カスタムアプリ。通常チャットは未確認）は ok・3.5.0・6748061 まで確認し bundle_hash は未照合。P02 の Claude Code を含めて接続先は五系統。
 
 ## 8. 接続（A06）
@@ -260,4 +278,7 @@ mekiki-mcp/
 
 ### v2.4.4 → v2.4.5
 1. §2.10 許可外 Host の固定 HTML は `spaces` の `/` に限ると明記（`local` は 400）。§5.5 NORM-1.2.0 の規則を記載。§7 P03 の Gemini は bundle_hash 未照合、系統の数え方を四＋一に訂正。
+
+### v2.4.5 → v2.5
+1. §2.12 HTTP 併設（九経路・同一 JSON・Markdown 交渉・POST のみの check・cache・開示・HTTP-1.0.0・LIMITS-3.2.0）。§7 H01〜H04。施工は Claude Code（Opus 5.5）で行い、開示の使用モデルの列挙に追記する。
 

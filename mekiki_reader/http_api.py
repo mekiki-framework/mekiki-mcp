@@ -1,4 +1,4 @@
-"""HTTP 併設（SPEC v2.5.1 §2.12・docs/rules/HTTP.md の HTTP-1.1.0）の、通信に触れない部分。
+"""HTTP 併設（SPEC v2.5.2 §2.12・docs/rules/HTTP.md の HTTP-1.2.0）の、通信に触れない部分。
 
 経路の表・引数の読み取り・表現の選択（JSON か Markdown か）・Markdown の組み立て・ETag。標準ライブラリだけで、
 gradio も七ツールも import しない。ツールを呼ぶのは app.py の Guard の中で、MCP と同じ入口の関数を使う
@@ -18,8 +18,10 @@ import re
 from dataclasses import dataclass
 from typing import Any, Mapping, Sequence
 
-HTTP_VERSION = "HTTP-1.1.0"  # 1.1.0：verify に language（SPEC v2.5.1）
+HTTP_VERSION = "HTTP-1.2.0"  # 1.1.0：verify に language（SPEC v2.5.1）。1.2.0：要求行の上限・同名ヘッダの結合（v2.5.2）
 PREFIX = "/api/v1/"
+NAMESPACE = "/api"  # 早期拒否にも共通ヘッダを付ける範囲（`/api` と `/api/…`。未知の版・経路を含む）
+REQUEST_TARGET_MAX = 16 * 1024  # 要求行の経路＋問い合わせ（`?` を含むバイト数）。超えたら 414（HTTP-1.2.0）
 QUERY_FIELDS_MAX = 8  # 問い合わせの項目数（どの経路も引数は3つまで。空の項目は数えない）
 CACHE_GET = "public, max-age=3600"  # GET の読み取り応答（データは版で固定）
 CACHE_NONE = "no-store"             # POST・400・404・そのほか
@@ -60,6 +62,28 @@ _BAD_PERCENT = re.compile(rb"%(?![0-9A-Fa-f]{2})")  # `%` の後に16進2桁が�
 
 class HttpInputError(ValueError):
     """HTTP の形の誤り（引数の名前・重複・文字コード・本文）。invalid_input として 400 で返す。"""
+
+
+def in_namespace(path: str) -> bool:
+    """HTTP 併設の名前空間（`/api` か `/api/` で始まる経路）。早期拒否の応答にも共通ヘッダを付ける。"""
+    return path == NAMESPACE or path.startswith(NAMESPACE + "/")
+
+
+def common_headers(cache: str = CACHE_NONE) -> list[tuple[bytes, bytes]]:
+    """HTTP 併設のすべての応答に付けるヘッダ（Guard の早期拒否と `_send_api` で共通。HTTP-1.2.0）。"""
+    return [(b"cache-control", cache.encode("ascii")), (b"vary", b"Accept"), (b"x-content-type-options", b"nosniff")]
+
+
+def target_length(raw_path: bytes, query_string: bytes) -> int:
+    """要求行の経路＋問い合わせのバイト数（`?` を含む。問い合わせが空なら経路だけ）。"""
+    return len(raw_path) + (1 + len(query_string) if query_string else 0)
+
+
+def joined(headers: Sequence[tuple[bytes, bytes]], name: bytes) -> "str | None":
+    """同名のリスト型ヘッダ（Accept・If-None-Match）を、全行を順序どおりカンマで結合して一つにする（RFC 9110 §5.2）。
+    無ければ None。Host・Content-Length の重複拒否はこれを使わない（Guard の既存の検査）。"""
+    values = [v.decode("latin-1", "replace") for k, v in headers if k.lower() == name]
+    return ", ".join(values) if values else None
 
 
 def match(path: str) -> "tuple[str, dict[str, str]] | None":
@@ -126,8 +150,8 @@ def parse_body(body: bytes, allowed: Sequence[str]) -> dict[str, str]:
     def pairs(items):
         seen: dict[str, Any] = {}
         for key, value in items:
-            if key in seen:
-                raise HttpInputError(f"引数 {key} が重複している")
+            if key in seen:  # 文に入力のキーを入れない（孤立サロゲートのキーで応答が UTF-8 にできなくなる。Codex⑤ F1）
+                raise HttpInputError("本文の JSON に重複したキーがある")
             seen[key] = value
         return seen
 
@@ -141,12 +165,12 @@ def parse_body(body: bytes, allowed: Sequence[str]) -> dict[str, str]:
         raise HttpInputError("本文は UTF-8 の JSON オブジェクト")
     out: dict[str, str] = {}
     for key, value in obj.items():
-        if key not in allowed:
+        if key not in allowed:  # 文は許可名の一覧だけ（入力のキーは入れない）
             raise HttpInputError(_unknown(allowed))
         if value is None:
             continue
         if not isinstance(value, str):
-            raise HttpInputError(f"引数 {key} は文字列（か null）")
+            raise HttpInputError("本文の JSON の値は文字列か null")
         out[key] = value
     return out
 

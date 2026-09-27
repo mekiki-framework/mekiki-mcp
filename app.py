@@ -767,8 +767,10 @@ def _guard_middleware():
         # 標準エラーには経路を出さない（経路・問い合わせは利用者の入力。記録は上の固定長の表だけ。Codex③ 7）
         print(f"blocked {status} {text}", file=sys.stderr, flush=True)
         # 断った要求の接続は閉じる（HTTP の層が先に受け取った本文も一緒に手放す。Codex③ 1 の検算）
+        # HTTP 併設の名前空間では、早期拒否にも _send_api と同じ共通ヘッダを付ける（Codex⑤ F3・HTTP-1.2.0）
+        common = H.common_headers() if H.in_namespace(path) else []
         await send({"type": "http.response.start", "status": status,
-                    "headers": [(b"content-type", b"text/plain; charset=utf-8"), *headers,
+                    "headers": [(b"content-type", b"text/plain; charset=utf-8"), *common, *headers,
                                 (b"connection", b"close")]})
         await send({"type": "http.response.body", "body": text.encode("utf-8")})
 
@@ -801,8 +803,9 @@ def _guard_middleware():
         ツールは MCP と同じ入口の関数（list_papers など。中で実行枠を取る）を worker thread で呼ぶので、
         同じ入力なら MCP と同じ JSON 文字列になる。実行枠が埋まっていれば 503（status には混ぜない）。
         """
-        headers = {k.decode("latin-1").lower(): v.decode("latin-1", "replace") for k, v in scope.get("headers", [])}
-        markdown = H.wants_markdown(headers.get("accept"))
+        raw_headers = scope.get("headers", [])
+        # 同名の Accept・If-None-Match は全行を順序どおり結合して解釈する（Codex⑤ F2。最後の一行に潰さない）
+        markdown = H.wants_markdown(H.joined(raw_headers, b"accept"))
         try:
             if route.method == "POST":
                 if scope.get("query_string"):
@@ -834,7 +837,7 @@ def _guard_middleware():
         if route.method == "GET":
             tag = H.etag(READER.corpus.bundle.bundle_hash, route.name, args, markdown)
         return await _send_api(send, route, text, name, args, markdown, tag,
-                               headers.get("if-none-match"))
+                               H.joined(raw_headers, b"if-none-match"))
 
     async def _finish_read(send, read, path: str) -> None:
         if read[0] == "reply":
@@ -866,6 +869,9 @@ def _guard_middleware():
                 # 健康検査には固定の短い HTML だけを返す（Gradio の画面は要求の Host から設定を組み立てるため、
                 # 許可していない Host には渡さない）
                 return await _health(send, scope.get("method", "GET").upper(), receive)
+            if H.in_namespace(path) and H.target_length(scope.get("raw_path") or path.encode("utf-8"),
+                                                        scope.get("query_string", b"")) > H.REQUEST_TARGET_MAX:
+                return await _reply(send, 414, "request target too long", path, receive)  # HTTP-1.2.0
             if (EXTERNAL_HOSTS and path == "/" and _host_name(hosts[0]) in EXTERNAL_HOSTS
                     and scope.get("method", "GET").upper() in ("GET", "HEAD")):
                 return await _guide(send, scope.get("method", "GET").upper(), receive)
@@ -897,10 +903,11 @@ def _guard_middleware():
                 if any(T._classify_id(v) == "invalid" for v in api[1].values()):  # パスや URL の形は登録値でない
                     return await _reply(send, 404, "not found", path, receive)
                 allowed = H.methods(api[0])
-                if method not in allowed:
+                raw_method = scope.get("method", "")  # 大文字化せずに表と照合する（get・Post は 405。Codex⑤ F4）
+                if raw_method not in allowed:
                     return await _reply(send, 405, "method not allowed", path, receive,
                                         headers=((b"allow", ", ".join(allowed).encode("ascii")),))
-                target = functools.partial(_serve_api, H.route(api[0], method), api[1])
+                target = functools.partial(_serve_api, H.route(api[0], raw_method), api[1])
             else:
                 if path == MCP_ALIAS:  # 転送せず MCP 本体として扱う（上流の 307 を出さない）
                     path = MCP_PATH
@@ -1025,12 +1032,10 @@ async def _send_api(send, route: "H.Route", text: str, name: "str | None", args,
         ctype = H.MARKDOWN_TYPE
     else:
         body_text, ctype = text, H.JSON_TYPE
-    headers = [(b"vary", b"Accept"), (b"x-content-type-options", b"nosniff")]
     cacheable = route.method == "GET" and code == 200 and tag is not None
+    headers = H.common_headers(H.CACHE_GET if cacheable else H.CACHE_NONE)  # 早期拒否と共通（Codex⑤ F3）
     if cacheable:
-        headers += [(b"cache-control", H.CACHE_GET.encode("ascii")), (b"etag", tag.encode("ascii"))]
-    else:
-        headers.append((b"cache-control", H.CACHE_NONE.encode("ascii")))
+        headers.append((b"etag", tag.encode("ascii")))
     if cacheable and H.not_modified(if_none_match, tag):
         await send({"type": "http.response.start", "status": 304, "headers": headers})
         await send({"type": "http.response.body", "body": b""})

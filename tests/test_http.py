@@ -1,4 +1,4 @@
-"""HTTP 併設の試験 H01〜H04（SPEC v2.5.1 §2.12・§7・docs/rules/HTTP.md の HTTP-1.1.0）。
+"""HTTP 併設の試験 H01〜H04（SPEC v2.5.2 §2.12・§7・docs/rules/HTTP.md の HTTP-1.2.0）。
 
 サーバを local と spaces の二つのモードで起動し、同じ試験を両方で通す。spaces は SPACE_HOST 宛ての Host で
 要求する（待ち受けは試験のため loopback。MEKIKI_TEST_BIND）。
@@ -44,13 +44,15 @@ class Api:
         self.srv, self.mode = srv, mode
         self.host = SPACE_HOST if mode == "spaces" else f"127.0.0.1:{srv.port}"
 
-    def call(self, method: str, path: str, body: "bytes | None" = None, headers: "dict | None" = None,
+    def call(self, method: str, path: str, body: "bytes | None" = None, headers=None,
              host: "str | None" = None) -> tuple[int, dict, bytes]:
+        """headers は dict か (名前, 値) の列（同名ヘッダを複数行で送るとき）。"""
         conn = http.client.HTTPConnection("127.0.0.1", self.srv.port, timeout=30)
         try:
             conn.putrequest(method, path, skip_host=True, skip_accept_encoding=True)
             conn.putheader("Host", self.host if host is None else host)
-            for k, v in (headers or {}).items():
+            items = headers.items() if isinstance(headers, dict) else (headers or ())
+            for k, v in items:
                 conn.putheader(k, v)
             if body is not None:
                 conn.putheader("Content-Length", str(len(body)))
@@ -97,8 +99,8 @@ NINE = (("GET", "/api/v1/"), ("GET", "/api/v1/papers"), ("GET", "/api/v1/papers/
 def test_h_routes_are_pinned():
     assert tuple((r.method, r.path) for r in H.ROUTES) == NINE
     assert {r.tool for r in H.ROUTES} - {None} == set(app.TOOL_NAMES)  # 七ツールがどれも HTTP から呼べる
-    assert H.HTTP_VERSION == "HTTP-1.1.0"
-    assert app.T.LIMITS_VERSION == "LIMITS-3.2.0"
+    assert H.HTTP_VERSION == "HTTP-1.2.0"
+    assert app.T.LIMITS_VERSION == "LIMITS-3.3.0"
     assert H.PREFIX in app.PRE_READ_PREFIXES
     assert app._admission_kind("POST", "/api/v1/check") == "other"  # 受付枠は「その他」
     assert app._admission_kind("GET", "/api/v1/papers") == "other"
@@ -137,6 +139,7 @@ H01_CASES = (
     ("get_reading_guide", {}, "GET", "/api/v1/guide", None, 200),
     ("get_reading_guide", {"part": "mode-1"}, "GET", "/api/v1/guide", {"part": "mode-1"}, 200),
     ("get_reading_guide", {"part": "nope"}, "GET", "/api/v1/guide", {"part": "nope"}, 400),
+    ("get_reading_guide", {"part": ""}, "GET", "/api/v1/guide", {"part": ""}, 400),   # 空文字は既定にしない（F5）
     ("verify_quote", {"text": T5_QUOTE}, "GET", "/api/v1/verify", {"text": T5_QUOTE}, 200),
     ("verify_quote", {"text": T5_QUOTE}, "POST", "/api/v1/verify", {"text": T5_QUOTE}, 200),
     ("verify_quote", {"text": T5_QUOTE, "paper_id": "T5"}, "GET", "/api/v1/verify",
@@ -607,3 +610,259 @@ def test_h04_inputs_do_not_reach_the_logs(api):
     api.call("PUT", f"/api/v1/papers?x={marker}", b"{}")
     time.sleep(0.5)
     assert marker not in api.srv.log()
+
+
+
+# ---------------------------------------------------------------- Codex⑤ の反映（HTTP-1.2.0）
+
+EARLY_HEADERS = {"cache-control": "no-store", "vary": "Accept", "x-content-type-options": "nosniff"}
+
+
+def _assert_common(headers: dict, where) -> None:
+    for k, v in EARLY_HEADERS.items():
+        assert headers.get(k) == v, (where, k, headers.get(k))
+    assert "etag" not in headers, where
+
+
+def test_h01_empty_part_and_k_are_not_defaults(api, reader):
+    """F5：part・k は省略時だけ既定値。空文字は invalid_input（HTTP だけの既定値補完をしない）。
+    MCP では k は整数型なので空文字はスキーマ検査の isError になる。HTTP の問い合わせは文字列なので、
+    同じ入口（空の paper_id は省略）を経てツールの検査で invalid_input になる。"""
+    omitted = api.get("/api/v1/search", q="answerability")
+    empty = api.call("GET", "/api/v1/search?q=answerability&k=")
+    assert omitted[0] == 200 and empty[0] == 400
+    assert empty[2].decode("utf-8") == S.to_json(app.T.search_passages(reader, "answerability", None, ""))
+
+    async def body(s):
+        r = await s.call_tool("search_passages", {"query": "answerability", "k": ""})
+        part_empty = await s.call_tool("get_reading_guide", {"part": ""})
+        part_omitted = await s.call_tool("get_reading_guide", {})
+        return r.isError, part_empty.content[0].text, part_omitted.content[0].text
+
+    k_is_error, part_empty, part_omitted = MC.session(api.srv.mcp_url, body)
+    assert k_is_error  # MCP：スキーマ（integer）で弾く
+    assert api.call("GET", "/api/v1/guide?part=")[2].decode("utf-8") == part_empty
+    assert api.call("GET", "/api/v1/guide")[2].decode("utf-8") == part_omitted
+    assert _env(part_empty.encode())["status"] == "invalid_input" and _env(part_omitted.encode())["status"] == "ok"
+
+
+def test_h03_json_key_errors_are_fixed_and_utf8(api):
+    """F1：重複・不正な JSON キー（直下・入れ子・上位／下位サロゲート）は 400 で、応答は有効な UTF-8。
+    エラー文に入力のキーを入れない。"""
+    bodies = (b'{"\\ud800":1,"\\ud800":2}', b'{"text":{"\\ud800":1,"\\ud800":2}}',
+              b'{"\\udc00":1,"\\udc00":2}', b'{"text":{"\\udc00":1,"\\udc00":2}}',
+              b'{"\\ud800":1}', b'{"text":{"\\udfff":1}}', b'{"\\udbff\\udfff":1,"\\udbff\\udfff":2}',
+              b'{"text":"AI can assist play.","text":"x"}', b'{"text":"a","zz\\ud800":1}')
+    for path in ("/api/v1/verify", "/api/v1/check"):
+        for accept in ({}, MD):
+            for body in bodies:
+                status, headers, data = api.call("POST", path, body, accept)
+                assert status == 400, (path, body, status)
+                text = data.decode("utf-8")  # 厳格に読めること（孤立サロゲートが出ない）
+                assert "\\ud8" not in text.lower() and "\\udc" not in text.lower() and "zz" not in text
+                if accept:
+                    assert headers["content-type"].startswith("text/markdown") and "status: invalid_input" in text
+                else:
+                    env = _env(data)
+                    assert env["status"] == "invalid_input", (path, body)
+                    assert any(lim in ("INPUT: 本文の JSON に重複したキーがある", "INPUT: 本文の JSON の値は文字列か null")
+                               or lim.startswith("INPUT: この経路の引数は ") for lim in env["limitations"]), env
+    assert api.get("/api/v1/papers")[0] == 200  # 後続は通る
+
+
+def test_h04_repeated_accept_and_if_none_match_are_joined(api):
+    """F2：同名の Accept・If-None-Match は全行を順序どおり結合して解釈する（一行と複数行で同じ）。"""
+    pairs = (
+        ("text/markdown, application/json", [("Accept", "text/markdown"), ("Accept", "application/json")]),
+        ("application/json, text/markdown", [("Accept", "application/json"), ("Accept", "text/markdown")]),
+        ("text/markdown;q=0, application/json", [("Accept", "text/markdown;q=0"), ("Accept", "application/json")]),
+        ("application/json, text/markdown;q=0", [("accept", "application/json"), ("ACCEPT", "text/markdown;q=0")]),
+        ("text/markdown, */*", [("accept", "text/markdown"), ("Accept", "*/*")]),
+    )
+    for path in ("/api/v1/papers", "/api/v1/papers/T5/sections/t5-5-4"):
+        for one, many in pairs:
+            a = api.call("GET", path, headers={"Accept": one})
+            b = api.call("GET", path, headers=many)
+            assert a[0] == b[0] == 200, (path, one)
+            assert a[1]["content-type"] == b[1]["content-type"] and a[2] == b[2], (path, one)
+            assert a[1]["etag"] == b[1]["etag"] and b[1]["vary"] == "Accept", (path, one)
+            assert ("markdown" in a[1]["content-type"]) == ("text/markdown;q=0" not in one), (path, one)
+    tag = api.call("GET", "/api/v1/papers")[1]["etag"]
+    for inm in ([("If-None-Match", tag), ("If-None-Match", '"other"')],
+                [("If-None-Match", '"other"'), ("If-None-Match", tag)],
+                [("If-None-Match", '"a", ' + tag), ("If-None-Match", '"b"')]):
+        status, headers, data = api.call("GET", "/api/v1/papers", headers=inm)
+        assert status == 304 and data == b"" and headers["etag"] == tag, inm
+    assert api.call("GET", "/api/v1/papers", headers=[("If-None-Match", '"a"'), ("If-None-Match", '"b"')])[0] == 200
+    md_tag = api.call("GET", "/api/v1/papers", headers=MD)[1]["etag"]  # 別の表現の ETag は結合しても一致しない
+    assert api.call("GET", "/api/v1/papers", headers=[("If-None-Match", md_tag), ("Accept", "application/json")])[0] == 200
+
+
+def test_h04_early_rejections_carry_common_headers(api):
+    """F3：HTTP の名前空間の早期拒否（許可外 Host・未知経路・パス形の値・405・413・414）にも共通ヘッダ。"""
+    cases = (
+        ("GET", "/api/v1/papers", None, {}, "evil.example", 400),
+        ("GET", "/api/v1/nope", None, {}, None, 404),
+        ("POST", "/api/v1/nope", b"{}", {}, None, 404),
+        ("GET", "/api/v1/papers/", None, {}, None, 404),
+        ("GET", "/api", None, {}, None, 404),
+        ("GET", "/api/v2/papers", None, {}, None, 404),
+        ("GET", "/api/v1/papers/T1/sections/..", None, {}, None, 404),
+        ("GET", "/api/v1/check", None, {}, None, 405),
+        ("PUT", "/api/v1/papers", b"{}", {}, None, 405),
+        ("POST", "/api/v1/check", b"x" * (app.MAX_BODY_BYTES + 1), {}, None, 413),
+        ("GET", "/api/v1/papers?" + "&" * H.REQUEST_TARGET_MAX, None, {}, None, 414),
+    )
+    for method, path, body, headers, host, code in cases:
+        status, h, _ = api.call(method, path, body, headers, host)
+        assert status == code, (method, path[:40], status)
+        _assert_common(h, (method, path[:40]))
+    # 名前空間の外は従来どおり（Gradio 側の経路の拒否には付けない）
+    status, h, _ = api.call("GET", "/gradio_api/nope")
+    assert status == 404 and "vary" not in h
+
+
+def _raw(api: Api, head: bytes, rest: bytes = b"", split: bool = False) -> bytes:
+    req = head + rest
+    sock = socket.create_connection(("127.0.0.1", api.srv.port), timeout=app.BODY_READ_SECONDS + 20)
+    try:
+        try:
+            if split:
+                for i in range(0, len(req), 1000):
+                    sock.sendall(req[i:i + 1000])
+                    time.sleep(0.003)
+            else:
+                sock.sendall(req)
+        except OSError:
+            pass  # 先に断られた
+        sock.settimeout(app.BODY_READ_SECONDS + 10)
+        data = b""
+        try:
+            while b"\r\n\r\n" not in data:
+                chunk = sock.recv(4096)
+                if not chunk:
+                    break
+                data += chunk
+        except OSError:
+            pass
+        return data
+    finally:
+        sock.close()
+
+
+def _status_headers(data: bytes) -> tuple[int, dict]:
+    head = data.split(b"\r\n\r\n", 1)[0].decode("latin-1")
+    lines = head.split("\r\n")
+    status = int(lines[0].split(" ")[1]) if lines and lines[0].startswith("HTTP/1.1 ") else 0
+    return status, {k.strip().lower(): v.strip() for k, _, v in (ln.partition(":") for ln in lines[1:])}
+
+
+def test_h03_request_target_limit_is_414(api):
+    """要求行（経路＋問い合わせ）16 KiB（16,384 バイト）まで。16,385 で 414。一括でも分割でも同じ。
+    それより長い分割送信は HTTP の層（h11）が先に 400 で断る（Guard に届かない。実測・2026-09-27）。"""
+    base = b"/api/v1/papers?"
+
+    def target(n: int) -> bytes:
+        return base + b"&" * (n - len(base))
+
+    assert H.target_length(b"/api/v1/papers", b"&" * (16384 - 15)) == 16384
+    for split in (False, True):
+        for n, want in ((16384, 200), (16385, 414)):
+            head = b"GET " + target(n) + b" HTTP/1.1\r\nHost: " + api.host.encode() + b"\r\nConnection: close\r\n\r\n"
+            status, headers = _status_headers(_raw(api, head, split=split))
+            assert status == want, (n, split, status)
+            if want == 414:
+                _assert_common(headers, (n, split))
+        head = b"GET " + target(65536) + b" HTTP/1.1\r\nHost: " + api.host.encode() + b"\r\nConnection: close\r\n\r\n"
+        status, _ = _status_headers(_raw(api, head, split=split))
+        assert status == (400 if split else 414), (split, status)  # 分割は h11 の 400
+    # POST も本文より先に 414
+    head = (b"POST " + base.rstrip(b"?").replace(b"papers", b"check") + b"?" + b"a" * 16400 + b" HTTP/1.1\r\nHost: "
+            + api.host.encode() + b"\r\nContent-Length: 2\r\nConnection: close\r\n\r\n")
+    assert _status_headers(_raw(api, head, b"{}"))[0] == 414
+
+
+def test_h03_method_case_is_exact(api):
+    """F4：メソッドは ASGI の文字列のまま照合する。get・Get・post・Post は九経路で 405 と正しい Allow。"""
+    for method, path in NINE:
+        concrete = path.replace("{paper_id}", "T1").replace("{anchor}", "t1-2")
+        allow = ", ".join(m for m, p in NINE if p == path)
+        for variant in ("get", "Get", "gET", "post", "Post", "pOST"):
+            body = b"{}" if variant.upper() == "POST" else None
+            status, headers, _ = api.call(variant, concrete, body)
+            assert status == 405 and headers["allow"] == allow, (variant, concrete, status)
+            _assert_common(headers, (variant, concrete))
+    assert api.get("/api/v1/papers")[0] == 200 and api.post("/api/v1/check", {"text": "AIは遊べない"})[0] == 200
+
+
+def test_h03_slow_body_and_busy_carry_common_headers(api):
+    """F3：408（本文の受信期限）にも共通ヘッダ。"""
+    head = (f"POST /api/v1/check HTTP/1.1\r\nHost: {api.host}\r\nContent-Type: application/json\r\n"
+            f"Content-Length: 50\r\nConnection: close\r\n\r\n").encode()
+    status, headers = _status_headers(_raw(api, head, b'{"text":'))
+    assert status == 408
+    _assert_common(headers, "408")
+
+
+@pytest.mark.parametrize("mode", ["local", "spaces"])
+def test_h03_busy_503_carries_common_headers(tmp_path, mode):
+    env = dict(MODE_ENV[mode], MEKIKI_TEST_CONCURRENCY="0")
+    with Server(tmp_path / "audit.json", env_extra=env) as srv:
+        status, headers, data = Api(srv, mode).get("/api/v1/papers")
+    assert status == 503 and data == b"busy"
+    _assert_common(headers, "503")
+
+
+# ---------------------------------------------------------------- CLAUDE.md 規則12：既知の入力の種類を九経路に当てる
+
+KNOWN_KINDS = ("孤立サロゲート（問い合わせ・本文の値・本文のキー）", "重複（Host・Content-Length・Accept・引数・JSON キー）",
+               "TE と CL の併記", "巨大入力（本文 64 KiB 超・要求行 16 KiB 超・値の上限超え）",
+               "不正な符号化（崩れた %・UTF-8 でない列・生の非 ASCII）")
+
+
+def test_h03_known_input_kinds_on_every_route(api):
+    """DECISIONS に記録済みの入力の種類を九経路すべてに当て、どれも 5xx にならず、応答が UTF-8 で読めることを固定する。"""
+    seen: dict[tuple[str, str], list[int]] = {}
+    host = api.host.encode()
+    for method, path in NINE:
+        concrete = path.replace("{paper_id}", "T1").replace("{anchor}", "t1-2")
+        name = H.match(concrete)[0]
+        params = H.route(name, method).params
+        first = params[0] if params else "x"
+        codes = []
+
+        def note(status, data=b""):
+            assert status and status < 500, (method, concrete, status)
+            data.decode("utf-8")
+            codes.append(status)
+
+        if method == "GET":
+            for q in (f"{first}=%ED%A0%80abcdefghij", f"{first}=%G1", f"{first}=%FF%FE", f"{first}=a&{first}=b",
+                      f"{first}=" + "a" * 3000):
+                status, _h, data = api.call("GET", concrete + "?" + q)
+                note(status, data)
+        else:
+            for body in (b'{"text":"\\ud800abcdefghijk"}', b'{"\\ud800":1,"\\ud800":2}', b'{"text":"a","text":"b"}',
+                         json.dumps({"text": "a" * 3000}).encode(), b"\xff\xfe", b'{"text":"%G1"}'):
+                status, _h, data = api.call("POST", concrete, body)
+                note(status, data)
+            status, _h, data = api.call("POST", concrete, b"x" * (app.MAX_BODY_BYTES + 1))
+            assert status == 413
+            note(status, data)
+        for extra in (b"Host: " + host + b"\r\n", b"Content-Length: 0\r\nContent-Length: 5\r\n",
+                      b"Transfer-Encoding: chunked\r\nContent-Length: 5\r\n"):
+            head = (method.encode() + b" " + concrete.encode() + b" HTTP/1.1\r\nHost: " + host + b"\r\n" + extra
+                    + b"Connection: close\r\n\r\n")
+            status, _ = _status_headers(_raw(api, head))
+            assert status == 400, (method, concrete, extra, status)
+            codes.append(status)
+        status, _ = _status_headers(_raw(api, method.encode() + b" " + concrete.encode() + b"?q=\xe3\x81\x82 HTTP/1.1\r\nHost: "
+                                         + host + b"\r\nConnection: close\r\n\r\n"))
+        note(status)
+        status, _ = _status_headers(_raw(api, method.encode() + b" " + concrete.encode() + b"?" + b"&" * 16500
+                                         + b" HTTP/1.1\r\nHost: " + host + b"\r\nConnection: close\r\n\r\n"))
+        assert status == 414, (method, concrete, status)
+        codes.append(status)
+        seen[(method, path)] = codes
+    assert set(seen) == set(NINE)
+    print("規則12の当て込み：", {f"{m} {p}": sorted(set(c)) for (m, p), c in seen.items()})

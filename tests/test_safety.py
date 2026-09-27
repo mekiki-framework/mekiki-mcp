@@ -20,6 +20,7 @@ import pytest
 import app
 from mekiki_reader import corpus as C
 from mekiki_reader import guide_page
+from mekiki_reader import http_api as H
 from mekiki_reader import prompts as PR
 from mekiki_reader import schema as S
 from mekiki_reader import tools as T
@@ -227,6 +228,14 @@ def test_s01_allowlist_is_pinned():
                                            "/gradio_api/queue/join", "/gradio_api/queue/data",
                                            "/gradio_api/mcp", "/gradio_api/mcp/", "/gradio_api/mcp/schema"})
     assert app.ALLOWED_PREFIXES == ("/gradio_api/heartbeat/",)
+    # HTTP 併設の九経路（SPEC v2.5 §2.12。許可一覧の三つ目の口。経路とメソッドの組で固定）
+    nine = (("GET", "/api/v1/"), ("GET", "/api/v1/papers"), ("GET", "/api/v1/papers/{paper_id}/sections/{anchor}"),
+            ("GET", "/api/v1/search"), ("GET", "/api/v1/claims"), ("GET", "/api/v1/guide"),
+            ("GET", "/api/v1/verify"), ("POST", "/api/v1/verify"), ("POST", "/api/v1/check"))
+    assert tuple((r.method, r.path) for r in H.ROUTES) == nine
+    for path in ("/api/v1", "/api/v1/papers/", "/api/v1/papers/T1", "/api/v1/x", "/api/v1/papers/a/b/sections/c",
+                 "/api/v1/papers/T1/sections/t1-2/"):
+        assert H.match(path) is None, path
     assert app.STREAM_LIMITS == {"heartbeat": 8, "queue_data": 8, "mcp_get": 32}
     readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
     limits = (REPO_ROOT / "docs" / "rules" / "LIMITS.md").read_text(encoding="utf-8")
@@ -241,7 +250,12 @@ def test_s01_allowlist_is_pinned():
     open_rows = {line.split("|")[1].strip() for line in table("| 経路 | 通す理由 |")}
     assert open_rows == {"`/`", "`/gradio_api/startup-events`", "`/gradio_api/info`（末尾 `/` 付きも）",
                          "`/gradio_api/queue/join`", "`/gradio_api/queue/data`", "`/gradio_api/heartbeat/*`",
-                         "`/gradio_api/mcp/`（末尾 `/` なしも）", "`/gradio_api/mcp/schema`"}, open_rows
+                         "`/gradio_api/mcp/`（末尾 `/` なしも）", "`/gradio_api/mcp/schema`",
+                         "`/api/v1/` の九経路"}, open_rows
+    api_rows = [line.split("|")[1:3] for line in table("| メソッド | 経路 | ツール | 引数 |")]
+    assert [(m.strip(), p.strip().strip("`")) for m, p in api_rows] == list(nine)
+    api_cell = next(line for line in limits.splitlines() if line.startswith("| HTTP 併設の経路（3.2.0） |"))
+    assert all(f"`{m} {p}`" in api_cell for m, p in nine), api_cell
     closed = [line for line in table("| 経路 | 応答 |") if "`/gradio_api/mcp/sse`" in line]
     assert len(closed) == 1 and closed[0].endswith("| 404 |") and "`/gradio_api/mcp/http`" in closed[0]
     assert [line.split("|")[1:3] for line in table("| 種類 | 同時数 | 実測（2026-09-19） |")] == [
@@ -1461,6 +1475,9 @@ def test_s01_guide_page_is_static():
     assert "T5 §4.4 L171" in page and "T1 §2.1 L54" in page and "T2 §2.1 L37" in page
     assert "AI は遊べないので人間の尊厳が守られる" in page  # PATTERNS-MATCH-2.0.0 で P30 が該当する（空白あり）
     assert "<h2>最初に送る一言 / First message</h2>" in page
+    assert "<h2>MCP なしで / Without MCP</h2>" in page  # HTTP 併設の curl の例（URL は MCP の URL と同じ基点）
+    assert ("<pre>curl -s -H 'Accept: text/markdown' "
+            "https://owner-mekiki-reader.hf.space/api/v1/papers/T5/sections/t5-5-4</pre>") in page
     first = page.split("<h2>最初に打つ四つ / Four things to try first</h2>", 1)[1].split("</ol>", 1)[0]
     assert first.count("<li>") == 4 and first.index("そもそもMekiki Frameworkとは何か") < first.index("T5 の非移転性定理")
     # 外部リンクは新しいタブで開く（HF の Space ページは案内ページを iframe で表示し、GitHub は iframe 内表示を拒む）

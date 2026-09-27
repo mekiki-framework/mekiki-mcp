@@ -14,6 +14,7 @@ short_description: Read-only MCP for the Mekiki papers. No LLM inside.
 
 Mekiki Framework の論文 T1〜T5 を、**固定した版から・出典つきで・決定的に**読むための MCP サーバ。
 サーバの中に言語モデルは無い。取得・語句照合・記録の返却だけを行い、意味の判断はしない。
+同じ七ツールは MCP なしの素の HTTP（`/api/v1/`）でも呼べる（§5「MCP なしで使う」）。
 
 制作記（Zenn）：<https://zenn.dev/kengotomita/articles/ca6d3d50287434>
 
@@ -21,7 +22,8 @@ Mekiki Framework の論文 T1〜T5 を、**固定した版から・出典つき�
 > (papers T1–T5). It fetches sections, matches strings, and returns what the author recorded — with a
 > citation, version and locator on every result. No model runs inside the server; after start-up, every
 > source it returns comes from the bundled data. Seven tools, twelve resources, eight prompt templates
-> (four in Japanese, four in English).
+> (four in Japanese, four in English). The seven tools are also served over plain HTTP at `/api/v1/`, with the
+> same JSON as over MCP.
 
 ## 三分で試す / Try it in three minutes
 
@@ -137,7 +139,7 @@ Step-by-step guide in Japanese and English: [docs/TUTORIAL.md](docs/TUTORIAL.md)
 
 ### 規則の版
 
-`SCHEMA-1.0.0`・`JSON-1.0.0`・`NORM-1.2.0`・`SEARCH-1.1.0`・`CAND-1.0.0`・`NEAR-1.0.0`・`GUIDE-1.0.0`・`LIMITS-3.1.0`・
+`SCHEMA-1.0.0`・`JSON-1.0.0`・`NORM-1.2.0`・`SEARCH-1.1.0`・`CAND-1.0.0`・`NEAR-1.0.0`・`GUIDE-1.0.0`・`LIMITS-3.2.0`・`HTTP-1.0.0`・
 `LINES-1.0.0`・`LANG-1.0.0`・`SECTION-1.0.0`・`T4MAP-1.0.0`・`BUNDLE-1.0.0`・`TERMS-0.1.1`（30項目）・
 `PATTERNS-0.2.1`（50件）＋`PATTERNS-MATCH-2.0.0`・`PROMPTS-0.2.2`（8件）。本文は [docs/rules/](docs/rules/)。
 
@@ -275,6 +277,55 @@ Gemini（個人向け）は Spark（ベータ）のアプリ連携→カスタ�
 Hugging Face の MCP バッジと `hf.co/mcp` 経由の呼び出しは Hugging Face 側の機能で、このサーバは関知しない（検収の対象外）。
 各クライアントでの確認は `docs/acceptance/` に記録する（SPEC §7 P02・P03）。
 
+### MCP なしで使う（HTTP）
+
+MCP を持たない相手（端末を持つエージェント・スクリプト・ブラウザ）のために、同じ七ツールを素の HTTP でも出している
+（MCP の置き換えではなく追加。SPEC v2.5 §2.12・規則 [HTTP-1.0.0](docs/rules/HTTP.md)）。返る JSON は MCP のツールの応答と
+同じ文字列（同じ入力なら同じバイト列。試験 H01）。`Accept: text/markdown` を付けると、先頭に出典行（paper_id・paper_version・
+section_anchor・行範囲・corpus_version・source_commit）があり、節の本文を行のまま入れた Markdown が返る（検索・照合・検出は表）。
+認証なし。ローカルでは `http://127.0.0.1:7860/api/v1/`。
+
+| メソッド | 経路 | ツール | 引数 |
+|---|---|---|---|
+| GET | `/api/v1/` | （経路の一覧） | なし |
+| GET | `/api/v1/papers` | `list_papers` | なし |
+| GET | `/api/v1/papers/{paper_id}/sections/{anchor}` | `get_section` | `?language=en`（T4 のみ） |
+| GET | `/api/v1/search` | `search_passages` | `q`・`paper_id`・`k` |
+| GET | `/api/v1/claims` | `get_claim_record` | `claim_id` か `query` |
+| GET | `/api/v1/guide` | `get_reading_guide` | `part` |
+| GET | `/api/v1/verify` | `verify_quote` | `text`・`paper_id` |
+| POST | `/api/v1/verify` | `verify_quote` | JSON `{"text", "paper_id"?}` |
+| POST | `/api/v1/check` | `check_compressions` | JSON `{"text"}`（**POST のみ**） |
+
+論文の一覧：
+
+```bash
+curl -s https://kenngotm-mekiki-reader.hf.space/api/v1/papers
+```
+
+節を Markdown で（出典行＋原文の行）：
+
+```bash
+curl -s -H 'Accept: text/markdown' https://kenngotm-mekiki-reader.hf.space/api/v1/papers/T5/sections/t5-5-4
+```
+
+引用の照合（GET。引用文は URL に載る）：
+
+```bash
+curl -s -G https://kenngotm-mekiki-reader.hf.space/api/v1/verify --data-urlencode "text=AI can assist play. It cannot take one's place in it."
+```
+
+- 状態コード：`invalid_input` は 400、`unknown_id` は 404（本文は同じ JSON）、ほかの `status` は 200。未知の経路は 404、
+  経路に無いメソッドは 405（`HEAD`・`OPTIONS` も）。転送は返さない。上限・受付枠・本文の上限（64 KiB）・受信期限（10秒）・Host・
+  `Origin` の扱いは MCP と同じ Guard のまま（受付枠は「そのほか」）。入力の上限はツールと同じ関数で検査する。
+- 自分の文章を検査する `check` は **POST のみ**（`curl … -d '{"text":"…"}'`）。利用者自身の文章を URL に載せないため
+  （URL は前段のエッジのログに残りうる）。`verify` の GET は、引用が公開の原文なので許している（照合結果を URL で共有できる）。
+  長い引用や未公開の文を照合するときは `POST /api/v1/verify` を使う。
+- GET の 200 には `Cache-Control: public, max-age=3600` と `ETag` が付く（データは版で固定。`If-None-Match` で 304）。
+  POST と 400・404 は `no-store`。
+- 引数の名前は経路ごとに決まっていて、ほかの名前・同じ名前の重複・UTF-8 でない値は 400（`invalid_input`）。`verify` に
+  `language` は無い（英訳の照合は MCP の `verify_quote` から）。
+
 ### 遮断している経路（Gradio が UI 無しでも登録するもの）
 
 | 経路 | 応答 |
@@ -293,7 +344,7 @@ Hugging Face の MCP バッジと `hf.co/mcp` 経由の呼び出しは Hugging F
 | 上の一覧にも下の許可にも無い経路（`/config`・`/gradio_api/call/*`・`/queue/status`・`/openapi.json`・`/assets/*`・`/static/*`・`/theme.css`・`/manifest.json` など） | 404 |
 
 通しているのは次の経路だけ（`/gradio_api/mcp/schema` を除き、どれも実測で要ると分かったもの。`/config` は要らないことを確かめて塞いだ）。
-一覧は `app.py` の `ALLOWED_EXACT`・`ALLOWED_PREFIXES` と一致させてあり、試験が固定している（2026-09-19 時点で次の9経路と heartbeat の前方一致）。
+一覧は `app.py` の `ALLOWED_EXACT`・`ALLOWED_PREFIXES` と、HTTP 併設の `mekiki_reader/http_api.py` の `ROUTES` に一致させてあり、試験が固定している（2026-09-19 時点の9経路と heartbeat の前方一致に、2026-09-27 に `/api/v1/` の九経路を足した）。
 
 | 経路 | 通す理由 |
 |---|---|
@@ -305,6 +356,7 @@ Hugging Face の MCP バッジと `hf.co/mcp` 経由の呼び出しは Hugging F
 | `/gradio_api/heartbeat/*` | 自己呼び出しの内部クライアントが使う。上流のクライアントは断られると間を置かずに再試行するので、塞がずに同時数で絞る（上流との互換のため） |
 | `/gradio_api/mcp/`（末尾 `/` なしも） | MCP 本体（Streamable HTTP）。`/gradio_api/mcp`（末尾 `/` なし）も転送せず、サーバの中で `/gradio_api/mcp/` と同じ本体として扱う（許可一覧は両方を完全一致。2026-09-19 まで上流の 307 で転送していたが、プロキシの裏では `Location` が `http://` になり、末尾の `/` を落とす Custom Connector がつながらなかった） |
 | `/gradio_api/mcp/schema` | ツールの JSON スキーマ（上流が MCP 本体と同じ下に置く）。三機能には要らないが、著者の指示で開けてある |
+| `/api/v1/` の九経路 | HTTP 併設（上の「MCP なしで使う」の表。完全一致・メソッドも固定）。上流の Gradio には渡さず、Guard の中で七ツールを呼ぶ |
 
 つながったままになる GET の流れ（塞げないもの）は、種類ごとに同時数を絞る。超えた分は通信層で 503。
 
@@ -327,7 +379,7 @@ Hugging Face の MCP バッジと `hf.co/mcp` 経由の呼び出しは Hugging F
 |---|---|---|
 | MCP の要求（`/gradio_api/mcp/` への POST など） | 32 | 96 |
 | 自己呼び出しの登録（`/gradio_api/queue/join`） | 8 | 64 |
-| そのほか（`/`・`/gradio_api/info`・`/gradio_api/mcp/schema` など） | 16 | 32 |
+| そのほか（`/`・`/gradio_api/info`・`/gradio_api/mcp/schema`・`/api/v1/*` など） | 16 | 32 |
 
 ### 接続時に知っておくこと
 
@@ -346,7 +398,7 @@ Hugging Face の MCP バッジと `hf.co/mcp` 経由の呼び出しは Hugging F
 .venv/bin/python -m pytest -q
 ```
 
-D01〜D04（同梱データ）・T01〜T12 と R01（七ツールと再現性）・S01〜S03（安全）・M01〜M03（MCP 接続）。
+D01〜D04（同梱データ）・T01〜T12 と R01（七ツールと再現性）・S01〜S03（安全）・M01〜M03（MCP 接続）・H01〜H04（HTTP 併設。local と spaces の両モード）。
 `-m server` を付けるとサーバを起動する試験だけを走らせる。接続先ごとの検収記録は [docs/acceptance/](docs/acceptance/) に置く。
 
 ## 7. ライセンス
@@ -377,7 +429,7 @@ D01〜D04（同梱データ）・T01〜T12 と R01（七ツールと再現性）
 | 署名 | Kengo Tomita（2026-09-19） |
 | 公開の版 | 対象コミット：Space `KennGoTm/mekiki-reader` の `b8c4b38`（mekiki-mcp `main` `d6ae3ed` 相当） |
 
-- **制作工程と使用モデル**：方針（`SPEC.md`。Claude〔claude.ai・Fable 5.1〕）→方針の独立検証（ChatGPT〔Pro〕）→施工（Claude Code〔Opus 5〕）→独立検査（Codex〔GPT-6 Astra〕。指摘と差分案のみ）→最終検査（Claude〔claude.ai・Fable 5.1〕）→接続確認と公開判断（著者）。生成 AI を使って作った。
+- **制作工程と使用モデル**：方針（`SPEC.md`。Claude〔claude.ai・Fable 5.1〕）→方針の独立検証（ChatGPT〔Pro〕）→施工（Claude Code〔Opus 5〕）→独立検査（Codex〔GPT-6 Astra〕。指摘と差分案のみ）→最終検査（Claude〔claude.ai・Fable 5.1〕）→接続確認と公開判断（著者）。施工（HTTP 併設以降）：Claude Code（Opus 5.5）。生成 AI を使って作った。
 - **参照した型**：Paper2Agent（Miao et al., Nature 2026）から借りたのは型（資源・プロンプト・ツール・検証テスト・Spaces での公開）であって工程ではない。読解の対象は T1〜T5（題名・版・DOI は `data/CITATION.md`）。
 - **費用と休止**：ローカルで動かす分には追加の API 料金・ホスティング料金は要らない。公開（Spaces）は HF PRO（月9ドル）・CPU basic。再起動からの復帰は17秒（Space 画面の Restarting→Running を目視計測・2026-09-19）。休止からの復帰は未実測。
 - **利用者入力の送信先と保存方針**：`verify_quote` と `check_compressions` の入力には未公開の情報が入りうる。実測では、起動から全ツール・全 resource・全 prompt の呼び出しまで loopback 以外への接続は0件。**配信中**は書き込みで開いたファイルも0件で、`data/` には一切触れない。起動の途中では、依存ライブラリ（filelock）が一時ディレクトリの中に `probe-source`・`probe-link` を作って消し、Gradio が一時領域に書く（どちらも利用者の入力とは関係がない）。サーバは入力をファイルに保存しない方針で、実測した範囲（外への接続と、書き込みで開いたファイル）では保存は確認されなかった。**標準出力・標準エラー**に出るのは、起動時の表示・遮断の記録（状態コードと理由だけ。経路は出さない）・例外の型と場所（ファイル名と行。例外の文は出さない）・ログの水準と名前と出した場所（文は出さない。文に値が埋め込まれることがあるため）だけにしてある。実測（2026-09-19・ローカル）では、正常・不正・例外の各要求（ツールの引数・未知のツール名・未知のメソッドと通知・応答やエラーの形の要求・URL でない URI・壊れた `_meta`・JSON でない本文・壊れた JSON・queue の入力検証のエラー・遮断した経路・ヘッダ・問い合わせ・待ち受け直後の例外）に入れた目印の文字列は、標準出力・標準エラーのどこにも出なかった（試した範囲。`tests/test_safety.py::test_s01_inputs_do_not_reach_the_logs`・`test_s01_logs_are_redacted_from_the_start`）。対策の前は、queue の入力検証のエラー・未知のツール名・JSON-RPC の中身がログに出ていた。**Spaces 側のログ**は、実行中の標準出力・標準エラーがそのまま出るもので、中身は上と同じ（2026-09-19 に private の Space で、目印の文字列を `verify_quote` に送り、Container ログに値も呼び出しの痕跡も出ないことを目視で確かめた。SPEC §7 S04）。閲覧できるのは Space に書き込み権限のある者で、保持は Space の再起動までで期間は保証されない。`hf.co/mcp` 経由の呼び出しは Hugging Face 側の機能で、このサーバは関知しない。
@@ -394,3 +446,5 @@ D01〜D04（同梱データ）・T01〜T12 と R01（七ツールと再現性）
   9. 同梱データの照合は事故の検出までで、改竄への耐性は主張しない。
   10. **上流の差し替え**：Gradio 6.27.0・uvicorn 0.53.0 との互換と、守則を満たすために、上流の次の部分を差し替えている（どれも起動後の確認で差し替えが効いていることを確かめ、外れていれば起動しない）。①CORS の中間層（許可ヘッダを返さない）／②待ち行列の例外の印字（型と場所だけ）／③ログの出口（水準・名前・出した場所だけ。uvicorn がログを設定した直後にも差し替える）／④待ち行列のセッションの表（追い出すときに関連する記録も消す・内部と処理中と回収中は追い出さない）／⑤結果の送り出し（できた時刻を記録する）／⑥uvicorn の要求ごとの処理（送信期限を過ぎた接続をすぐ切る手段をガードへ渡す）／⑦MCP の `tools/list` の処理（七ツールに注釈 `readOnlyHint=true`・`destructiveHint=false`・`idempotentHint=true`・`openWorldHint=false` を足す。Gradio 6.27.0 には注釈を渡す経路が無い。注釈はクライアントへの手がかりで、保証ではない）。あわせて、内部クライアントは上流の遅延作成を使わず起動の直後に一つ作る。上流を別の版にするときは、この一覧をすべて見直す。
   11. **転送は返さない**：サーバは 3xx の転送を一切返さない（プロキシの裏では上流が組み立てる `Location` が `http://` になり、HTTPS の接続先に戻れないため）。`/gradio_api/mcp` は転送せず `/gradio_api/mcp/` と同じ本体として扱い、上流がほかに返す転送（末尾 `/` の付け外し。実測では `/gradio_api/heartbeat/<id>/`）は 404 に置き換える（`Location` を出さない）。
+  12. `verify` の GET は引用文が URL に載り、エッジのログに残りうる（サーバ自身は記録しない）。
+  13. `check` は POST のみ（利用者自身の文章を URL に載せないため）。

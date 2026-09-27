@@ -38,6 +38,8 @@ li { margin: .35rem 0; }
 
 def render(mcp_url: str) -> str:
     url = html.escape(mcp_url, quote=True)
+    # HTTP 併設の例（SPEC v2.5 §2.12）。基点は MCP の URL と同じ起動時の SPACE_HOST から作る
+    api = html.escape(mcp_url.removesuffix("gradio_api/mcp/") + "api/v1/", quote=True)
     return f"""<!doctype html>
 <html lang="ja">
 <head>
@@ -83,6 +85,11 @@ def render(mcp_url: str) -> str:
 <span class="en">grok.com/connectors → new connector → Custom, no authentication. In a chat, call it with <code>@Mekiki Reader</code>.</span></li>
 <li><strong>Claude Code</strong>：<code>claude mcp add --transport http mekiki-reader {url}</code></li>
 </ul>
+
+<h2>MCP なしで / Without MCP</h2>
+<p>同じ七ツールは素の HTTP でも呼べる（返る JSON は MCP と同じ。<code>Accept: text/markdown</code> で出典行つきの Markdown）。経路の一覧は <code>GET {api}</code>。<br>
+<span class="en">The same seven tools are also available over plain HTTP (the same JSON as over MCP; Markdown with a source line with <code>Accept: text/markdown</code>). The routes are listed at <code>GET {api}</code>.</span></p>
+<pre>curl -s -H 'Accept: text/markdown' {api}papers/T5/sections/t5-5-4</pre>
 
 <h2>最初に送る一言 / First message</h2>
 <p>接続したら、雛形 <code>mekiki_start</code>（英語は <code>mekiki_start_en</code>）の文面を送る。<br>

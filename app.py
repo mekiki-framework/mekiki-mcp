@@ -854,7 +854,8 @@ def _guard_middleware():
         tag = None
         if route.method == "GET":
             tag = H.etag(READER.corpus.bundle.bundle_hash, route.name, args, representation)
-        links = H.alternate_links(scope.get("raw_path") or scope.get("path", "").encode("utf-8"), query_string)
+        # 末尾の link は検証を通った引数から組み立て直す（受け取った文字列を継ぎ足さない。SPEC v2.5.6・Codex⑥ F1／F2）
+        links = None if route.method == "POST" else H.alternate_links(route, path_values, values)
         return await _send_api(send, route, text, name, args, representation, tag,
                                H.joined(raw_headers, b"if-none-match"), links)
 

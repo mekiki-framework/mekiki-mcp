@@ -1,4 +1,4 @@
-"""HTTP 併設（SPEC v2.5.4 §2.12・docs/rules/HTTP.md の HTTP-1.3.0）の、通信に触れない部分。
+"""HTTP 併設（SPEC v2.5.6 §2.12・docs/rules/HTTP.md の HTTP-2.0.0）の、通信に触れない部分。
 
 経路の表・引数の読み取り・表現の選択（JSON か Markdown か）・Markdown の組み立て・ETag。標準ライブラリだけで、
 gradio も七ツールも import しない。ツールを呼ぶのは app.py の Guard の中で、MCP と同じ入口の関数を使う
@@ -19,7 +19,8 @@ import re
 from dataclasses import dataclass
 from typing import Any, Mapping, Sequence
 
-HTTP_VERSION = "HTTP-1.3.0"  # 1.1.0：verify に language。1.2.0：要求行の上限・同名ヘッダの結合。1.3.0：HTML 表現と format
+HTTP_VERSION = "HTTP-2.0.0"  # 1.1.0：verify に language。1.2.0：要求行の上限・同名ヘッダの結合（配置版）。
+# 2.0.0：HTML 表現と format（未配置の 1.3.0）に、Accept の解釈の一本化（配置版 1.2.0 の値の変更＝MAJOR）と link の組み立て直し
 PREFIX = "/api/v1/"
 NAMESPACE = "/api"  # 早期拒否にも共通ヘッダを付ける範囲（`/api` と `/api/…`。未知の版・経路を含む）
 REQUEST_TARGET_MAX = 16 * 1024  # 要求行の経路＋問い合わせ（`?` を含むバイト数）。超えたら 414（HTTP-1.2.0）
@@ -199,21 +200,6 @@ def parse_k(value: "str | None") -> Any:
 # ---------------------------------------------------------------- 表現・状態・ETag
 
 
-def wants_markdown(accept: "str | None") -> bool:
-    """`Accept` のどれかの項目が `text/markdown`（q が 0 でない）なら Markdown。ほかは JSON（既定）。"""
-    for item in (accept or "").split(","):
-        media, *params = [p.strip() for p in item.split(";")]
-        if media.lower() != "text/markdown":
-            continue
-        q = next((p.split("=", 1)[1].strip() for p in params if p.lower().startswith("q=")), "1")
-        try:
-            if float(q) > 0:
-                return True
-        except ValueError:
-            continue
-    return False
-
-
 def _accept_ranges(accept: "str | None") -> list[tuple[str, float, int]]:
     """`Accept` を (media, q, 位置) の列にする。q の読めない項目は捨てる。"""
     out = []
@@ -230,19 +216,20 @@ def _accept_ranges(accept: "str | None") -> list[tuple[str, float, int]]:
 
 
 def choose(accept: "str | None", fmt: "str | None") -> str:
-    """表現を選ぶ（HTTP-1.3.0）。format があれば Accept より優先（値は json・markdown・html。ほかは 400）。
+    """表現を選ぶ（HTTP-2.0.0）。format があれば Accept より優先（値は json・markdown・html。ほかは 400）。
 
-    Accept では、q の降順・書かれた順で最初の項目が `text/html`（q>0）なら HTML（ブラウザの既定の Accept が
-    これに当たる）。そうでなければ従来どおり、`text/markdown`（q>0）がどこかにあれば Markdown、ほかは JSON。
+    Accept は三表現で一本の規則（SPEC v2.5.6・Codex⑥ F4）：q の降順（同じ q は書かれた順）に並べた**先頭の一項目
+    だけ**で決める。`text/html` なら HTML、`text/markdown` なら Markdown、それ以外（`application/json`・`text/*`・
+    `*/*`・q=0 の項目を含む）は JSON。ワイルドカードが先頭のときに下位の `text/markdown` へ落ちる分岐は無い。
     """
     if fmt is not None:
         if fmt not in REPRESENTATIONS:
             raise HttpInputError("format は json・markdown・html のいずれか")
         return fmt
     ranges = sorted(_accept_ranges(accept), key=lambda r: (-r[1], r[2]))
-    if ranges and ranges[0][0] == "text/html" and ranges[0][1] > 0:
-        return "html"
-    return "markdown" if wants_markdown(accept) else "json"
+    if not ranges or ranges[0][1] <= 0:
+        return "json"
+    return {"text/html": "html", "text/markdown": "markdown"}.get(ranges[0][0], "json")
 
 
 def http_status(status: str) -> int:
@@ -276,7 +263,7 @@ def index(meta: Mapping[str, str]) -> dict:
     return {
         "api_version": HTTP_VERSION,
         **{k: meta[k] for k in ("schema_version", "corpus_version", "source_commit", "bundle_hash")},
-        "accept": ["application/json", "text/markdown"],
+        "accept": ["application/json", "text/markdown", "text/html"],
         "routes": [{"method": r.method, "path": r.path, "tool": r.tool,
                     "params": list(r.path_params + r.params),
                     "in": "path+query" if r.path_params else ("json_body" if r.method == "POST" else "query")}
@@ -419,14 +406,31 @@ _HTML_STYLE = (":root{color-scheme:light dark}body{margin:0;font:15px/1.6 system
                "overflow-wrap:anywhere}.source{font-family:ui-monospace,monospace;font-size:.85em}")
 
 
-def alternate_links(raw_path: bytes, query_string: bytes) -> list[tuple[str, str]]:
-    """同じ内容の JSON と Markdown への URL（format= だけを替える。ほかの項目は受け取ったバイトのまま並べる）。"""
-    pieces = [p for p in query_string.split(b"&") if p and p.partition(b"=")[0] != FORMAT.encode()]
-    base = raw_path.decode("latin-1")
-    out = []
+_UNRESERVED = frozenset(b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~")
+
+
+def quote(value: str) -> str:
+    """URL の成分の百分率符号化（自前。`urllib` はパッケージごと禁止のまま）：非予約文字（英数字と `-._~`）以外は
+    すべて UTF-8 の `%XX`（大文字）。`#`・`&`・`+`・`=`・`/`・`%`・引用符・空白・非 ASCII も符号化する。"""
+    return "".join(chr(b) if b in _UNRESERVED else f"%{b:02X}" for b in value.encode("utf-8"))
+
+
+def alternate_links(route: Route, path_values: Mapping[str, str],
+                    values: Mapping[str, str]) -> list[tuple[str, "str | None"]]:
+    """同じ内容の JSON と Markdown への URL を、検証を通った（復号後の）引数から組み立て直す（SPEC v2.5.6・F1／F2）。
+
+    経路の値と引数の名前・値を `quote` で符号化し、引数は受け取った順に並べ、`format`（復号後の名前で除いてある）を
+    末尾に置く。組み立てた要求行（経路＋`?`＋問い合わせ）が REQUEST_TARGET_MAX を超える表現は URL を None にする
+    （短くする処理はしない。F3）。HTML に入れる前の esc() は描画の側で行う。
+    """
+    path = route.path
+    for name in route.path_params:
+        path = path.replace("{" + name + "}", quote(path_values[name]))
+    items = [f"{quote(k)}={quote(v)}" for k, v in values.items() if k != FORMAT]
+    out: list[tuple[str, "str | None"]] = []
     for rep in ("json", "markdown"):
-        query = "&".join([p.decode("latin-1") for p in pieces] + [f"{FORMAT}={rep}"])
-        out.append((rep, f"{base}?{query}"))
+        url = path + "?" + "&".join(items + [f"{FORMAT}={rep}"])
+        out.append((rep, url if len(url.encode("ascii")) <= REQUEST_TARGET_MAX else None))
     return out
 
 
@@ -441,11 +445,18 @@ def _html_table(rows: Sequence[Mapping[str, Any]]) -> list[str]:
     return out
 
 
-def _html_page(title: str, body: list[str], links: "list[tuple[str, str]] | None", post_note: bool) -> str:
+def _html_page(title: str, body: list[str], links: "list[tuple[str, str | None]] | None", post_note: bool) -> str:
     foot: list[str] = ["<nav>"]
-    if links:
+    placed = [(rep, url) for rep, url in (links or ()) if url is not None]
+    if placed:
         foot.append("同じ内容 / Same content: " + " · ".join(
-            f'<a href="{esc(url)}">{esc(rep.upper() if rep == "json" else rep.capitalize())}</a>' for rep, url in links))
+            f'<a href="{esc(url)}">{esc(rep.upper() if rep == "json" else rep.capitalize())}</a>' for rep, url in placed))
+    if links and len(placed) < len(links):  # 組み立てた要求行が上限を超える表現（F3）
+        foot.append("<p>" + esc("・".join(rep for rep, url in links if url is None)) + " への link は要求行が "
+                    f"{REQUEST_TARGET_MAX} バイトを超えるので置かない。同じ URL に <code>Accept: application/json</code> か "
+                    "<code>Accept: text/markdown</code> を付けて要求するか、verify は POST で送る。 / The link would exceed "
+                    f"the {REQUEST_TARGET_MAX}-byte request-target limit, so it is not shown: request the same URL with "
+                    "<code>Accept: application/json</code> or <code>Accept: text/markdown</code>, or send verify by POST.</p>")
     if post_note:
         foot.append("POST の結果は URL で再現できない。同じ本文を <code>?format=json</code> か "
                     "<code>?format=markdown</code> を付けた同じ経路へ送り直す。 / A POST result cannot be reproduced "

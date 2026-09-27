@@ -139,7 +139,7 @@ Step-by-step guide in Japanese and English: [docs/TUTORIAL.md](docs/TUTORIAL.md)
 
 ### 規則の版
 
-`SCHEMA-1.0.0`・`JSON-1.0.0`・`NORM-1.2.0`・`SEARCH-1.1.0`・`CAND-1.0.0`・`NEAR-1.0.0`・`GUIDE-1.0.0`・`LIMITS-3.3.0`・`HTTP-1.3.0`・
+`SCHEMA-1.0.0`・`JSON-1.0.0`・`NORM-1.2.0`・`SEARCH-1.1.0`・`CAND-1.0.0`・`NEAR-1.0.0`・`GUIDE-1.0.0`・`LIMITS-3.3.0`・`HTTP-2.0.0`・
 `LINES-1.0.0`・`LANG-1.0.0`・`SECTION-1.0.0`・`T4MAP-1.0.0`・`BUNDLE-1.0.0`・`TERMS-0.1.1`（30項目）・
 `PATTERNS-0.2.1`（50件）＋`PATTERNS-MATCH-2.0.0`・`PROMPTS-0.2.2`（8件）。本文は [docs/rules/](docs/rules/)。
 
@@ -280,7 +280,7 @@ Hugging Face の MCP バッジと `hf.co/mcp` 経由の呼び出しは Hugging F
 ### MCP なしで使う（HTTP）
 
 MCP を持たない相手（端末を持つエージェント・スクリプト・ブラウザ）のために、同じ七ツールを素の HTTP でも出している
-（MCP の置き換えではなく追加。SPEC v2.5.4 §2.12・規則 [HTTP-1.3.0](docs/rules/HTTP.md)）。返る JSON は MCP のツールの応答と
+（MCP の置き換えではなく追加。SPEC v2.5.6 §2.12・規則 [HTTP-2.0.0](docs/rules/HTTP.md)）。返る JSON は MCP のツールの応答と
 同じ文字列（同じ入力なら同じバイト列。試験 H01）。`Accept: text/markdown` を付けると、先頭に出典行（paper_id・paper_version・
 section_anchor・行範囲・corpus_version・source_commit）があり、節の本文を行のまま入れた Markdown が返る（検索・照合・検出は表）。
 認証なし。ローカルでは `http://127.0.0.1:7860/api/v1/`。
@@ -324,7 +324,7 @@ curl -s -G https://kenngotm-mekiki-reader.hf.space/api/v1/verify --data-urlencod
   （URL は前段のエッジのログに残りうる）。`verify` の GET は、引用が公開の原文なので許している（照合結果を URL で共有できる）。
   短い引用は GET、長い引用（日本語で数百字以上）は POST を使う（URL の長さには上限がある）。未公開の文を照合するときも POST を使う。
 - GET の 200 には `Cache-Control: public, max-age=3600` と `ETag` が付く（データは版で固定。`If-None-Match` で 304）。
-  ETag は表現（JSON／Markdown）ごとに別で、応答には `Vary: Accept` が付く。`Accept`・`If-None-Match` を複数行で送っても、
+  ETag は表現（JSON／Markdown／HTML）ごとに別で（JSON のタグで HTML は 304 にならない）、応答には `Vary: Accept` が付く。`Accept`・`If-None-Match` を複数行で送っても、
   一行に結合したのと同じに扱う。早期の拒否（未知の経路・405・413・414 など）も `no-store`。
   POST と 400・404 は `no-store`。
 - 引数の名前は経路ごとに決まっていて、ほかの名前・同じ名前の重複・崩れた百分率符号化（`%G1` など）・UTF-8 でない値は

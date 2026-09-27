@@ -1005,7 +1005,7 @@ def _api_call(route: "H.Route", path_values: dict, values: dict) -> "tuple[str |
     if route.name == "guide":
         return "get_reading_guide", (get("part", "all"),)
     if route.name == "verify":
-        return "verify_quote", (get("text", ""), get("paper_id", ""), "")
+        return "verify_quote", (get("text", ""), get("paper_id", ""), get("language", ""))
     if route.name == "check":
         return "check_compressions", (get("text", ""),)
     raise KeyError(route.name)

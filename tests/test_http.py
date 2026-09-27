@@ -1,4 +1,4 @@
-"""HTTP 併設の試験 H01〜H04（SPEC v2.5 §2.12・§7・docs/rules/HTTP.md の HTTP-1.0.0）。
+"""HTTP 併設の試験 H01〜H04（SPEC v2.5.1 §2.12・§7・docs/rules/HTTP.md の HTTP-1.1.0）。
 
 サーバを local と spaces の二つのモードで起動し、同じ試験を両方で通す。spaces は SPACE_HOST 宛ての Host で
 要求する（待ち受けは試験のため loopback。MEKIKI_TEST_BIND）。
@@ -34,6 +34,7 @@ MODE_ENV = {
 }
 MD = {"Accept": "text/markdown"}
 T5_QUOTE = "AI can assist play. It cannot take one's place in it."
+T4_EN_QUOTE = "At the center of undertaking sits a relation independent of ability"  # translations/T4.en.md L293
 
 
 class Api:
@@ -96,7 +97,7 @@ NINE = (("GET", "/api/v1/"), ("GET", "/api/v1/papers"), ("GET", "/api/v1/papers/
 def test_h_routes_are_pinned():
     assert tuple((r.method, r.path) for r in H.ROUTES) == NINE
     assert {r.tool for r in H.ROUTES} - {None} == set(app.TOOL_NAMES)  # 七ツールがどれも HTTP から呼べる
-    assert H.HTTP_VERSION == "HTTP-1.0.0"
+    assert H.HTTP_VERSION == "HTTP-1.1.0"
     assert app.T.LIMITS_VERSION == "LIMITS-3.2.0"
     assert H.PREFIX in app.PRE_READ_PREFIXES
     assert app._admission_kind("POST", "/api/v1/check") == "other"  # 受付枠は「その他」
@@ -146,6 +147,17 @@ H01_CASES = (
      {"text": "従業員が遭遇から結晶化させた向きを、正式な検討の回路に入れ"}, 200),
     ("verify_quote", {"text": "AI can deliver the fact of participation."}, "GET", "/api/v1/verify",
      {"text": "AI can deliver the fact of participation."}, 200),
+    # T4 英訳の照合（HTTP-1.1.0 で verify に language。MCP と同じ検証：en は T4 のみ）
+    ("verify_quote", {"text": T4_EN_QUOTE, "paper_id": "T4", "language": "en"}, "GET", "/api/v1/verify",
+     {"text": T4_EN_QUOTE, "paper_id": "T4", "language": "en"}, 200),
+    ("verify_quote", {"text": T4_EN_QUOTE, "language": "en"}, "POST", "/api/v1/verify",
+     {"text": T4_EN_QUOTE, "language": "en"}, 200),
+    ("verify_quote", {"text": T4_EN_QUOTE, "paper_id": "T4"}, "GET", "/api/v1/verify",
+     {"text": T4_EN_QUOTE, "paper_id": "T4"}, 200),                               # 原文（日本語）には無い
+    ("verify_quote", {"text": T5_QUOTE, "paper_id": "T5", "language": "en"}, "GET", "/api/v1/verify",
+     {"text": T5_QUOTE, "paper_id": "T5", "language": "en"}, 400),                # T5 に英訳の版は無い
+    ("verify_quote", {"text": T5_QUOTE, "language": "fr"}, "POST", "/api/v1/verify",
+     {"text": T5_QUOTE, "language": "fr"}, 400),
     ("verify_quote", {"text": "the author's r"}, "GET", "/api/v1/verify", {"text": "the author's r"}, 200),
     ("verify_quote", {"text": "short"}, "GET", "/api/v1/verify", {"text": "short"}, 400),
     ("check_compressions", {"text": "AIは遊べない"}, "POST", "/api/v1/check", {"text": "AIは遊べない"}, 200),
@@ -180,6 +192,9 @@ def test_h01_http_json_is_the_mcp_json(api):
         assert data.decode("utf-8") == mcp_text, (tool, args)
         env = _env(data)
         assert status == H.http_status(env["status"])
+        if (tool, args.get("language")) == ("verify_quote", "en") and code == 200:
+            assert env["match"] == "exact" and env["results"][0]["source_kind"] == "translation"
+            assert env["results"][0]["source_path"] == "translations/T4.en.md"
         name = H.match(path)[0]
         seen_routes.add((method, H.route(name, method).path))
         seen_tools.add(tool)
@@ -348,7 +363,7 @@ def test_h03_invalid_input_is_400(api):
         ("GET", "/api/v1/search?q=a&q=b", None),
         ("GET", "/api/v1/verify?text=" + "%FF" * 12, None),
         ("GET", "/api/v1/verify?text=%ED%A0%80abcdefghij", None),
-        ("GET", "/api/v1/verify?language=en&text=" + urllib.parse.quote(T5_QUOTE), None),
+        ("GET", "/api/v1/verify?lang=en&text=" + urllib.parse.quote(T5_QUOTE), None),
         ("GET", "/api/v1/papers?x=1", None),
         ("GET", "/api/v1/guide?" + "&".join(["part=all"] * 9), None),
         ("POST", "/api/v1/check?text=x", json.dumps({"text": "AIは遊べない"}).encode()),
@@ -358,7 +373,7 @@ def test_h03_invalid_input_is_400(api):
         ("POST", "/api/v1/check", b'{"text": 5}'),
         ("POST", "/api/v1/check", b'{"text": "a", "text": "b"}'),
         ("POST", "/api/v1/check", b'{"text": "a", "paper_id": "T1"}'),
-        ("POST", "/api/v1/verify", b'{"text": "abc", "language": "en"}'),
+        ("POST", "/api/v1/verify", json.dumps({"text": T5_QUOTE, "lang": "en"}).encode()),
         ("POST", "/api/v1/check", b"\xff\xfe"),
     )
     for method, path, body in cases:
@@ -457,6 +472,43 @@ def test_h03_admission_and_busy_are_transport_errors(tmp_path, mode):
     assert other["rejected"] >= 1 and (other["active"], other["waiting"]) == (0, 0), other
 
 
+def test_h03_percent_encoding_and_utf8_are_400_not_500(api):
+    """百分率符号化（自前の復号）：崩れた `%`・UTF-8 でない列は 400（invalid_input）で、500 にならない。
+    `+` は空白、`%2B` はリテラルの `+`。経路の中の崩れた符号化は HTTP の層（uvicorn）が復号し、404 か 400 になる。"""
+    bad = ("%", "%G1", "%4", "abc%", "%%41", "%zz", "%E3%81", "%FF%FE", "%C0%AF", "%ED%A0%80", "%F4%90%80%80",
+           "%E3%81%82%")
+    for value in bad:
+        for path in (f"/api/v1/verify?text={value}-quote-text-here", f"/api/v1/search?q=abc&paper_id={value}",
+                     f"/api/v1/guide?part{value}=all"):
+            status, headers, data = api.call("GET", path)
+            assert status == 400, (path, status)
+            env = _env(data)
+            assert env["status"] == "invalid_input" and env["limitations"][0].startswith("INPUT: "), path
+            assert "RULES: " + H.HTTP_VERSION in env["limitations"]
+    # 生の（百分率符号化していない）非 ASCII のバイト列は、UTF-8 でも HTTP の層（h11）が先に 400 で断る（実測）
+    for raw, want in (("text=AI can assist play.".encode().replace(b" ", b"+"), 200),
+                      ("q=アドヒアランス".encode("utf-8"), 400), (b"q=\xff\xfe", 400), (b"q=\xe3\x81", 400)):
+        path = b"/api/v1/search?" + raw if raw.startswith(b"q=") else b"/api/v1/verify?" + raw
+        sock = socket.create_connection(("127.0.0.1", api.srv.port), timeout=10)
+        try:
+            sock.sendall(b"GET " + path + b" HTTP/1.1\r\nHost: " + api.host.encode() + b"\r\nConnection: close\r\n\r\n")
+            head = sock.recv(64)
+        finally:
+            sock.close()
+        assert head.startswith(b"HTTP/1.1 %d " % want), (raw, head)
+    # `+` は空白（二つの断片）、`%2B` は `+` の文字、`%20` も空白
+    plus = _env(api.call("GET", "/api/v1/search?q=answerability+dignity")[2])
+    space = _env(api.call("GET", "/api/v1/search?q=answerability%20dignity")[2])
+    assert plus == space and any("QUERY: 断片 answerability / dignity" == lim for lim in plus["limitations"])
+    literal = _env(api.call("GET", "/api/v1/search?q=Spec.cost%2BExt.cost")[2])
+    assert any(lim.startswith("QUERY: 断片 ") and "+" in lim for lim in literal["limitations"]), literal["limitations"]
+    # 経路の中（uvicorn が復号する）：崩れた符号化も 500 にしない
+    for path in ("/api/v1/papers/%FF/sections/x", "/api/v1/papers/T1/sections/%", "/api/v1/papers/T1/sections/%G1",
+                 "/api/v1/papers/%E3%81/sections/x", "/api/v1/papers/T1/sections/%ED%A0%80"):
+        status, _h, _d = api.call("GET", path)
+        assert status in (400, 404), (path, status)
+
+
 # ---------------------------------------------------------------- H04（cache・ETag・転送なし・Origin・Host）
 
 
@@ -481,6 +533,24 @@ def test_h04_cache_headers_and_etag(api):
                 assert s304 == 304 and d304 == b"" and h304["etag"] == tag and "location" not in h304, (path, inm)
             assert api.call("GET", path, headers={**headers, "If-None-Match": '"other"'})[0] == 200
     assert len(tags) == 2 * len(gets)  # 経路・引数・表現ごとに違う
+    # 同じ URL・Accept 違い：ETag が表現（JSON／Markdown）ごとに異なり、どちらも Vary: Accept（SPEC v2.5.1）
+    for path in gets:
+        by_accept = {}
+        for accept in ("application/json", "text/markdown", "text/markdown;q=0.9, application/json;q=0.1", "*/*"):
+            _s, h, _d = api.call("GET", path, headers={"Accept": accept})
+            assert h["vary"] == "Accept", (path, accept)
+            by_accept[accept] = (h["content-type"], h["etag"])
+        assert by_accept["application/json"][1] != by_accept["text/markdown"][1], path
+        assert by_accept["text/markdown;q=0.9, application/json;q=0.1"] == by_accept["text/markdown"], path
+        assert by_accept["*/*"] == by_accept["application/json"], path
+        # 別の表現の ETag では 304 にならない（キャッシュが表現を取り違えない）
+        s, h, _d = api.call("GET", path, headers={"Accept": "text/markdown",
+                                                  "If-None-Match": by_accept["application/json"][1]})
+        assert s == 200 and h["content-type"].startswith("text/markdown"), path
+    # 304 と 400・404 にも Vary: Accept
+    tag = api.call("GET", "/api/v1/papers")[1]["etag"]
+    assert api.call("GET", "/api/v1/papers", headers={"If-None-Match": tag})[1]["vary"] == "Accept"
+    assert api.call("GET", "/api/v1/papers/T9/sections/x")[1]["vary"] == "Accept"
     # 既定を埋めた後の引数が同じなら同じ ETag・同じ本文（k の省略と k=5・空の paper_id と省略）
     a = api.call("GET", "/api/v1/search?q=answerability")
     b = api.call("GET", "/api/v1/search?q=answerability&k=5&paper_id=")

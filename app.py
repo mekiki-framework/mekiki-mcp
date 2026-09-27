@@ -262,6 +262,20 @@ CORS_RESPONSE_HEADERS = frozenset({
 })
 GUARD_LOG: "deque[tuple[int, str]]" = deque(maxlen=GUARD_LOG_MAX)  # 遮断の記録（固定長・S01 の証跡）
 GUARD_COUNTS: dict[int, int] = {}  # 応答コードごとの総数（記録が溢れても件数は残す）
+# 受けた要求の要求行（経路＋問い合わせ）の最長のバイト数を、経路の種類ごとに（値は持たない。長さだけ）。
+# 16 KiB の上限（414）を全経路に掛けても内部クライアントに届かないことを試験で確かめるため（SPEC v2.5.3）。
+TARGET_SEEN: dict[str, int] = {}
+
+
+def _target_kind(path: str) -> str:
+    """要求行の長さを記録する単位（固定の名前だけ。経路の値は記録しない）。"""
+    if path.startswith("/gradio_api/heartbeat/"):
+        return "/gradio_api/heartbeat/*"
+    if path in ALLOWED_EXACT:
+        return path
+    if H.in_namespace(path):
+        return "/api"
+    return "other"
 
 # ---- resources（Q70。12件・静的URI・テンプレート変数なし） ----
 
@@ -869,9 +883,12 @@ def _guard_middleware():
                 # 健康検査には固定の短い HTML だけを返す（Gradio の画面は要求の Host から設定を組み立てるため、
                 # 許可していない Host には渡さない）
                 return await _health(send, scope.get("method", "GET").upper(), receive)
-            if H.in_namespace(path) and H.target_length(scope.get("raw_path") or path.encode("utf-8"),
-                                                        scope.get("query_string", b"")) > H.REQUEST_TARGET_MAX:
-                return await _reply(send, 414, "request target too long", path, receive)  # HTTP-1.2.0
+            # 要求行（経路＋問い合わせ）の上限は Guard が受ける全経路に掛ける（HTTP-1.2.0・SPEC v2.5.3）
+            target_len = H.target_length(scope.get("raw_path") or path.encode("utf-8"), scope.get("query_string", b""))
+            if target_len > H.REQUEST_TARGET_MAX:
+                return await _reply(send, 414, "request target too long", path, receive)
+            kind_key = _target_kind(path)
+            TARGET_SEEN[kind_key] = max(TARGET_SEEN.get(kind_key, 0), target_len)
             if (EXTERNAL_HOSTS and path == "/" and _host_name(hosts[0]) in EXTERNAL_HOSTS
                     and scope.get("method", "GET").upper() in ("GET", "HEAD")):
                 return await _guide(send, scope.get("method", "GET").upper(), receive)

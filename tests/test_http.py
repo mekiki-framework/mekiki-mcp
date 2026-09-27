@@ -866,3 +866,62 @@ def test_h03_known_input_kinds_on_every_route(api):
         seen[(method, path)] = codes
     assert set(seen) == set(NINE)
     print("規則12の当て込み：", {f"{m} {p}": sorted(set(c)) for (m, p), c in seen.items()})
+
+
+# ---------------------------------------------------------------- 要求行の上限を全経路に（SPEC v2.5.3）
+
+TARGET_FAR_BELOW = 1024  # 内部クライアント・MCP の要求行はこの長さに収まる（上限 16 KiB に遠く及ばない）
+
+
+@pytest.mark.parametrize("mode", ["local", "spaces"])
+def test_h03_request_target_limit_on_every_route(tmp_path, mode):
+    """414 は Guard が受ける全経路に掛かる。それでも MCP（initialize と七ツール）・resources／prompts の自己呼び出し・
+    heartbeat・`/` は従来どおり通り、受けた要求行の最長（経路の種類ごと）は 1 KiB 未満に収まる。"""
+    with Server(tmp_path / "audit.json", env_extra=MODE_ENV[mode]) as srv:
+        a = Api(srv, mode)
+
+        async def body(s):
+            tools = [t.name for t in (await s.list_tools()).tools]
+            calls = [(await s.call_tool(tool, args)) for tool, args, *_ in H01_CASES[:1]]
+            for tool, args in (("get_section", {"paper_id": "T5", "anchor": "t5-5-4"}),
+                               ("search_passages", {"query": "answerability"}),
+                               ("get_claim_record", {"claim_id": "T5-N3"}),
+                               ("verify_quote", {"text": T5_QUOTE}),
+                               ("check_compressions", {"text": "AIは遊べない"}),
+                               ("get_reading_guide", {"part": "mode-1"})):
+                calls.append(await s.call_tool(tool, args))
+            resources = (await s.list_resources()).resources
+            read = [await s.read_resource(r.uri) for r in resources]
+            prompts = (await s.list_prompts()).prompts
+            got = [await s.get_prompt(p.name) for p in prompts]
+            return tools, calls, read, got
+
+        tools, calls, read, got = MC.session(srv.mcp_url, body, timeout=120)
+        assert tools == list(app.TOOL_NAMES) and len(calls) == 7
+        assert all(not c.isError and _env(c.content[0].text.encode())["status"] == "ok" for c in calls)
+        assert len(read) == len(app.RESOURCES) and all(r.contents[0].text for r in read)
+        assert len(got) == len(app.PR.TEMPLATES) and all(g.messages[0].content.text for g in got)
+        # `/` と自己呼び出しの読み先（loopback 宛て）は従来どおり
+        for method in ("GET", "HEAD"):
+            assert a.call(method, "/", host=f"127.0.0.1:{srv.port}")[0] == 200
+        assert a.call("GET", "/gradio_api/info", host=f"127.0.0.1:{srv.port}")[0] == 200
+        # 境界：16,384 バイトは通り、16,385 バイトは 414（API 以外の経路でも）
+        info = "/gradio_api/info?"
+        assert a.call("GET", info + "&" * (16384 - len(info)), host=f"127.0.0.1:{srv.port}")[0] == 200
+        for method, path in (("GET", "/"), ("HEAD", "/"), ("GET", "/gradio_api/info"), ("GET", "/gradio_api/mcp/"),
+                             ("POST", "/gradio_api/mcp/"), ("POST", "/gradio_api/queue/join"),
+                             ("GET", "/gradio_api/queue/data"), ("GET", "/gradio_api/heartbeat/abc"),
+                             ("GET", "/gradio_api/nope"), ("GET", "/config")):
+            long_path = path + "?" + "&" * (16385 - len(path) - 1)
+            status, headers, _ = a.call(method, long_path, b"{}" if method == "POST" else None,
+                                        host=f"127.0.0.1:{srv.port}")
+            assert status == 414 and "location" not in headers, (method, path, status)
+        audit = srv.stop()
+    seen = audit["target_seen"]
+    for key in ("/", "/gradio_api/info", "/gradio_api/queue/join", "/gradio_api/queue/data",
+                "/gradio_api/heartbeat/*", "/gradio_api/mcp/"):
+        assert key in seen, (key, seen)  # 内部クライアントと MCP の経路を実際に通った
+    over = {k: v for k, v in seen.items() if v >= TARGET_FAR_BELOW and not (k == "/gradio_api/info" and v == 16384)}
+    assert not over, over
+    assert audit["guard_counts"].get("414", audit["guard_counts"].get(414, 0)) >= 10
+    print(f"要求行の最長（{mode}）：", seen)

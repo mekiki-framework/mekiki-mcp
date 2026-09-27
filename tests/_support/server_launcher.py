@@ -382,6 +382,7 @@ def _write_log() -> None:
         "control": CONTROL, "control_net": CONTROL_NET,
         "guard": [list(x) for x in app.GUARD_LOG], "guard_counts": app.GUARD_COUNTS,
         "admission": app._ADMISSION, "streams": app._STREAMS, "sweep": {k: v for k, v in app._SWEEP.items() if k != "task"},
+        "target_seen": dict(app.TARGET_SEEN),
         "clients_created": CLIENTS["created"], "ready": app._READY["mcp"], "queue_sizes": QUEUE_SIZES,
         "removed_env": app.REMOVED_GRADIO_ENV,
         "server_name": app.SERVER_NAME,

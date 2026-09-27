@@ -13,7 +13,7 @@
 | NEAR | 1.0.0 | 提案（実装済み） | 2 | [NEAR.md](NEAR.md) |
 | GUIDE | 1.0.0 | 確定（実装済み） | 2 | [GUIDE.md](GUIDE.md) |
 | LIMITS | 3.2.0（HTTP 併設の経路の行を追加。3.1.0 は配置モード spaces の値を追加。3.0.0 は Codex③：受付枠を本文の前へ・送信期限・起動の準備・回収されない結果の数え方を変更・ログの項目を追加。2.0.0 は開放経路の値を変更＝旧 SSE を閉じた・長時間接続を追加。1.1.0 は 1.0.0 の値を変えずに項目を追加） | 1.1.0 は確定（著者承認 2026-09-18）。2.0.0・3.0.0・3.1.0・3.2.0 は提案（変更そのものは著者の指示。版の付け方と上限の値は施工判断・値は実測） | 2〜段階一・HTTP 併設 | [LIMITS.md](LIMITS.md) |
-| HTTP | 1.0.0（`/api/v1/` の九経路・引数・応答〔MCP と同じ JSON・Markdown〕・cache と ETag。SPEC v2.5 §2.12） | 提案（経路と方針は SPEC v2.5。引数の読み方・Markdown の形・ETag・304・HEAD の扱いは施工判断） | HTTP 併設 | [HTTP.md](HTTP.md) |
+| HTTP | 1.1.0（verify に `language`・崩れた `%` を 400。1.0.0 は `/api/v1/` の九経路・引数・応答〔MCP と同じ JSON・Markdown〕・cache と表現ごとの ETag。SPEC v2.5.1 §2.12） | 確定（経路・応答・上限と施工判断四件〔HEAD／OPTIONS 405・パス形の値 404・未知／重複引数 400・304〕は SPEC v2.5.1 が採用）。Markdown の形と ETag の算式の細部は提案 | HTTP 併設 | [HTTP.md](HTTP.md) |
 | JSON | 1.0.0 | 提案（実装済み） | 2 | [JSON.md](JSON.md) |
 | SCHEMA | 1.0.0 | 提案（実装済み。資料種別の表は著者承認 2026-09-18・derivative_of 欄つき） | 2 | [SCHEMA.md](SCHEMA.md) |
 | PATTERNS | 0.2.1（50件。表の SHA-256 は [PATTERNS.md](PATTERNS.md)）・照合 PATTERNS-MATCH-2.0.0（ハイフンを語境界に。2.0.0 で英字と仮名・漢字の境界の空白を任意に） | 一覧は確定（著者承認 2026-09-18。0.1.0＝47件は撤回、0.1.1＝49件→0.2.0 で P31・P39 の語形追加と P54 新設→0.2.1 で P54 に英語の語形3つ） | 2〜4 | [PATTERNS.md](PATTERNS.md) |

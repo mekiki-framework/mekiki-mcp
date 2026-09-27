@@ -1,9 +1,13 @@
-"""HTTP 併設（SPEC v2.5 §2.12・docs/rules/HTTP.md の HTTP-1.0.0）の、通信に触れない部分。
+"""HTTP 併設（SPEC v2.5.1 §2.12・docs/rules/HTTP.md の HTTP-1.1.0）の、通信に触れない部分。
 
 経路の表・引数の読み取り・表現の選択（JSON か Markdown か）・Markdown の組み立て・ETag。標準ライブラリだけで、
 gradio も七ツールも import しない。ツールを呼ぶのは app.py の Guard の中で、MCP と同じ入口の関数を使う
 （同じ入力なら MCP と同じ JSON 文字列になる）。入力の上限と形の検査はツールの側にあり、ここでは HTTP の形
-（引数の名前・重複・文字コード・本文の JSON）だけを見る。
+（引数の名前・重複・百分率符号化・文字コード・本文の JSON）だけを見る。
+
+百分率復号は自前（`_unquote`）。`urllib.parse` を使わないのは、`mekiki_reader` が通信系の module を import しない
+という静的検査（`tests/test_safety.py::test_s03_reader_has_no_network_imports`。`urllib` は `urllib.request` を含む
+パッケージなので名前ごと禁じている）に従うため。規則は docs/rules/HTTP.md §2。
 """
 
 from __future__ import annotations
@@ -14,7 +18,7 @@ import re
 from dataclasses import dataclass
 from typing import Any, Mapping, Sequence
 
-HTTP_VERSION = "HTTP-1.0.0"
+HTTP_VERSION = "HTTP-1.1.0"  # 1.1.0：verify に language（SPEC v2.5.1）
 PREFIX = "/api/v1/"
 QUERY_FIELDS_MAX = 8  # 問い合わせの項目数（どの経路も引数は3つまで。空の項目は数えない）
 CACHE_GET = "public, max-age=3600"  # GET の読み取り応答（データは版で固定）
@@ -44,13 +48,14 @@ ROUTES: tuple[Route, ...] = (
     Route("search", "GET", "/api/v1/search", "search_passages", ("q", "paper_id", "k")),
     Route("claims", "GET", "/api/v1/claims", "get_claim_record", ("claim_id", "query")),
     Route("guide", "GET", "/api/v1/guide", "get_reading_guide", ("part",)),
-    Route("verify", "GET", "/api/v1/verify", "verify_quote", ("text", "paper_id")),
-    Route("verify", "POST", "/api/v1/verify", "verify_quote", ("text", "paper_id")),
+    Route("verify", "GET", "/api/v1/verify", "verify_quote", ("text", "paper_id", "language")),
+    Route("verify", "POST", "/api/v1/verify", "verify_quote", ("text", "paper_id", "language")),
     Route("check", "POST", "/api/v1/check", "check_compressions", ("text",)),
 )
 _SECTION_RE = re.compile(r"/api/v1/papers/([^/]+)/sections/([^/]+)")
 _EXACT = {r.path: r.name for r in ROUTES if not r.path_params}
 _PERCENT = re.compile(rb"%([0-9A-Fa-f]{2})")
+_BAD_PERCENT = re.compile(rb"%(?![0-9A-Fa-f]{2})")  # `%` の後に16進2桁が続かない（`%`・`%G1`・`%4`）
 
 
 class HttpInputError(ValueError):
@@ -80,7 +85,8 @@ def route(name: str, method: str) -> Route:
 
 
 def parse_query(raw: bytes, allowed: Sequence[str]) -> dict[str, str]:
-    """問い合わせを読む。`+` は空白、`%XX` は UTF-8（厳格）。名前は allowed だけ・重複なし・項目は8つまで。
+    """問い合わせを読む。`+` は空白、`%XX` はそのバイト、全体を UTF-8（厳格）で読む。名前は allowed だけ・
+    重複なし・項目は8つまで。形の崩れた `%` と UTF-8 でない列は HttpInputError（400）。
 
     生の UTF-8（百分率符号化していないもの）も受ける。空の項目（`&&`）は飛ばす。値の中身の検査はツールが行う。
     """
@@ -94,6 +100,8 @@ def parse_query(raw: bytes, allowed: Sequence[str]) -> dict[str, str]:
             name, value = _unquote(name_b), _unquote(value_b)
         except UnicodeDecodeError:
             raise HttpInputError("問い合わせは UTF-8（百分率符号化）で送る") from None
+        except ValueError:
+            raise HttpInputError("百分率符号化の形が崩れている（`%` の後は16進2桁）") from None
         if name not in allowed:
             raise HttpInputError(_unknown(allowed))
         if name in out:
@@ -103,7 +111,10 @@ def parse_query(raw: bytes, allowed: Sequence[str]) -> dict[str, str]:
 
 
 def _unquote(raw: bytes) -> str:
-    """`+` を空白に、`%XX` をそのバイトにしてから UTF-8（厳格）で読む。形の崩れた `%` はそのまま残す。"""
+    """`+` を空白に、`%XX` をそのバイトにしてから UTF-8（厳格）で読む。形の崩れた `%` は ValueError
+    （`urllib.parse` は崩れた `%` をそのまま残すが、ここでは誤りとして返す）。リテラルの `+` は `%2B` で送る。"""
+    if _BAD_PERCENT.search(raw):
+        raise ValueError("bad percent-encoding")
     return _PERCENT.sub(lambda m: bytes([int(m.group(1), 16)]), raw.replace(b"+", b" ")).decode("utf-8")
 
 

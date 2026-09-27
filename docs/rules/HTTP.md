@@ -3,7 +3,7 @@
 | 項目 | 値 |
 |---|---|
 | 規則ID・版 | HTTP-1.1.0（2026-09-27・SPEC v2.5.1。1.0.0 に verify の `language` を足した〔MINOR〕。あわせて、崩れた `%` を 400 にし〔1.0.0 はそのまま残していた〕、生の非 ASCII のバイト列が HTTP の層で断られる実測を記した）。HTTP-1.0.0（2026-09-27・SPEC v2.5 §2.12 の施工） |
-| 状態 | 確定（経路・応答・上限・`HEAD`／`OPTIONS` の 405・パス形の値の 404・未知／重複引数の 400・304 は SPEC v2.5.1 が採用）。Markdown の形と ETag の算式の細部は施工判断（提案） |
+| 状態 | 確定（経路・応答・上限・`HEAD`／`OPTIONS` の 405・パス形の値の 404・未知／重複引数の 400・304 は SPEC v2.5.1 が採用。版の付け方〔崩れた `%` の 400 を 1.1.0 に含める。Space に配置された版を基準に判定するため〕と、Markdown の形・ETag の算式の細部は 2026-09-27 著者確定） |
 | 実装 | `mekiki_reader/http_api.py`（経路の表・引数の読み取り・Markdown・ETag。通信に触れない）と `app.py` の Guard（受付枠・本文・送信・ツールの呼び出し） |
 | 試験 | `tests/test_http.py`（H01〜H04。local と spaces の両モード）・`tests/test_safety.py::test_s01_allowlist_is_pinned` |
 
